@@ -38,4 +38,5 @@ themselves; whether SAHIE's income-to-poverty ratio uses family or household inc
 reach-table population totals (inputs match; outputs not recomputed).
 
 **Added after the tie-out, not yet re-checked by it.** Inflation adjustment of the income-distribution chart
-(R-CPI-U-RS, see DATASETS.md).
+(R-CPI-U-RS, see DATASETS.md), with a switch back to as-published dollars. Label change: `below_200_share` is
+now "People below 200% of the poverty line" (values unchanged).

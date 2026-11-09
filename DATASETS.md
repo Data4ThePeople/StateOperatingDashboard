@@ -201,7 +201,8 @@ periods.
 **Units and rounding.** Shares are percents (0-100) at full precision. Dollar values are nominal: each
 period is in dollars of its final year (2014, 2019, 2024), with no inflation adjustment in the data. The page's
 income-distribution chart moves each period's bracket edges into 2024 dollars with R-CPI-U-RS (see "Price
-index" below), so the three periods compare in real terms. Median household income tiles stay nominal and say so.
+index" below), so the three periods compare in real terms. A switch shows the as-published dollars instead. Median household
+income tiles stay nominal and say so.
 
 **Known quirks.** The poverty line is a single federal measure that does not change with local living
 costs. Near-poverty and below-200% counts are people, not households or families. Survey answers tend to

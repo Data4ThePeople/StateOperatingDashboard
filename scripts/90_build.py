@@ -34,6 +34,7 @@ NOT_IN_OVERVIEW = {"overdose_rate_per100k", "below_200_share", "medicaid_share",
 LABELS = {
     "near_poverty_share": "Near poverty: people at 100% to 199% of the poverty line",
     "health_care_share": "Health care and social assistance share of private jobs",
+    "below_200_share": "People below 200% of the poverty line",
 }
 # CDC flags every 2026 month of the statewide file "Underreported due to incomplete data"
 OHIO_FLAGS = {"overdose_deaths_12mo": "CDC marks this statewide figure as underreported due to incomplete data",

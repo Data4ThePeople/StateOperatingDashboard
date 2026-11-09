@@ -421,20 +421,24 @@ function incomeBlock(f){
     // ACS 5-year dollars are in the period's final year; move each bracket edge into 2024 dollars with R-CPI-U-RS
     const PI = ((DATA.extras || {}).price_index || {}).years || {};
     const toBase = k => PI["2024"] && PI[k.slice(-4)] ? PI["2024"] / PI[k.slice(-4)] : null;
-    const V = Object.keys(dist.shares).sort().filter(k => toBase(k)).map(k => { let c = 0; const r = toBase(k);
+    const real = st.real !== false;
+    const V = Object.keys(dist.shares).sort().filter(k => toBase(k)).map(k => { let c = 0; const r = real ? toBase(k) : 1;
       return {period:k, r, pts:[[0,0]].concat(tops.map((t, i) => [t * r, c += dist.shares[k][i]]))}; });
     const cols = ["#9ec5f4","#2a78d6","#104281"].slice(3 - V.length);
     const W = 640, H = 250, L = 40, R = 12, T = 10, B = 34;
     const x = t => L + t / 200 * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
     let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Share of households earning less than each income level">`;
     [0, 25, 50, 75, 100].forEach(t => g += `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="#e3e2dd"/><text x="${L-6}" y="${y(t)+4}" font-size="11" text-anchor="end" fill="#8a8780">${t}%</text>`);
-    [0, 50, 100, 150, 200].forEach(t => g += `<text x="${x(t)}" y="${H-12}" font-size="11" text-anchor="middle" fill="#8a8780">$${t ? t + ",000" : "0"}</text>`);
+    [0, 50, 100, 150, 200].forEach(t => g += `<text x="${x(t)}" y="${H-12}" font-size="11" text-anchor="${t === 200 ? "end" : t === 0 ? "start" : "middle"}" fill="#8a8780">$${t ? t + ",000" : "0"}</text>`);
     V.forEach((v, k) => {
       g += `<path d="${v.pts.filter(p => p[0] <= 200).map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("")}" fill="none" stroke="${cols[k]}" stroke-width="2"/>`;
-      v.pts.slice(1).filter(p => p[0] <= 200).forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="6" fill="transparent" data-t="${v.period}: ${p[1].toFixed(1)}% of households had income under $${Math.round(p[0]).toLocaleString("en-US")},000 in 2024 dollars"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="${cols[k]}" pointer-events="none"/>`);
+      v.pts.slice(1).filter(p => p[0] <= 200).forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="6" fill="transparent" data-t="${v.period}: ${p[1].toFixed(1)}% of households had income under $${Math.round(p[0]).toLocaleString("en-US")},000 in ${real ? "2024" : v.period.slice(-4)} dollars"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="${cols[k]}" pointer-events="none"/>`);
     });
     g += `</svg>`;
-    h += `<h3>Share of households earning less than each income level</h3><p class="sub">Read up from any dollar amount: a higher line means more households below that income. All three periods are in 2024 dollars, adjusted for inflation with the Census Bureau's price index for income (R-CPI-U-RS). ACS 5-year estimates. The chart stops at $200,000.</p><div class="dist">${g}</div>
+    h += `<h3>Share of households earning less than each income level</h3><div class="seg" id="realseg"><button aria-pressed="${real}" data-r="1">Adjusted for inflation</button><button aria-pressed="${!real}" data-r="0">As published</button></div>
+      <p class="sub">Read up from any dollar amount: a higher line means more households below that income. ${real
+        ? "All three periods are in 2024 dollars, adjusted with the Census Bureau's price index for income (R-CPI-U-RS), so a gap between lines is a real change."
+        : "Each period is in its own final year's dollars, as the Census Bureau publishes it, so part of the gap between lines is inflation."} ACS 5-year estimates. The chart stops at $200,000.</p><div class="dist">${g}</div>
       <div class="legend lgw">${V.map((v, k) => `<span style="color:${cols[k]}"><b>${v.period}</b></span>`).join("")}</div>`;
   }
   return h;
@@ -485,6 +489,7 @@ function drawPanel(){
   $("pick").onchange = e => { st.county = e.target.value === "ohio" ? null : e.target.value; render(); };
   $("panel").querySelectorAll(".tile").forEach(t => t.onclick = () => { const id = t.dataset.m; st.theme = M[id].theme; st.metric = id; if (!hasChange(id)) st.view = "level"; render(); });
   $("panel").querySelectorAll("tr.click").forEach(t => t.onclick = () => { const id = t.dataset.m; st.theme = M[id].theme; st.metric = id; st.view = "level"; render(); });
+  $("panel").querySelectorAll("#realseg button").forEach(b => b.onclick = () => { st.real = b.dataset.r === "1"; drawPanel(); });
   $("panel").querySelectorAll("circle[data-t]").forEach(c => { c.onmousemove = e => showTip(e, c.dataset.t); c.onmouseleave = hideTip; });
   sparkHover($("panel"));
 }
