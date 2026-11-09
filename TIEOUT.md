@@ -61,3 +61,5 @@ now "People below 200% of the poverty line" (values unchanged).
   county and year; Franklin 56.0% White not Hispanic, 24.0% Black not Hispanic, 8.9% Hispanic, 13.0% foreign-born.
 - Labels: the three population-change rates now say "since 2020" (values unchanged; they were already sums
   from April 2020, as their notes said).
+- `scripts/50_national.py`: U.S. and state figures for the six race and ethnicity groups, female share and
+  foreign-born share. Ohio's value from the state files matches the county-built value for all eight.

@@ -36,7 +36,7 @@ assert len(USPS) == 51
 FIPS = {v: k for k, v in USPS.items()}
 
 LAYERS = {}
-for name in ("jobs", "income", "people", "popest", "age", "health"):
+for name in ("jobs", "income", "people", "popest", "age", "demographics", "health"):
     LAYERS[name] = json.loads((PROC / f"{name}.json").read_text())
 
 OUT = {}
@@ -234,6 +234,46 @@ def age_measures(st, us):
          for g in USPS.values()})
 
 
+# race groups as in 24_demographics.GROUPS, by race code in the state file (1 White, 2 Black, 3 AIAN, 4 Asian,
+# 5 NHPI, 6 two or more); None = Hispanic of any race
+RACE_GROUPS = {"nh_white_share": ["1"], "nh_black_share": ["2"], "hispanic_share": None, "nh_asian_share": ["4"],
+               "nh_multi_share": ["6"], "nh_native_share": ["3", "5"]}
+
+
+def demographic_measures(st, us):
+    """Race and ethnicity and female share from the state file sc-est2025-alldata6 (sex, Hispanic origin, six
+    race groups, single years of age), July 1, 2025. U.S. = sum of the 50 states and DC, checked against the
+    U.S. total. Foreign-born share from ACS B05012, the U.S. figure from the ACS us:1 row."""
+    rows = pep_csv("state/asrh/sc-est2025-alldata6.csv", "sc-est2025-alldata6.csv")
+    agg = {}
+    for r in rows:
+        if r["STATE"] not in USPS:
+            continue
+        a = agg.setdefault(USPS[r["STATE"]], {k: 0.0 for k in list(RACE_GROUPS) + ["tot", "fem"]})
+        v = float(r["POPESTIMATE2025"])
+        if r["SEX"] == "0" and r["ORIGIN"] == "0":
+            a["tot"] += v
+        if r["SEX"] == "2" and r["ORIGIN"] == "0":
+            a["fem"] += v
+        if r["SEX"] == "0":
+            for mid, codes in RACE_GROUPS.items():
+                if (codes is None and r["ORIGIN"] == "2") or (codes and r["ORIGIN"] == "1" and r["RACE"] in codes):
+                    a[mid] += v
+    for g, a in agg.items():
+        assert abs(a["tot"] - float(st[g]["POPESTIMATE2025"])) < 1, f"{g}: state race file total differs"
+        assert abs(sum(a[m] for m in RACE_GROUPS) - a["tot"]) < 1, f"{g}: race groups do not add to total"
+    usa = {k: sum(a[k] for a in agg.values()) for k in list(RACE_GROUPS) + ["tot", "fem"]}
+    assert abs(usa["tot"] - float(us["POPESTIMATE2025"])) < 1, "states do not sum to the U.S. total"
+    src = "sum of the 50 states and DC (SC-EST2025-ALLDATA6), equal to the U.S. total"
+    for mid in list(RACE_GROUPS) + ["female_share"]:
+        k = "fem" if mid == "female_share" else mid
+        add(mid, "2025", usa[k] / usa["tot"] * 100, src, {g: a[k] / a["tot"] * 100 for g, a in agg.items()})
+    fb = acs_pull("B05012")
+    share = lambda d: d["B05012_003"][0] / d["B05012_001"][0] * 100
+    add("foreign_born_share", ACS_PERIOD, share(fb["US"]), "publisher's own U.S. figure (ACS us:1)",
+        {g: share(fb[g]) for g in USPS.values()})
+
+
 # ================================================================ LAUS (10_jobs_industry.py)
 def laus_measures():
     lay = LAYERS["jobs"]
@@ -362,6 +402,7 @@ def main():
         step()
     popest_measures(st, us)
     age_measures(st, us)
+    demographic_measures(st, us)
     overdose_measure(st, us)
 
     for mid, why in LEFT_OUT.items():
