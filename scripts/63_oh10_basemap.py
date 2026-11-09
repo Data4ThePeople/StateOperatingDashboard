@@ -2,8 +2,8 @@
 page cannot load map tiles from other sites). Writes data/processed/oh10/basemap.json.
 
 Sources, all U.S. Census Bureau TIGERweb (public domain), clipped to the map's bounding box:
-- Transportation layer 2 (primary roads: interstates and other limited-access highways), layer 6 (secondary
-  roads: U.S. and state routes) and layer 8 (local roads), current TIGER.
+- Transportation layer 2 (primary roads: interstates and other limited-access highways) and layer 6 (secondary
+  roads: U.S. and state routes), current TIGER. Local streets are left out.
 - Hydro layer 1 (area water: rivers wide enough to map as areas, lakes, reservoirs); small ponds dropped.
 - 2020 incorporated places (layer 26) and Census-designated places (layer 28): name and internal point, with
   2020 census population (P.L. 94-171) to decide which names show at full view.
@@ -84,7 +84,7 @@ def area(pts):
 if __name__ == "__main__":
     out = {}
     route_pts = {}
-    for key, layer, off in (("primary", 2, 0.0001), ("secondary", 6, 0.0001), ("local", 8, 0.00008)):
+    for key, layer, off in (("primary", 2, 0.0001), ("secondary", 6, 0.0001)):
         polys = []
         for props, pts in lines(query("Transportation", layer, key, "NAME,RTTYP,MTFCC", off)):
             if len(pts) < 2 or not inside_view(pts):
