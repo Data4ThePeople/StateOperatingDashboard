@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Ohio County Dashboard | Data 4 The People</title>
+<meta name="description" content="How each of Ohio's 88 counties is doing on jobs, income, health and population, from public federal data. Draft.">
+<style>
+:root{
+  --bg:#ffffff; --tile:#f5f5f3; --tile-hover:#ebebe7; --ink:#121212; --ink2:#55534e; --ink3:#8a8780; --rule:#e3e2dd;
+  --serif:Georgia,"Times New Roman",Times,serif; --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --good3:#104281; --good2:#2a78d6; --good1:#9ec5f4; --mid:#e6e5e1; --bad1:#f4b4ac; --bad2:#e34948; --bad3:#9e1f22;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --ohio:#8a8780; --sel:#121212;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding:16px;container-type:inline-size}
+header h1{font-family:var(--serif);font-weight:400;font-size:30px;margin:4px 0 2px}
+header p{margin:0 0 6px;color:var(--ink2);max-width:860px}
+.draft{display:inline-block;font-size:12px;border:1px solid var(--bad2);color:#9e1f22;padding:2px 8px;border-radius:10px;margin:4px 0 10px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:10px}
+.tabs button,.chips button,.seg button{font:inherit;border:1px solid var(--rule);background:var(--tile);color:var(--ink);padding:6px 12px;border-radius:18px;cursor:pointer}
+.tabs button{font-size:15px;font-weight:600}
+.tabs button[aria-pressed=true],.chips button[aria-pressed=true],.seg button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{font-size:13px;padding:4px 10px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@container (min-width:980px){.grid{grid-template-columns:minmax(0,560px) minmax(0,1fr)}}
+.card{background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:14px}
+.card h2{font-family:var(--serif);font-weight:400;font-size:20px;margin:0 0 2px}
+.card h3{font-size:14px;margin:16px 0 6px}
+.sub{color:var(--ink2);font-size:13px;margin:0 0 8px}
+.seg{display:flex;gap:4px;margin:6px 0}
+.seg button{font-size:12px;padding:3px 10px}
+#map svg{width:100%;height:auto;display:block}
+#map path{stroke:#fff;stroke-width:.8;cursor:pointer}
+#map path:hover{stroke:var(--ink);stroke-width:1.6}
+#map path.sel{stroke:var(--sel);stroke-width:2.4}
+.legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink2);margin:8px 0}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
+.rank{font-size:13px;columns:2;column-gap:16px;margin-top:6px}
+.rank div{display:flex;justify-content:space-between;gap:6px;padding:1px 0;cursor:pointer;break-inside:avoid}
+.rank div:hover{background:var(--tile)}
+.rank b{font-weight:400;color:var(--ink3);width:22px;display:inline-block}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+select{font:inherit;padding:5px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--bg)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.tile{background:var(--tile);border-radius:6px;padding:8px 10px;cursor:pointer;border:1px solid transparent}
+.tile:hover{background:var(--tile-hover)}
+.tile.on{border-color:var(--ink)}
+.tile .lab{font-size:12px;color:var(--ink2);min-height:2.6em}
+.tile .val{font-size:22px;font-family:var(--serif)}
+.tile .cmp{font-size:12px;color:var(--ink2)}
+.tile .flag{font-size:11px;color:#9e1f22}
+.tile svg{display:block;width:100%;height:42px;margin-top:4px;overflow:visible}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:2px}
+.b-worse{background:#fde4e1;color:#9e1f22}.b-better{background:#dceafb;color:#104281}.b-near{background:var(--mid);color:var(--ink2)}
+.bars{font-size:13px}
+.bars .row{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr) 120px;gap:8px;align-items:center;padding:2px 0}
+.bars .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars .tr{height:12px;position:relative}
+.bars .tr i{position:absolute;left:0;top:0;bottom:0;background:var(--s1);border-radius:0 3px 3px 0}
+.bars .tr u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.bars .nb{text-align:right;color:var(--ink2);white-space:nowrap}
+.callout{border-left:3px solid var(--ink);background:var(--tile);padding:8px 12px;margin:8px 0;font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--ink2);cursor:pointer;white-space:nowrap}
+td.n,th.n{text-align:right}
+tr.click{cursor:pointer}tr.click:hover{background:var(--tile)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;padding:6px 8px;border-radius:4px;max-width:280px;display:none;z-index:9}
+details{margin-top:16px;font-size:13px;color:var(--ink2)}
+details summary{cursor:pointer;color:var(--ink)}
+footer{margin-top:16px;font-size:12px;color:var(--ink3);border-top:1px solid var(--rule);padding-top:8px}
+.muted{color:var(--ink3)}
+.dist svg{width:100%;height:auto;display:block}
+.lgw b{font-weight:600}
+.more{font:inherit;font-size:12px;margin-top:6px;border:1px solid var(--rule);background:var(--tile);border-radius:14px;padding:3px 10px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Ohio County Dashboard</h1>
+  <p>How each of Ohio's 88 counties is doing on jobs, income, health and population, from public federal data. Pick an issue, then click a county for its scorecard.</p>
+  <span class="draft">Working draft, built November 9, 2026. Numbers have not yet been independently checked.</span>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<div class="chips" id="chips"></div>
+<div class="grid">
+  <section class="card" id="mapcard">
+    <h2 id="mtitle"></h2>
+    <p class="sub" id="msub"></p>
+    <div class="seg" id="seg"></div>
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+    <p class="sub" id="mnote"></p>
+    <h3 id="ranktitle"></h3>
+    <div class="rank" id="rank"></div>
+    <button id="rankmore" class="more"></button>
+  </section>
+  <section class="card" id="panel"></section>
+</div>
+<details>
+  <summary>Show notes and disclaimers</summary>
+  <div id="notes"></div>
+</details>
+<footer>Built by Data 4 The People. Sources: U.S. Bureau of Labor Statistics, U.S. Census Bureau, Centers for Disease Control and Prevention. <span id="built"></span></footer>
+</div>
+<div id="tip"></div>
+<script>
+const DATA = /*DATA*/null;
+const GEO = /*GEO*/null;
+const THEMES = [
+  {id:"overview", label:"Overview"},
+  {id:"jobs", label:"Jobs and industry"},
+  {id:"income", label:"Income, housing and cost of living"},
+  {id:"health", label:"Health"},
+  {id:"people", label:"People and schools"},
+];
+const FIPS = Object.keys(GEO.counties).sort();
+const NAME = f => f === "ohio" ? "Ohio" : GEO.counties[f].name + " County";
+const M = DATA.metrics;
+const FLAG = t => ({high_moe:"Wide margin of error: treat as rough"})[t] || t;
+const REF = id => M[id].ref || "Ohio";
+const POP = f => val(f, "population_estimate") ?? val(f, "population");
+const st = {theme:"overview", metric:null, view:"level", county:null};
+
+// ---------- formatting ----------
+function fmt(v, id, signed){
+  if (v === null || v === undefined || Number.isNaN(v)) return "n/a";
+  const m = M[id] || {unit:"count", decimals:0};
+  const d = m.decimals ?? 1, s = signed && v > 0 ? "+" : "";
+  if (m.unit === "pct") return s + v.toFixed(d) + "%";
+  if (m.unit === "usd") return (v < 0 ? "-" : s) + "$" + Math.abs(v).toLocaleString("en-US", {maximumFractionDigits:d});
+  if (m.unit === "per100k") return s + v.toFixed(d) + " per 100,000";
+  if (m.unit === "per1000") return s + v.toFixed(d) + " per 1,000";
+  if (m.unit === "years") return s + v.toFixed(d);
+  return s + v.toLocaleString("en-US", {maximumFractionDigits:d});
+}
+function fmtChange(c, id){
+  if (c === null) return "n/a";
+  return c.kind === "pts" ? (c.v > 0 ? "+" : "") + c.v.toFixed(1) + " pts" : (c.v > 0 ? "+" : "") + c.v.toFixed(1) + "%";
+}
+const get = (f, id) => (f === "ohio" ? DATA.ohio : DATA.counties[f] || {})[id];
+const val = (f, id) => { const o = get(f, id); return o && o.latest !== null && o.latest !== undefined ? o.latest : null; };
+
+// change from a base period (2019 if present, else the first) to the latest
+function baseIdx(series){
+  if (!series || series.length < 2) return -1;
+  let i = series.findIndex(p => p[0].slice(0,4) >= "2019");
+  if (i < 0 || i === series.length - 1) i = 0;
+  return i;
+}
+function change(f, id){
+  const o = get(f, id); if (!o || !o.series) return null;
+  const s = o.series.filter(p => p[1] !== null); const i = baseIdx(s); if (i < 0) return null;
+  const a = s[i][1], b = s[s.length-1][1];
+  if (M[id].unit === "pct") return {v:b - a, kind:"pts", from:s[i][0], to:s[s.length-1][0]};
+  if (!a) return null;
+  return {v:(b - a) / Math.abs(a) * 100, kind:"pct", from:s[i][0], to:s[s.length-1][0]};
+}
+function hasChange(id){ return !M[id].no_change && FIPS.some(f => change(f, id) !== null); }
+
+// ---------- ranking and class ----------
+function ranks(id){
+  const b = M[id].better, vs = FIPS.map(f => [f, val(f, id)]).filter(p => p[1] !== null);
+  vs.sort((x, y) => b === "lower" ? x[1] - y[1] : y[1] - x[1]);
+  const r = {}; vs.forEach((p, i) => r[p[0]] = i + 1); r._n = vs.length; return r;
+}
+// how a county compares with Ohio: worse / near / better, near = within 3% of Ohio's value
+function vsOhio(f, id){
+  const v = val(f, id), o = val("ohio", id), b = M[id].better;
+  if (v === null || o === null || b === "none") return null;
+  const tol = Math.max(Math.abs(o) * 0.03, M[id].unit === "pct" ? 0.3 : 0);
+  if (Math.abs(v - o) <= tol) return "near";
+  return (b === "lower" ? v < o : v > o) ? "better" : "worse";
+}
+const badge = (k, id) => k ? `<span class="badge b-${k}">${k === "near" ? "near" : k + " than"} ${M[id].ref ? "median county" : "Ohio"}</span>` : "";
+const BADGE = {worse:'<span class="badge b-worse">worse than Ohio</span>', better:'<span class="badge b-better">better than Ohio</span>', near:'<span class="badge b-near">near Ohio</span>'};
+
+// ---------- map coloring ----------
+const SEQ = ["#deebfb","#9ec5f4","#5598e7","#256abf","#104281"];
+const DIV = ["var(--good3)","var(--good2)","var(--good1)","var(--mid)","var(--bad1)","var(--bad2)","var(--bad3)"];
+function quantBreaks(vals, k){
+  const s = vals.slice().sort((a,b) => a - b), out = [];
+  for (let i = 1; i < k; i++) out.push(s[Math.floor(i * s.length / k)]);
+  return out;
+}
+// returns {color(f), legend:[[color,label]], kind}
+const NONE_COLS = ["#5e3c99","#8e7cc3","#c9bfe4","var(--mid)","#f6c592","#e08a3c","#a8590f"]; // purple fell, orange rose: no judgment
+function scaleFor(id, view){
+  const isChg = view === "change", m = M[id], b = m.better;
+  const v = f => isChg ? (change(f, id) || {v:null}).v : val(f, id);
+  const vals = FIPS.map(v).filter(x => x !== null);
+  const fm = x => isChg ? fmtChange({v:x, kind:m.unit === "pct" ? "pts" : "pct"}, id) : fmt(x, id);
+  if (b === "none" && !isChg){
+    const br = quantBreaks(vals, 5);
+    const c = x => x === null ? null : SEQ[br.filter(t => x >= t).length];
+    const lg = SEQ.map((col, i) => [col, i === 0 ? "under " + fm(br[0]) : i === 4 ? fm(br[3]) + " or more" : fm(br[i-1]) + " to " + fm(br[i])]);
+    return {color:f => c(v(f)), legend:lg, kind:"Fifths of Ohio's counties, low to high"};
+  }
+  // diverging around Ohio's own value (level) or zero (change); positive distance = worse (or "rose" when no judgment)
+  const centre = isChg ? 0 : val("ohio", id);
+  const sign = b === "higher" ? -1 : 1;
+  const d = x => (x - centre) * sign;
+  const tol = isChg ? (m.unit === "pct" ? 0.2 : 1) : Math.max(Math.abs(centre) * 0.03, m.unit === "pct" ? 0.3 : 0);
+  const ds = vals.map(d);
+  const pos = ds.filter(x => x > tol).sort((p, q) => p - q), neg = ds.filter(x => x < -tol).map(x => -x).sort((p, q) => p - q);
+  const tp = [pos[Math.floor(pos.length / 3)], pos[Math.floor(2 * pos.length / 3)]];
+  const tn = [neg[Math.floor(neg.length / 3)], neg[Math.floor(2 * neg.length / 3)]];
+  const cls = x => { if (x === null) return null; const e = d(x);
+    if (Math.abs(e) <= tol) return 3;
+    if (e > 0) return 4 + (e >= tp[0] ? 1 : 0) + (e >= tp[1] ? 1 : 0);
+    return 2 - (-e >= tn[0] ? 1 : 0) - (-e >= tn[1] ? 1 : 0); };
+  const cols = b === "none" ? NONE_COLS : DIV;
+  const words = b === "none" ? ["Fell most","Fell","Fell a little","Little change","Rose a little","Rose","Rose most"]
+    : isChg ? ["Improved most","Improved","Improved a little","Little change","Worsened a little","Worsened","Worsened most"]
+            : ["Much better than " + REF(id),"Better","A little better","Near " + REF(id) + " (" + fm(centre) + ")","A little worse","Worse","Much worse than " + REF(id)];
+  const ex = FIPS.map(f => change(f, id)).find(c => c);
+  return {color:f => { const k = cls(v(f)); return k === null ? null : cols[k]; },
+          legend:cols.map((c, i) => [c, words[i]]),
+          kind:isChg ? "Change from " + (ex ? ex.from : "the first year") + " to the latest" : "Compared with " + (m.ref || "Ohio as a whole")};
+}
+
+// ---------- overview: hotspot count and issue reach ----------
+const judged = () => Object.keys(M).filter(id => M[id].better !== "none" && M[id].overview !== false);
+function hotspots(){
+  const ids = judged(), out = {};
+  FIPS.forEach(f => out[f] = {n:0, of:0, list:[]});
+  ids.forEach(id => {
+    const r = ranks(id), cut = Math.ceil(r._n * 3 / 4);
+    FIPS.forEach(f => { if (r[f]) { out[f].of++; if (r[f] > cut) { out[f].n++; out[f].list.push(id); } } });
+  });
+  return out;
+}
+function reach(){
+  return judged().map(id => {
+    const w = FIPS.filter(f => vsOhio(f, id) === "worse");
+    const pop = w.reduce((s, f) => s + (POP(f) || 0), 0);
+    const wc = hasChange(id) && !M[id].nominal ? FIPS.filter(f => { const c = change(f, id); return c && (M[id].better === "lower" ? c.v > 0 : c.v < 0); }).length : null;
+    return {id, n:w.length, pop, worsening:wc};
+  }).sort((a, b) => b.n - a.n);
+}
+
+// ---------- drawing ----------
+const $ = id => document.getElementById(id);
+const tip = $("tip");
+function showTip(e, html){ tip.innerHTML = html; tip.style.display = "block";
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px"; }
+function hideTip(){ tip.style.display = "none"; }
+
+function themeMetrics(t){ return Object.keys(M).filter(id => M[id].theme === t && !M[id].hidden); }
+
+function drawTabs(){
+  $("tabs").innerHTML = THEMES.map(t => `<button aria-pressed="${t.id === st.theme}" data-t="${t.id}">${t.label}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { st.theme = b.dataset.t; st.metric = null; st.view = "level"; render(); });
+}
+function drawChips(){
+  if (st.theme === "overview"){ $("chips").innerHTML = ""; return; }
+  const ids = themeMetrics(st.theme); if (!st.metric || !ids.includes(st.metric)) st.metric = ids[0];
+  $("chips").innerHTML = ids.map(id => `<button aria-pressed="${id === st.metric}" data-m="${id}">${M[id].label}</button>`).join("");
+  $("chips").querySelectorAll("button").forEach(b => b.onclick = () => { st.metric = b.dataset.m; if (!hasChange(st.metric)) st.view = "level"; render(); });
+}
+
+function drawMap(){
+  let color, legend, title, sub, note, rankRows, valueOf, kind;
+  if (st.theme === "overview"){
+    const h = hotspots(), mx = Math.max(...FIPS.map(f => h[f].n));
+    const n = judged().length;
+    const cols = ["#f5f5f3","#f4b4ac","#e86a5f","#c22f2e","#7a1418"];
+    const br = [1, Math.ceil(n*0.15), Math.ceil(n*0.3), Math.ceil(n*0.45)];
+    const cl = k => cols[br.filter(t => k >= t).length];
+    color = f => cl(h[f].n);
+    legend = cols.map((c, i) => [c, i === 0 ? "0" : i === 4 ? br[3] + " or more" : br[i-1] + (br[i]-1 > br[i-1] ? " to " + (br[i]-1) : "")]);
+    title = "Where problems stack up";
+    sub = `Number of the ${n} measures on this page where the county is in the worst fourth of Ohio's 88 counties.`;
+    kind = "Measures in the worst fourth";
+    note = "A count, not a score. Each measure counts once, and some measures overlap (for example two poverty measures). Click a county for its scorecard.";
+    valueOf = f => h[f].n;
+    rankRows = FIPS.slice().sort((a, b) => h[b].n - h[a].n).map(f => [f, h[f].n + " of " + h[f].of]);
+    $("ranktitle").textContent = "Counties with the most measures in the worst fourth";
+    $("seg").innerHTML = "";
+  } else {
+    const id = st.metric, m = M[id];
+    const sc = scaleFor(id, st.view); color = sc.color; legend = sc.legend; kind = sc.kind;
+    title = m.label; sub = (st.view === "change" ? "Change, " : "") + m.period_label + ". " + sc.kind + ".";
+    note = m.note + " Source: " + m.source + ".";
+    const r = ranks(id);
+    valueOf = f => st.view === "change" ? change(f, id) : val(f, id);
+    const rv = f => st.view === "change" ? fmtChange(change(f, id), id) : fmt(val(f, id), id);
+    const order = st.view === "change"
+      ? FIPS.filter(f => change(f, id)).sort((a, b) => { const x = change(a, id).v, y = change(b, id).v; return m.better === "lower" ? y - x : m.better === "higher" ? x - y : y - x; })
+      : FIPS.filter(f => r[f]).sort((a, b) => m.better === "none" ? r[a] - r[b] : r[b] - r[a]);
+    rankRows = order.map(f => [f, rv(f)]);
+    $("ranktitle").textContent = m.better === "none" ? (st.view === "change" ? "Largest increases first" : "Highest first") : (st.view === "change" ? "Most worsened first" : "Worst first") + " (click any county)";
+    $("seg").innerHTML = hasChange(id) ? ["level","change"].map(v => `<button aria-pressed="${st.view === v}" data-v="${v}">${v === "level" ? "Latest level" : "Change over time"}</button>`).join("") : "";
+    $("seg").querySelectorAll("button").forEach(b => b.onclick = () => { st.view = b.dataset.v; render(); });
+  }
+  $("mtitle").textContent = title; $("msub").textContent = sub; $("mnote").textContent = note;
+  const paths = FIPS.map(f => { const c = color(f);
+    return `<path d="${GEO.counties[f].d}" data-f="${f}" fill="${c || "url(#nodata)"}" class="${f === st.county ? "sel" : ""}"><title></title></path>`; }).join("");
+  const sel = st.county ? `<path d="${GEO.counties[st.county].d}" fill="none" stroke="#121212" stroke-width="2.6" pointer-events="none"/>` : "";
+  $("map").innerHTML = `<svg viewBox="${GEO.viewBox}" role="img" aria-label="${title}, map of Ohio counties"><defs><pattern id="nodata" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#f5f5f3"/><line x1="0" y1="0" x2="0" y2="6" stroke="#c8c6bf" stroke-width="2"/></pattern></defs>${paths}${sel}</svg>`;
+  $("map").querySelectorAll("path[data-f]").forEach(p => {
+    const f = p.dataset.f;
+    p.onmousemove = e => {
+      let h = `<b>${NAME(f)}</b><br>`;
+      if (st.theme === "overview"){ const hs = hotspots()[f]; h += `${hs.n} of ${hs.of} measures in the worst fourth` + (hs.list.length ? "<br><span style='opacity:.8'>" + hs.list.slice(0, 6).map(id => M[id].label).join("; ") + (hs.list.length > 6 ? "; ..." : "") + "</span>" : ""); }
+      else { const id = st.metric, o = get(f, id), r = ranks(id);
+        h += st.view === "change" ? fmtChange(change(f, id), id) + (change(f, id) ? ` (${change(f, id).from} to ${change(f, id).to})` : "")
+          : fmt(val(f, id), id) + (o && o.flag ? ` <i>(${FLAG(o.flag)})</i>` : "") + `<br>${M[id].ref ? "Median county" : "Ohio"}: ${fmt(val("ohio", id), id)}` + (r[f] && M[id].better !== "none" ? `<br>Rank ${r[f]} of ${r._n} (1 = best)` : "");
+      }
+      showTip(e, h); };
+    p.onmouseleave = hideTip;
+    p.onclick = () => { st.county = f; render(); };
+  });
+  $("legend").innerHTML = legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("") + `<span><i style="background:url(#);background-image:repeating-linear-gradient(45deg,#c8c6bf 0 2px,#f5f5f3 2px 5px)"></i>No data or withheld</span>`;
+  const showN = st.allRanks ? rankRows.length : 10;
+  $("rank").innerHTML = rankRows.slice(0, showN).map(([f, t], i) => `<div data-f="${f}"><span><b>${i+1}</b>${GEO.counties[f].name}</span><span>${t}</span></div>`).join("");
+  $("rankmore").textContent = st.allRanks ? "Show top 10 only" : "Show all " + rankRows.length + " counties";
+  $("rank").querySelectorAll("div").forEach(d => d.onclick = () => { st.county = d.dataset.f; render(); });
+}
+
+// sparkline: county (ink) and Ohio (gray), shared y scale
+function spark(f, id){
+  const a = (get(f, id) || {}).series || [], o = M[id].unit === "count" || f === "ohio" ? [] : (get("ohio", id) || {}).series || [];
+  if (a.filter(p => p[1] !== null).length < 2) return "";
+  const per = Array.from(new Set(a.concat(o).map(p => p[0]))).sort();
+  const vals = a.concat(o).map(p => p[1]).filter(v => v !== null);
+  let lo = Math.min(...vals), hi = Math.max(...vals); if (hi === lo){ hi += 1; lo -= 1; }
+  const W = 220, H = 42, x = p => per.indexOf(p) / (per.length - 1) * (W - 4) + 2, y = v => H - 3 - (v - lo) / (hi - lo) * (H - 8);
+  const line = s => { let d = "", pen = false; s.forEach(p => { if (p[1] === null){ pen = false; return; } d += (pen ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1); pen = true; }); return d; };
+  const last = a.filter(p => p[1] !== null).slice(-1)[0];
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-id="${id}" data-f="${f}">
+    ${f !== "ohio" && o.length > 1 ? `<path d="${line(o)}" fill="none" stroke="var(--ohio)" stroke-width="1.5" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ""}
+    <path d="${line(a)}" fill="none" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x(last[0])}" cy="${y(last[1])}" r="3" fill="var(--ink)"/>
+    <rect width="${W}" height="${H}" fill="transparent"/></svg>`;
+}
+function sparkHover(root){
+  root.querySelectorAll("svg[data-id]").forEach(s => {
+    const id = s.dataset.id, f = s.dataset.f;
+    s.onmousemove = e => {
+      const a = (get(f, id) || {}).series || [], o = M[id].unit === "count" ? [] : (get("ohio", id) || {}).series || [];
+      const per = Array.from(new Set(a.concat(o).map(p => p[0]))).sort();
+      const r = s.getBoundingClientRect(), i = Math.round((e.clientX - r.left) / r.width * (per.length - 1));
+      const p = per[Math.max(0, Math.min(per.length - 1, i))];
+      const av = (a.find(q => q[0] === p) || [0, null])[1], ov = (o.find(q => q[0] === p) || [0, null])[1];
+      showTip(e, `<b>${p}</b><br>${NAME(f)}: ${fmt(av, id)}` + (f !== "ohio" && ov !== null ? `<br>Ohio: ${fmt(ov, id)}` : ""));
+    };
+    s.onmouseleave = hideTip;
+  });
+}
+
+function tile(f, id){
+  const m = M[id], o = get(f, id), r = ranks(id), c = change(f, id), vo = f === "ohio" ? null : vsOhio(f, id);
+  return `<div class="tile ${id === st.metric ? "on" : ""}" data-m="${id}">
+    <div class="lab">${m.label}<br><span class="muted">${o && o.period ? o.period : m.period_label}</span></div>
+    <div class="val">${fmt(val(f, id), id)}${badge(vo, id)}</div>
+    ${o && o.flag ? `<div class="flag">${FLAG(o.flag)}</div>` : ""}
+    <div class="cmp">${f !== "ohio" ? (M[id].ref ? "Median county " : "Ohio ") + fmt(val("ohio", id), id) : ""}${f !== "ohio" && r[f] && m.better !== "none" ? " · rank " + r[f] + " of " + r._n : ""}${c ? " · " + fmtChange(c, id) + " since " + c.from + (m.nominal ? " (not adjusted for inflation)" : "") : ""}</div>
+    ${spark(f, id)}
+  </div>`;
+}
+
+function industryBlock(f){
+  const X = DATA.extras || {}, im = (X.industry_mix || {})[f], top3 = (X.top3 || {})[f];
+  if (!im) return "";
+  const mix = im.sectors;
+  let h = "";
+  const lm = null;
+  if (lm) h += `<p class="sub">Latest month: unemployment rate <b>${lm.unemployment_rate.toFixed(1)}%</b> in ${new Date(lm.period + "-15").toLocaleString("en-US", {month:"long", year:"numeric"})}${lm.flag ? " (" + lm.flag + ")" : ""}, not seasonally adjusted.</p>`;
+  const ts = val(f, "top_industry_share");
+  if (top3 && top3.length){
+    const t = top3[0];
+    h += `<div class="callout"><b>Concentration check.</b> At the detailed industry level, the largest single industry here is <b>${t.title}</b>, with ${t.share.toFixed(1)}% of private-sector jobs` +
+      (f !== "ohio" && val("ohio","top_industry_share") !== null ? ` (Ohio's largest industry holds ${val("ohio","top_industry_share").toFixed(1)}%)` : "") + `. ` +
+      `The top three industries hold ${top3.reduce((s, x) => s + x.share, 0).toFixed(1)}% together.` +
+      ((get(f, "top_industry_share") || {}).flag ? ` <span class="muted">${get(f, "top_industry_share").flag}.</span>` : "") + `</div>`;
+  }
+  const rows = mix.filter(r => r.share !== null).slice(0, 12), mx = Math.max(...rows.map(r => r.share));
+  h += `<h3>Private-sector jobs by industry, ${im.year}</h3><p class="sub">Bar is the industry's share of the county's private jobs. Black tick is Ohio's share. Right: share, then change in jobs since ${im.first_year}.</p><div class="bars">`;
+  const oh = Object.fromEntries((((X.industry_mix || {}).ohio || {}).sectors || []).map(r => [r.code, r.share]));
+  rows.forEach(r => {
+    const ch = r.jobs_first ? (r.jobs - r.jobs_first) / r.jobs_first * 100 : null;
+    h += `<div class="row" title="${r.title}"><span class="nm">${r.title}</span><span class="tr"><i style="width:${r.share / mx * 100}%"></i>${f !== "ohio" && oh[r.code] !== undefined ? `<u style="left:${Math.min(oh[r.code] / mx, 1) * 100}%"></u>` : ""}</span><span class="nb">${r.share.toFixed(1)}% · ${ch === null ? "n/a" : (ch > 0 ? "+" : "") + ch.toFixed(0) + "%"}</span></div>`;
+  });
+  const sup = mix.filter(r => r.suppressed).map(r => r.title);
+  const lq = ((X.location_quotient || {})[f] || {}).sectors;
+  if (f !== "ohio" && lq){
+    const sp = lq.filter(r => r.lq >= 1.25 && r.share >= 2).sort((a, b) => b.lq - a.lq).slice(0, 3);
+    if (sp.length) h += `</div><p class="sub" style="margin-top:8px"><b>What this county specializes in:</b> ${sp.map(r => `${r.title} (${r.share.toFixed(1)}% of private jobs here, ${r.ohio_share.toFixed(1)}% statewide)`).join("; ")}.</p><div>`;
+  }
+  h += `</div>` + (sup.length ? `<p class="sub">Withheld by BLS to protect employer privacy: ${sup.join(", ")}.</p>` : "");
+  return h;
+}
+
+function incomeBlock(f){
+  const X = DATA.extras || {}, dist = (X.income_distribution || {})[f], bands = (X.poverty_ratio_bands || {})[f];
+  let h = "";
+  if (bands){
+    const b = bands, sh = b.shares, below = sh[0] + sh[1], near = sh[2] + sh[3] + sh[4] + sh[5], above = sh[6];
+    if (sh && sh.length === 7){
+      h += `<h3>Where people sit relative to the poverty line</h3><p class="sub">Share of people by family income as a percent of the federal poverty line, ${b.period || ""}. The middle band is people just above the line.</p>
+      <svg viewBox="0 0 400 34" style="width:100%;height:auto">
+        <rect x="0" y="4" width="${below*4}" height="18" fill="var(--bad2)"/>
+        <rect x="${below*4+2}" y="4" width="${Math.max(near*4-2,0)}" height="18" fill="var(--bad1)"/>
+        <rect x="${(below+near)*4+2}" y="4" width="${Math.max(above*4-2,0)}" height="18" fill="var(--good1)"/></svg>
+      <div class="legend"><span><i style="background:var(--bad2)"></i>Below the line: ${below.toFixed(1)}%</span><span><i style="background:var(--bad1)"></i>100% to 199% of the line: ${near.toFixed(1)}%</span><span><i style="background:var(--good1)"></i>200% or more: ${above.toFixed(1)}%</span></div>`;
+    }
+  }
+  if (dist && dist.shares){
+    // cumulative share of households below each bracket's upper bound; brackets have uneven widths, so a cumulative line is the honest shape
+    const tops = [10,15,20,25,30,35,40,45,50,60,75,100,125,150,200];  // thousands of dollars
+    const V = Object.keys(dist.shares).sort().map(k => { let c = 0; return {period:k, pts:[[0,0]].concat(tops.map((t, i) => [t, c += dist.shares[k][i]]))}; });
+    const cols = ["#9ec5f4","#2a78d6","#104281"].slice(3 - V.length);
+    const W = 640, H = 250, L = 40, R = 12, T = 10, B = 34;
+    const x = t => L + t / 200 * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
+    let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Share of households earning less than each income level">`;
+    [0, 25, 50, 75, 100].forEach(t => g += `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="#e3e2dd"/><text x="${L-6}" y="${y(t)+4}" font-size="11" text-anchor="end" fill="#8a8780">${t}%</text>`);
+    [0, 50, 100, 150, 200].forEach(t => g += `<text x="${x(t)}" y="${H-12}" font-size="11" text-anchor="middle" fill="#8a8780">$${t ? t + ",000" : "0"}</text>`);
+    V.forEach((v, k) => {
+      g += `<path d="${v.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("")}" fill="none" stroke="${cols[k]}" stroke-width="2"/>`;
+      v.pts.slice(1).forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="6" fill="transparent" data-t="${v.period}: ${p[1].toFixed(1)}% of households had income under $${p[0]},000"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="${cols[k]}" pointer-events="none"/>`);
+    });
+    g += `</svg>`;
+    h += `<h3>Share of households earning less than each income level</h3><p class="sub">Read up from any dollar amount: a higher line means more households below that income. ACS 5-year estimates, in each period's own dollars (not adjusted for inflation), so part of the shift over time is inflation. Households at $200,000 or more are above the right edge.</p><div class="dist">${g}</div>
+      <div class="legend lgw">${V.map((v, k) => `<span style="color:${cols[k]}"><b>${v.period}</b></span>`).join("")}</div>`;
+  }
+  return h;
+}
+
+function componentsBlock(f){
+  const C = ((DATA.extras || {}).components || {})[f];
+  if (!C || !C.natural_change) return "";
+  const at = (k, y) => ((C[k] || []).find(p => p[0] === y) || [0, null])[1];
+  const c = C.natural_change.map(p => ({year:p[0], natural:p[1], international:at("net_international_migration", p[0]), domestic:at("net_domestic_migration", p[0])}));
+  let h = `<h3>Where population change came from</h3><p class="sub">Census Bureau estimates, people per year (2020 is a partial year, April to July). Natural change is births minus deaths.</p><table><tr><th>Year</th><th class="n">Natural change</th><th class="n">Moved in from abroad</th><th class="n">Net move from other U.S. counties</th></tr>`;
+  c.forEach(r => h += `<tr><td>${r.year}</td><td class="n">${fmt(r.natural, "population")}</td><td class="n">${fmt(r.international, "population")}</td><td class="n">${fmt(r.domestic, "population")}</td></tr>`);
+  return h + `</table>`;
+}
+
+function reachBlock(){
+  const rows = reach();
+  let h = `<h3>How widespread is each problem?</h3><p class="sub">For each measure, the number of counties doing worse than Ohio as a whole, and how many people live in those counties. A problem shared by many counties is one where a single statewide policy could reach the most people.</p>
+    <table><tr><th>Measure</th><th class="n">Counties worse than Ohio</th><th class="n">People in those counties</th><th class="n">Counties getting worse</th></tr>`;
+  rows.forEach(r => h += `<tr class="click" data-m="${r.id}"><td>${M[r.id].label}<br><span class="muted">${M[r.id].period_label}</span></td><td class="n">${r.n} of 88</td><td class="n">${r.pop ? (r.pop/1e6).toFixed(1) + " million" : "n/a"}</td><td class="n">${r.worsening === null ? "n/a" : r.worsening + " of 88"}</td></tr>`);
+  return h + `</table><p class="sub">"Getting worse" compares the latest value with 2019 (or the earliest year shown, if later). Population is the Census Bureau estimate for July 1, 2025. Dollar measures are not counted as "getting worse" because they are not adjusted for inflation. Measures with no statewide figure are left out.</p>`;
+}
+
+function drawPanel(){
+  const f = st.county || "ohio";
+  const opts = `<option value="ohio">Ohio (statewide)</option>` + FIPS.map(x => `<option value="${x}" ${x === st.county ? "selected" : ""}>${GEO.counties[x].name} County</option>`).join("");
+  const pop = POP(f), pid = val(f, "population_estimate") !== null ? "population_estimate" : "population";
+  let h = `<div class="head"><div><h2>${NAME(f)}</h2><p class="sub">${pop ? "Population " + fmt(pop, pid) + " (" + (get(f, pid).period || "") + ")" : ""}${f !== "ohio" && val(f, "pop_change_pct") !== null ? " · " + fmtChange({v:val(f, "pop_change_pct"), kind:"pct"}) + " since 2020" : ""}</p></div>
+    <label class="sub">County <select id="pick">${opts}</select></label></div>`;
+  if (st.theme === "overview"){
+    if (f !== "ohio"){
+      const hs = hotspots()[f];
+      h += `<div class="callout">${NAME(f)} is in the worst fourth of Ohio counties on <b>${hs.n} of ${hs.of}</b> measures.</div>`;
+      const ids = judged();
+      const worse = ids.filter(id => vsOhio(f, id) === "worse"), better = ids.filter(id => vsOhio(f, id) === "better");
+      h += `<h3>Worse than Ohio as a whole (${worse.length})</h3><div class="tiles">${worse.map(id => tile(f, id)).join("") || '<p class="sub">None.</p>'}</div>`;
+      h += `<h3>Better than Ohio as a whole (${better.length})</h3><div class="tiles">${better.map(id => tile(f, id)).join("") || '<p class="sub">None.</p>'}</div>`;
+    } else h += reachBlock();
+  } else {
+    const ids = themeMetrics(st.theme);
+    h += `<div class="tiles">${ids.map(id => tile(f, id)).join("")}</div>`;
+    h += `<p class="sub" style="margin-top:6px">Solid line: ${NAME(f)}. ${f !== "ohio" ? "Dashed gray line: Ohio (left off for counts, where the scales differ). " : ""}Click a tile to map that measure.</p>`;
+    if (st.theme === "jobs") h += industryBlock(f);
+    if (st.theme === "income") h += incomeBlock(f);
+    if (st.theme === "people") h += componentsBlock(f);
+  }
+  $("panel").innerHTML = h;
+  $("pick").onchange = e => { st.county = e.target.value === "ohio" ? null : e.target.value; render(); };
+  $("panel").querySelectorAll(".tile").forEach(t => t.onclick = () => { const id = t.dataset.m; st.theme = M[id].theme; st.metric = id; if (!hasChange(id)) st.view = "level"; render(); });
+  $("panel").querySelectorAll("tr.click").forEach(t => t.onclick = () => { const id = t.dataset.m; st.theme = M[id].theme; st.metric = id; st.view = "level"; render(); });
+  $("panel").querySelectorAll("circle[data-t]").forEach(c => { c.onmousemove = e => showTip(e, c.dataset.t); c.onmouseleave = hideTip; });
+  sparkHover($("panel"));
+}
+
+function drawNotes(){
+  const ids = Object.keys(M).filter(id => !M[id].hidden);
+  $("notes").innerHTML = `<p>This is a working draft. Each county is compared with Ohio as a whole, using the publisher's own statewide figure. "Near Ohio" means within 3% of Ohio's value (or 0.3 points for percentages). The overview counts how many measures put a county in the worst fourth of Ohio's counties; it does not weigh one measure against another, and it is not a ranking of how well a county is run. County figures for small counties carry wide margins of error, and many are modeled estimates rather than counts.</p>
+  <table><tr><th>Measure</th><th>Latest</th><th>Source</th><th>Note</th></tr>${ids.map(id => `<tr><td>${M[id].label}</td><td>${M[id].period_label}</td><td>${M[id].source}<br><span class="muted">${M[id].vintage || ""}</span></td><td>${M[id].note}</td></tr>`).join("")}</table>`;
+  $("built").textContent = DATA.built ? "Data pulled " + DATA.built + "." : "";
+}
+
+// state in the address bar: #theme/county/metric/view, so a view can be bookmarked or sent
+function readHash(){
+  const [t, c, m, v] = decodeURIComponent(location.hash.slice(1)).split("/");
+  if (THEMES.some(x => x.id === t)) st.theme = t;
+  st.county = GEO.counties[c] ? c : null;
+  st.metric = M[m] ? m : null;
+  st.view = v === "change" ? "change" : "level";
+}
+function writeHash(){ history.replaceState(null, "", "#" + [st.theme, st.county || "ohio", st.metric || "", st.view].join("/")); }
+function render(){ drawTabs(); drawChips(); drawMap(); drawPanel(); writeHash(); }
+$("rankmore").onclick = () => { st.allRanks = !st.allRanks; drawMap(); };
+readHash(); render(); drawNotes();
+</script>
+</body>
+</html>
