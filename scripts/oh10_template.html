@@ -40,6 +40,13 @@ button:focus-visible,tr:focus-visible,.rank div:focus-visible{outline:2px solid 
 #map svg.zoomed{touch-action:none;cursor:grab}
 #map svg.dragging{cursor:grabbing}
 #map path{vector-effect:non-scaling-stroke}
+#map .base{pointer-events:none}
+#map .base .lr{display:none}
+#map svg.z3 .base .lr{display:inline}
+#map .base text{display:none}
+#map .base text.l-city,#map .base text.l-route{display:inline}
+#map svg.z2 .base text.l-town,#map svg.z4 .base text.l-small{display:inline}
+.basetog{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);margin-top:6px;cursor:pointer}
 .zoomctl{position:absolute;top:6px;right:6px;display:flex;flex-direction:column;gap:4px;z-index:2}
 .zoomctl button{font:inherit;font-size:16px;line-height:1;width:32px;height:32px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .zoomctl button.rs{width:auto;height:28px;font-size:12px;padding:0 8px}
@@ -101,12 +108,13 @@ footer p{max-width:110ch}
 <script>
 const DATA = __DATA__;
 const GEO = __GEO__;
+const BASEMAP = __BASE__;
 const M = DATA.metrics;
 const IN = Object.keys(GEO.tracts).filter(t => GEO.tracts[t].in_district).sort();
 const THEMES = [["income","Income and poverty"],["housing","Housing costs"],["work","Work and education"],["health","Health and coverage"],["people","Who lives here"]];
 const DIV = ["#104281","#2a78d6","#9ec5f4","#e6e5e1","#f4b4ac","#e34948","#9e1f22"];
 const SEQ = ["#e3ecf7","#b5cdea","#7aa6d8","#3f78bd","#174a8c"];
-const st = {tab:"district", metric:"below_200_share", tract:null, all:false, vb:null};
+const st = {tab:"district", metric:"below_200_share", tract:null, all:false, vb:null, base:true};
 const BASE = GEO.viewBox.split(" ").map(Number);   // full map: x, y, width, height
 const MAXZ = 12;
 const $ = id => document.getElementById(id);
@@ -216,6 +224,7 @@ function drawMap(){
     svg += `<path class="t${t === st.tract ? " sel" : ""}" data-t="${t}" d="${GEO.tracts[t].d}" fill="${col || "url(#nodata)"}"/>`;
     if (c && c.weak && c.v !== null) svg += `<path d="${GEO.tracts[t].d}" fill="url(#weak)" pointer-events="none"/>`;
   });
+  if (st.base) svg += baseLayer();
   Object.values(GEO.counties).forEach(c => svg += `<path class="co" d="${c.d}"/>`);
   if (st.tract) svg += `<path d="${GEO.tracts[st.tract].d}" fill="none" stroke="#121212" stroke-width="3" pointer-events="none"/>`;
   Object.values(GEO.counties).forEach(c => {
@@ -223,7 +232,7 @@ function drawMap(){
     if (!pts.length) return;
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     const x = c.name === "Butler" ? Math.min(...xs) + 40 : (Math.min(...xs) + Math.max(...xs)) / 2, y = c.name === "Butler" ? Math.max(...ys) - 8 : Math.min(...ys) + 14;
-    svg += `<text class="clab" x="${x}" y="${y}" font-size="${12 / k0}" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="${3 / k0}">${c.name} County</text>`;
+    svg += `<text class="clab" data-fs="12" x="${x}" y="${y}" font-size="${12 / k0}" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="${3 / k0}">${c.name} County</text>`;
   });
   svg += `</svg>`;
   const r = ranks(id), list = Object.keys(r).filter(k => k !== "_n").sort((a, b) => r[a] - r[b]);
@@ -232,6 +241,7 @@ function drawMap(){
   $("mapcard").innerHTML = `<h2>${M[id].label}</h2>
     <p class="sub">${M[id].period}, by census tract. ${sc.kind === "div" ? "Colors compare each tract with the district as a whole." : "Colors split the district's tracts into fifths, low to high."} ${dtext}</p>
     <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show the whole district">Reset</button></div></div>
+    <label class="basetog"><input type="checkbox" id="basetog" ${st.base ? "checked" : ""}> Show streets, water and place names</label>
     <p class="sub" style="margin:4px 0 0">Use + and &minus; to zoom (or pinch on a trackpad), and drag to move around a zoomed map. Reset shows the whole district.</p>
     <div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}
       <span><i style="background:url(#);background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN} of ${IN.length} tracts)</span>
@@ -256,7 +266,29 @@ function drawMap(){
   });
   $("mapcard").querySelectorAll(".rank div").forEach(d => { d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; pick(d.dataset.t); }; });
   $("all").onclick = () => { st.all = !st.all; drawMap(); };
+  $("basetog").onchange = e => { st.base = e.target.checked; drawMap(); };
   wireZoom();
+}
+
+// streets, water and place names (Census TIGERweb), drawn once and reused; local streets show when zoomed in
+let BASE_SVG = null;
+function baseLayer(){
+  if (BASE_SVG) return BASE_SVG;
+  const B = BASEMAP, halo = `style="paint-order:stroke" stroke="#ffffff" stroke-linejoin="round"`;
+  const clip = Object.values(GEO.counties).map(c => c.d).join("");
+  let g = `<defs><clipPath id="basecl"><path d="${clip}"/></clipPath></defs><g class="base" clip-path="url(#basecl)">`;
+  g += `<path d="${B.water}" fill="#eef3f8" fill-opacity=".9" stroke="#8fa6bf" stroke-width=".6"/>`;
+  g += `<path class="lr" d="${B.local}" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width=".6"/>`;
+  g += `<path d="${B.secondary}" fill="none" stroke="#ffffff" stroke-opacity=".9" stroke-width="1.2"/>`;
+  g += `<path d="${B.primary}" fill="none" stroke="#55534e" stroke-opacity=".75" stroke-width="3"/>`;
+  g += `<path d="${B.primary}" fill="none" stroke="#ffffff" stroke-width="1.5"/>`;
+  g += `</g><g class="base">`;   // labels are not clipped, so names near a county line stay whole
+  B.labels.filter(l => !/ Bus$/.test(l.t)).forEach(l => {
+    const fs = l.kind === "city" ? 12 : l.kind === "route" ? 10 : l.kind === "town" ? 11 : 10;
+    const wt = l.kind === "city" ? 700 : l.kind === "route" ? 700 : 400, col = l.kind === "route" ? "#55534e" : "#121212";
+    g += `<text class="l-${l.kind}" data-fs="${fs}" x="${l.x}" y="${l.y}" font-size="${fs}" font-weight="${wt}" fill="${col}" text-anchor="middle" dominant-baseline="middle" ${halo} stroke-width="3">${esc(l.t)}</text>`;
+  });
+  return BASE_SVG = g + `</g>`;
 }
 
 // select a tract from a list; on a zoomed map, move the view so the tract is in the middle
@@ -277,7 +309,8 @@ function setView(vb){
   const v = st.vb || BASE, k = BASE[2] / v[2];
   svg.setAttribute("viewBox", v.join(" "));
   svg.classList.toggle("zoomed", !full);
-  svg.querySelectorAll("text.clab").forEach(t => { t.setAttribute("font-size", 12 / k); t.setAttribute("stroke-width", 3 / k); });
+  svg.querySelectorAll("text[data-fs]").forEach(t => { t.setAttribute("font-size", t.dataset.fs / k); t.setAttribute("stroke-width", 3 / k); });
+  svg.classList.toggle("z2", k >= 1.8); svg.classList.toggle("z3", k >= 2.5); svg.classList.toggle("z4", k >= 3.5);
   svg.querySelectorAll("pattern").forEach(p => p.setAttribute("patternTransform", `rotate(45) scale(${1 / k})`));
   $("zin").disabled = k >= MAXZ - 1e-6; $("zout").disabled = full; $("zreset").disabled = full;
 }
@@ -368,7 +401,7 @@ function render(){
 }
 
 $("intro").textContent = `All of Montgomery and Greene counties and part of Butler County, under the congressional map the Ohio Redistricting Commission adopted on October 31, 2025. ${GEO.district_pop2020.toLocaleString("en-US")} residents in the 2020 census, in ${IN.length} census tracts. Tracts are neighborhoods of about 4,000 people that the Census Bureau draws to stay fixed for a decade.`;
-$("foot").innerHTML = `<p>District: Ohio Redistricting Commission block assignment file for the plan adopted October 31, 2025, with 2020 census block population. A tract is counted in the district when most of its 2020 residents are; four tracts are split by the line, and the two counted in have 51% and 98% of their residents inside. Tract outlines: Census Bureau TIGERweb (2020 tracts). Tract names: the city, village or Census-designated place holding at least half of the tract's residents, or else the township containing its center.</p>
+$("foot").innerHTML = `<p>District: Ohio Redistricting Commission block assignment file for the plan adopted October 31, 2025, with 2020 census block population. A tract is counted in the district when most of its 2020 residents are; four tracts are split by the line, and the two counted in have 51% and 98% of their residents inside. Tract outlines: Census Bureau TIGERweb (2020 tracts). Streets, rivers, lakes and place names: Census Bureau TIGERweb. Tract names: the city, village or Census-designated place holding at least half of the tract's residents, or else the township containing its center.</p>
 <p>Census figures: American Community Survey 5-year estimates, 2020-2024, tables B01001, B03002, B05012, B15003, B18101, B19001, B19013, B22003, B23001, B25070, B25091, B27010, C17002, C27007. Health: CDC PLACES, census tract data, 2025 release. County table: BLS, CDC, FBI, USDA FNS, Ohio Department of Education and Workforce, Ohio Department of Children and Youth, Census Bureau, as listed on the statewide dashboard. Built by Data 4 The People.</p>`;
 const fromHash = () => { const h = location.hash.slice(1); if (["district","tracts","counties"].includes(h)) st.tab = h; };
 fromHash(); addEventListener("hashchange", () => { fromHash(); render(); });

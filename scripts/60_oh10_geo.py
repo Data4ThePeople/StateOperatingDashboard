@@ -154,6 +154,7 @@ if __name__ == "__main__":
                       cx=round(sum(p[0] for p in pts) / len(pts), 1), cy=round(sum(p[1] for p in pts) / len(pts), 1))
     counties = {f["properties"]["GEOID"]: {"name": COUNTIES[f["properties"]["COUNTY"]], "d": path(f["geometry"])} for f in cfeat}
     write_json("oh10/geo.json", {"viewBox": f"0 0 {W} {H}", "tracts": out, "counties": counties,
+                                 "proj": {"lon0": lon0, "lat1": lat1, "k": k, "sc": sc, "bbox": [lon0, lat0, lon1, lat1]},
                                  "district_pop2020": total10, "split": split,
                                  "source": "Ohio Redistricting Commission block assignment file (map adopted Oct. 31, 2025); "
                                            "Census 2020 P.L. 94-171 block population; Census TIGERweb 2020 tracts"})
