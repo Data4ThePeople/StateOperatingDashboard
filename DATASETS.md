@@ -10,7 +10,6 @@ One section per dataset, written before the analysis and kept current. Layer fil
 
 **License and attribution.** Census boundary files are public domain; us-atlas is ISC licensed.
 
-
 Built by `scripts/10_jobs_industry.py`, which writes `data/processed/jobs.json` (theme "jobs").
 Pulled 2026-11-09.
 
@@ -135,7 +134,6 @@ reporting all its workers at one site.
 **License and attribution.** Public domain U.S. government data. Credit: U.S. Bureau of Labor
 Statistics, Quarterly Census of Employment and Wages.
 
-
 Built by `scripts/20_acs.py`.
 
 ## American Community Survey 5-year estimates (U.S. Census Bureau)
@@ -221,7 +219,6 @@ county's rent burden MOE is about 5.6 points. Historic `series` values carry no 
 **License and attribution.** Public domain U.S. government data. Credit: "U.S. Census Bureau, American
 Community Survey 5-year estimates."
 
-
 Built by `scripts/21_popest.py`.
 
 ## County population estimates, Vintage 2025 (U.S. Census Bureau, Population Estimates Program)
@@ -282,7 +279,6 @@ estimates, so the international column is not comparable with Vintage 2023 or ea
 
 **License and attribution.** Public domain U.S. government data. Credit: "U.S. Census Bureau, Population
 Estimates Program, Vintage 2025."
-
 
 Built by `scripts/30_health.py` into `data/processed/health.json`. Raw pulls are cached under
 `data/raw/census/`, `data/raw/cdc/` and `data/raw/census_pep/`. Pulled 2026-11-09.
@@ -427,7 +423,6 @@ CDC for counties under 100,000 people, so it cannot cover all 88 counties. The g
 
 **License and attribution.** Public domain. Credit: U.S. Census Bureau, Small Area Income and Poverty Estimates.
 
-
 ## Price index, R-CPI-U-RS (U.S. Bureau of Labor Statistics)
 
 **What it is.** The Consumer Price Index retroactive series, all items, U.S. city average, not seasonally
@@ -448,10 +443,10 @@ annual average from 11 months. We use only 2014, 2019 and 2024.
 
 **License and attribution.** U.S. government work, public domain. Credit the U.S. Bureau of Labor Statistics.
 
+## SNAP county participation, form FNS-388A (USDA Food and Nutrition Service)
+
 Built by `scripts/42_enrollment.py` into `data/processed/enrollment.json`. Raw files are cached under
 `data/raw/fns/`. Pulled 2026-11-09. This layer has SNAP only. County Medicaid enrollment is not in it.
-
-## SNAP county participation, form FNS-388A (USDA Food and Nutrition Service)
 
 **What it is.** For each SNAP project area (in Ohio, a county agency), the number of people and households that got SNAP benefits in January and in July, plus the dollars issued. We use "Calc: SNAP Total PA and Non-PA People," the sum of people in households that also get cash aid (PA) and those that do not (non-PA). The metric `snap_persons_share` is that count divided by the Census July 1 population of the same year, times 100. The counts are in `extras.snap_persons_count`.
 
@@ -510,9 +505,9 @@ Built by `scripts/42_enrollment.py` into `data/processed/enrollment.json`. Raw f
 
 Census Bureau county and state population estimates, vintage 2025, as built in `data/processed/popest.json` (metric `population_estimate`, July 1, 2020-2025). See `docs/datasets/popest.md`. Each July SNAP count is divided by the July 1 estimate of the same year.
 
-Built by `scripts/41_childcare.py`.
-
 ## Licensed early care and education programs (Ohio Department of Children and Youth)
+
+Built by `scripts/41_childcare.py`.
 
 **What it is.** A list of early care and education programs in Ohio, one row per program, with its county,
 program type, status, address and Step Up To Quality rating. It is the data behind DCY's Step Up To Quality
@@ -577,14 +572,14 @@ guarantee that it is complete or error free.
 **License and attribution.** State of Ohio geospatial data, public use. Credit: "Ohio Department of Children
 and Youth, licensed early care and education programs, via the State of Ohio GIS (maps.ohio.gov)."
 
+## Return A master files (FBI Uniform Crime Reporting Program)
+
 Built by `scripts/43_crime.py` into `data/processed/crime.json`. Raw files are cached under
 `data/raw/fbi_cde/`. Pulled 2026-11-09.
 
 Metrics: `violent_crime_rate` and `property_crime_rate`, per 100,000 people, 2015 through 2025.
 The owner asked for "petty crime." The FBI has no category by that name; property crime
 (burglary, larceny-theft, motor vehicle theft) is the closest standard category.
-
-## Return A master files (FBI Uniform Crime Reporting Program)
 
 **What it is.** One fixed-width record per law enforcement agency per year. Each record holds the agency's population, the counties it serves, and for each month the count of offenses known to police ("actual" offenses, after unfounded reports are removed) for the Part I crimes. We use murder and nonnegligent manslaughter, rape, robbery and aggravated assault (violent), and burglary, larceny-theft and motor vehicle theft (property).
 
@@ -652,6 +647,10 @@ Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 20
 
 ## National benchmark (same sources as the county layers)
 
+Built by `scripts/50_national.py` into `data/processed/national.json`. Raw pulls are cached under
+`data/raw/census/national/`, `data/raw/census_pep/`, `data/raw/bls_laus_national/`, `data/raw/bls_qcew/`
+and `data/raw/cdc/national/`. Pulled 2026-11-09.
+
 **What it is.** For each dashboard measure that has a same-definition state figure, the value for all
 50 states and DC (keyed by USPS code) and for the United States. The page uses it to show the U.S. value
 and Ohio's rank among the 51. Puerto Rico is left out.
@@ -708,10 +707,10 @@ cancel out nationally. The prime-age work rate flags DC, where 5% of residents l
 Population Estimates Program, SAHIE, SAIPE); U.S. Bureau of Labor Statistics (LAUS, CPS, QCEW); CDC,
 National Center for Health Statistics.
 
+## School report card achievement files (Ohio Department of Education and Workforce)
+
 Built by `scripts/40_reading.py` into `data/processed/reading.json`. The ODEW files were downloaded by hand into
 `data/raw/odew/`. The script does not fetch them. CCD pulls are cached under `data/raw/urban_ccd/`. Built 2026-11-09.
-
-## School report card achievement files (Ohio Department of Education and Workforce)
 
 **What it is.** One row per traditional public school district (`*_Achievement_District.xlsx`) or per community school building (`*_Achievement_CS.xlsx`). We use one field: the percent of the district's or school's third graders who scored proficient or above on the Ohio State Test in English language arts. ODEW reports it on the report card as a "report only" indicator (`grade3_ela_proficient`).
 
