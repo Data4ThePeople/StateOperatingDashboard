@@ -650,15 +650,6 @@ Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 20
 
 **License and attribution.** Public domain. Credit: FBI, Crime in the United States.
 
-## Sources checked and not used
-
-- **CDE API at api.usa.gov.** Works with `DEMO_KEY`, but the limit was 10 requests per hour, too low for about 950 agencies. Without a key it returns 403. The CDE site's own backend (`cde.ucr.cjis.gov/LATEST/...`) answers without a key, and we used it only to check our reporting flags and counts.
-- **Ohio Office of Criminal Justice Services (OIBRS).** The OCJS website returned "not found" to plain scripted requests on 2026-11-09, so we could not reach its OIBRS data or dashboards. Ohio agencies' OIBRS data reach the FBI through the state program, so the FBI files carry the same reports in a form that is consistent across states and years.
-
-Built by `scripts/50_national.py` into `data/processed/national.json`. Raw pulls are cached under
-`data/raw/census/national/`, `data/raw/census_pep/`, `data/raw/bls_laus_national/`, `data/raw/bls_qcew/`
-and `data/raw/cdc/national/`. Pulled 2026-11-09.
-
 ## National benchmark (same sources as the county layers)
 
 **What it is.** For each dashboard measure that has a same-definition state figure, the value for all
