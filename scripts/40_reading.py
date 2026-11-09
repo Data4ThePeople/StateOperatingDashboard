@@ -276,16 +276,19 @@ for f in COUNTIES:
     extras_detail[f] = {sy(y): {k: agg[f][y][k] for k in ("enrolled", "masked_enrolled", "masked_units", "units",
                                                           "community_schools", "masked_share")} for y in YEARS}
 
-oh_ser = [[sy(y), state[y]] for y in YEARS if y in state]
-ohio = {MID: {"latest": oh_ser[-1][1], "period": oh_ser[-1][0], "series": oh_ser, "moe": None, "flag": None}}
-
-# Our own enrollment-weighted statewide sum, kept only as a check against ODEW's state figure
+# Ohio = the enrollment-weighted sum of the same district and school figures the counties use, so a county is
+# compared with a statewide number built the same way. ODEW's own state figure runs about 2.4 points lower in
+# every year (its state total includes students not in any one district's or school's result); it is kept in
+# extras and named in the note.
 check = {}
 for y in YEARS:
     num = sum(agg[f][y]["value"] * agg[f][y]["enrolled"] for f in COUNTIES if agg[f][y]["value"] is not None)
     den = sum(agg[f][y]["enrolled"] for f in COUNTIES)
     check[sy(y)] = {"weighted_sum_of_counties": num / den, "odew_state": state.get(y)}
 extras_detail["ohio"] = check
+oh_ser = [[sy(y), check[sy(y)]["weighted_sum_of_counties"]] for y in YEARS]
+ohio = {MID: {"latest": oh_ser[-1][1], "period": oh_ser[-1][0], "series": oh_ser, "moe": None, "flag": None}}
+odew_latest = state[YEARS[-1]]
 
 latest = sy(YEARS[-1])
 metrics = {MID: {
@@ -297,7 +300,10 @@ metrics = {MID: {
     "period_label": f"{latest} school year",
     "note": ("Share of tested third graders who scored proficient or above on Ohio's third grade English test. "
              "County figures combine public school districts and in-person community schools, weighted by grade 3 "
-             "enrollment; schools too small for ODEW to report are left out. Fewer students tested in 2020-2021."),
+             "enrollment; schools too small for ODEW to report are left out. Fewer students tested in 2020-2021. "
+             f"The Ohio figure is built the same way from all districts and schools so counties compare on equal "
+             f"terms; ODEW's published state figure is lower ({odew_latest:.1f}% in {latest}), most likely because it also counts "
+             f"students who are not in any one district's or school's result."),
 }}
 write_json("reading.json", {"metrics": metrics, "counties": counties, "ohio": ohio,
                             "extras": {"reading_rollup_detail": extras_detail}})

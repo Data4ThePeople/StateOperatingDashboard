@@ -47,3 +47,12 @@ now "People below 200% of the poverty line" (values unchanged).
   (births per 1,000 women 15 to 44), and the group-quarters flag on prime-age workers (ACS B26001, 5% threshold).
   Claude's own checks: county births sum to Ohio's births; B23001 found 8 total, 8 employed and 8 armed-forces
   lines in each of 2014, 2019 and 2024. These need the independent tie-out before Step 1 closes.
+- `scripts/40_reading.py`: third graders proficient or above in English (ODEW report card files, weighted by NCES
+  grade 3 enrollment). Ohio's value is our enrollment-weighted sum of the same district and school figures
+  (65.9% in 2025-26), not ODEW's published 63.4%, so counties compare with a number built the same way.
+  Claude's checks: prior-year columns match each earlier year's own file; county assignment matches ODEW's
+  District Details file for all 607 districts; Vinton equals its single district (82.9%).
+- `scripts/42_enrollment.py` (SNAP persons, FNS July counts), `scripts/41_childcare.py` (open licensed programs,
+  DCY), `scripts/43_crime.py` (violent and property crime, FBI Return A, 80% coverage rule),
+  `scripts/50_national.py` (Ohio against all states; every Ohio value matched the page's).
+- Priorities tab logic in `scripts/template.html` (issue gaps, "behind" rule, weights, county groups, change window).
