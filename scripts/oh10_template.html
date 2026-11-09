@@ -35,7 +35,16 @@ button:focus-visible,tr:focus-visible,.rank div:focus-visible{outline:2px solid 
 .card h2{font-family:var(--serif);font-weight:400;font-size:20px;margin:0 0 2px;text-wrap:balance}
 .card h3{font-size:14px;margin:16px 0 6px}
 .sub{color:var(--ink2);font-size:13px;margin:0 0 8px;max-width:72ch}
-#map svg{width:100%;height:auto;display:block}
+#map{position:relative}
+#map svg{width:100%;height:auto;display:block;touch-action:pan-y pinch-zoom;user-select:none}
+#map svg.zoomed{touch-action:none;cursor:grab}
+#map svg.dragging{cursor:grabbing}
+#map path{vector-effect:non-scaling-stroke}
+.zoomctl{position:absolute;top:6px;right:6px;display:flex;flex-direction:column;gap:4px;z-index:2}
+.zoomctl button{font:inherit;font-size:16px;line-height:1;width:32px;height:32px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.zoomctl button.rs{width:auto;height:28px;font-size:12px;padding:0 8px}
+.zoomctl button:disabled{color:var(--ink3);cursor:default}
+.zoomctl button:hover:not(:disabled){background:var(--tile)}
 #map path.t{stroke:var(--bg);stroke-width:.5;cursor:pointer}
 #map path.t:hover{stroke:var(--ink);stroke-width:1.5}
 #map path.sel{stroke:var(--ink);stroke-width:3}
@@ -97,7 +106,9 @@ const IN = Object.keys(GEO.tracts).filter(t => GEO.tracts[t].in_district).sort()
 const THEMES = [["income","Income and poverty"],["housing","Housing costs"],["work","Work and education"],["health","Health and coverage"],["people","Who lives here"]];
 const DIV = ["#104281","#2a78d6","#9ec5f4","#e6e5e1","#f4b4ac","#e34948","#9e1f22"];
 const SEQ = ["#e3ecf7","#b5cdea","#7aa6d8","#3f78bd","#174a8c"];
-const st = {tab:"district", metric:"below_200_share", tract:null, all:false};
+const st = {tab:"district", metric:"below_200_share", tract:null, all:false, vb:null};
+const BASE = GEO.viewBox.split(" ").map(Number);   // full map: x, y, width, height
+const MAXZ = 12;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -197,7 +208,8 @@ function tractsView(){
 function drawMap(){
   const id = st.metric, sc = scale(id), d = DATA.district[id];
   const dtext = `The district as a whole: ${fmt(d.v, id)}.`;
-  let svg = `<svg viewBox="${GEO.viewBox}" role="img" aria-label="Map of census tracts in Ohio's 10th District: ${esc(M[id].label)}"><defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern><pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern></defs>`;
+  const vb = st.vb || BASE, k0 = BASE[2] / vb[2];
+  let svg = `<svg viewBox="${vb.join(" ")}" role="img" aria-label="Map of census tracts in Ohio's 10th District: ${esc(M[id].label)}"><defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern><pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern></defs>`;
   Object.entries(GEO.tracts).forEach(([t, g]) => { if (!g.in_district) svg += `<path class="out" d="${g.d}"/>`; });
   IN.forEach(t => {
     const c = DATA.tracts[t][id], col = sc.color(c ? c.v : null);
@@ -211,7 +223,7 @@ function drawMap(){
     if (!pts.length) return;
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     const x = c.name === "Butler" ? Math.min(...xs) + 40 : (Math.min(...xs) + Math.max(...xs)) / 2, y = c.name === "Butler" ? Math.max(...ys) - 8 : Math.min(...ys) + 14;
-    svg += `<text x="${x}" y="${y}" font-size="12" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="3">${c.name} County</text>`;
+    svg += `<text class="clab" x="${x}" y="${y}" font-size="${12 / k0}" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="${3 / k0}">${c.name} County</text>`;
   });
   svg += `</svg>`;
   const r = ranks(id), list = Object.keys(r).filter(k => k !== "_n").sort((a, b) => r[a] - r[b]);
@@ -219,7 +231,8 @@ function drawMap(){
   const weakN = IN.filter(t => DATA.tracts[t][id] && DATA.tracts[t][id].weak && DATA.tracts[t][id].v !== null).length;
   $("mapcard").innerHTML = `<h2>${M[id].label}</h2>
     <p class="sub">${M[id].period}, by census tract. ${sc.kind === "div" ? "Colors compare each tract with the district as a whole." : "Colors split the district's tracts into fifths, low to high."} ${dtext}</p>
-    <div id="map">${svg}</div>
+    <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show the whole district">Reset</button></div></div>
+    <p class="sub" style="margin:4px 0 0">Use + and &minus; to zoom (or pinch on a trackpad), and drag to move around a zoomed map. Reset shows the whole district.</p>
     <div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}
       <span><i style="background:url(#);background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN} of ${IN.length} tracts)</span>
       <span><i style="background:var(--outside);border:1px solid var(--rule)"></i>Butler County outside the district</span></div>
@@ -241,8 +254,62 @@ function drawMap(){
     p.onmouseleave = () => tip.style.display = "none";
     p.onclick = () => { st.tract = t; drawMap(); drawPanel(); };
   });
-  $("mapcard").querySelectorAll(".rank div").forEach(d => { d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; st.tract = d.dataset.t; drawMap(); drawPanel(); }; });
+  $("mapcard").querySelectorAll(".rank div").forEach(d => { d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; pick(d.dataset.t); }; });
   $("all").onclick = () => { st.all = !st.all; drawMap(); };
+  wireZoom();
+}
+
+// select a tract from a list; on a zoomed map, move the view so the tract is in the middle
+function pick(t){
+  st.tract = t;
+  if (st.vb){ const g = GEO.tracts[t]; st.vb = [g.cx - st.vb[2] / 2, g.cy - st.vb[3] / 2, st.vb[2], st.vb[3]]; }
+  drawMap(); drawPanel();
+}
+
+// zoom and pan: change the SVG viewBox only, so the map keeps its colors and selection
+function setView(vb){
+  const svg = $("map").querySelector("svg");
+  let [x, y, w, h] = vb;
+  w = Math.min(BASE[2], Math.max(BASE[2] / MAXZ, w)); h = w * BASE[3] / BASE[2];
+  x = Math.min(BASE[0] + BASE[2] - w, Math.max(BASE[0], x)); y = Math.min(BASE[1] + BASE[3] - h, Math.max(BASE[1], y));
+  const full = w >= BASE[2] - 1e-6;
+  st.vb = full ? null : [x, y, w, h];
+  const v = st.vb || BASE, k = BASE[2] / v[2];
+  svg.setAttribute("viewBox", v.join(" "));
+  svg.classList.toggle("zoomed", !full);
+  svg.querySelectorAll("text.clab").forEach(t => { t.setAttribute("font-size", 12 / k); t.setAttribute("stroke-width", 3 / k); });
+  svg.querySelectorAll("pattern").forEach(p => p.setAttribute("patternTransform", `rotate(45) scale(${1 / k})`));
+  $("zin").disabled = k >= MAXZ - 1e-6; $("zout").disabled = full; $("zreset").disabled = full;
+}
+function zoomBy(f, cx, cy){
+  const v = st.vb || BASE;
+  if (cx === undefined){ cx = v[0] + v[2] / 2; cy = v[1] + v[3] / 2; }
+  const w = v[2] / f, h = v[3] / f;
+  setView([cx - (cx - v[0]) / f, cy - (cy - v[1]) / f, w, h]);
+}
+function wireZoom(){
+  const svg = $("map").querySelector("svg");
+  $("zin").onclick = () => zoomBy(1.6);
+  $("zout").onclick = () => zoomBy(1 / 1.6);
+  $("zreset").onclick = () => setView(BASE);
+  setView(st.vb || BASE);
+  const toSvg = (px, py) => { const r = svg.getBoundingClientRect(), v = st.vb || BASE; return [v[0] + (px - r.left) / r.width * v[2], v[1] + (py - r.top) / r.height * v[3]]; };
+  // trackpad pinch arrives as a wheel event with ctrlKey; plain scrolling still scrolls the page
+  svg.addEventListener("wheel", e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const [cx, cy] = toSvg(e.clientX, e.clientY); zoomBy(Math.exp(-e.deltaY * 0.01), cx, cy); }, {passive:false});
+  let drag = null, moved = false;
+  svg.addEventListener("pointerdown", e => { if (!st.vb || e.button !== 0) return; drag = {x:e.clientX, y:e.clientY, vb:st.vb.slice(), id:e.pointerId}; moved = false; });
+  svg.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!moved && Math.hypot(dx, dy) < 4) return;
+    if (!moved){ moved = true; svg.setPointerCapture(drag.id); svg.classList.add("dragging"); $("tip").style.display = "none"; }
+    const r = svg.getBoundingClientRect(), s = drag.vb[2] / r.width;
+    setView([drag.vb[0] - dx * s, drag.vb[1] - dy * s, drag.vb[2], drag.vb[3]]);
+  });
+  const end = () => { drag = null; svg.classList.remove("dragging"); };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  // a drag should not also select the tract under the pointer
+  svg.addEventListener("click", e => { if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
 }
 
 function drawPanel(){
@@ -253,7 +320,7 @@ function drawPanel(){
       <p class="sub">For each measure that has a better and worse direction, this counts the tracts in the district's worst fourth. Uncertain estimates are not counted. The list below shows the 15 tracts with the highest counts. Click one, or any tract on the map, for its scorecard.</p>
       <table><tr><th>Tract</th><th>County</th><th class="n">Worst fourth on</th></tr>${list.map(t => `<tr class="click" tabindex="0" data-t="${t}"><td>${GEO.tracts[t].label}</td><td>${GEO.tracts[t].county}</td><td class="n">${HOT[t].n} of ${HOT[t].of}</td></tr>`).join("")}</table>
       <p class="sub" style="margin-top:8px">A high count means a tract trails most of the district on many measures at once. It does not show why.</p>`;
-    P.querySelectorAll("tr.click").forEach(r => r.onclick = () => { st.tract = r.dataset.t; drawMap(); drawPanel(); });
+    P.querySelectorAll("tr.click").forEach(r => r.onclick = () => pick(r.dataset.t));
     return;
   }
   const t = st.tract, g = GEO.tracts[t], pop = DATA.tracts[t].population;
