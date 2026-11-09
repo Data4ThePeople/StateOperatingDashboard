@@ -447,3 +447,298 @@ annual average from 11 months. We use only 2014, 2019 and 2024.
 **Revisions.** The research series is revised each year when BLS updates it; we pull the current file.
 
 **License and attribution.** U.S. government work, public domain. Credit the U.S. Bureau of Labor Statistics.
+
+Built by `scripts/42_enrollment.py` into `data/processed/enrollment.json`. Raw files are cached under
+`data/raw/fns/`. Pulled 2026-11-09. This layer has SNAP only. County Medicaid enrollment is not in it.
+
+## SNAP county participation, form FNS-388A (USDA Food and Nutrition Service)
+
+**What it is.** For each SNAP project area (in Ohio, a county agency), the number of people and households that got SNAP benefits in January and in July, plus the dollars issued. We use "Calc: SNAP Total PA and Non-PA People," the sum of people in households that also get cash aid (PA) and those that do not (non-PA). The metric `snap_persons_share` is that count divided by the Census July 1 population of the same year, times 100. The counts are in `extras.snap_persons_count`.
+
+**Where it comes from.** FNS SNAP Data Tables page, `https://www.fns.usda.gov/pd/supplemental-nutrition-assistance-program-snap`, section "Bi-Annual (January and July) State Project Area/County Level Participation and Issuance Data." File `https://www.fns.usda.gov/sites/default/files/resource-files/snap-zip-fns388a-2.zip` (14.8 MB zip, "FY 89 through July 2025"), one Excel sheet per month: `.xls` through 2019 and January 2021, `.xlsx` from January 2020. No login. FNS returned HTTP 403 to the script's Python request on 2026-11-09, so the zip was saved with curl to `data/raw/fns/` and the script reads it from there.
+
+**Version and vintage.** The zip held January 1989 through July 2025 at pull time. The July 2025 sheet is dated 2026-02-12. FNS says January data is reported to it in May and July data in December, so the newest county month is about 16 months old by the time it is posted.
+
+**Coverage.** All 88 Ohio counties appear as project areas, coded `39` + county FIPS + a two-digit office number. We use July 2021 through July 2025, one point per July. The population estimates run 2020-2025, and each July count is matched to the July 1 estimate of the same year, so the dates line up. These are counts from program records, not estimates.
+
+**Changes over time.** Hocking, Ross and Vinton are served by one agency, South Central Ohio Job and Family Services. In every file from January 2020 on, nearly all of their cases sit on the Ross line (20,616 people in July 2025); the Hocking and Vinton lines hold between 0 and 42 people. We do not report a share for any of the three. They carry `null` with a flag, and `extras.snap_south_central_combined` holds one share for the three counties together (17.7% in July 2025). We did not check when this grouping began. Defiance and Paulding also share one agency, but FNS still reports them on separate lines with plausible counts, so we keep both.
+
+**Suppressed, censored or masked values.** None. A few blank household cells appear (for example Vinton households in January 2025); the persons column has a number for every Ohio line in the years we use.
+
+**Missing data.** None in the persons column for 2021-2025.
+
+**Revisions.** FNS marks every sheet "Data is Subject to Revision. The data reflected is the latest available data." It replaces sheets in the zip when it revises; file dates inside the zip range from 2012 to 2026. We refresh the whole series by re-downloading the zip.
+
+**Units and rounding.** People, whole numbers. The share is our calculation, stored at full precision.
+
+**Known quirks.**
+- Cuyahoga has two lines: the regular EBT office and an "SSI" line (6,504 people in July 2025), which we take to be SNAP for SSI recipients who apply through Social Security. We add them. With both lines included, the 88 counties add exactly to the FNS Ohio state total in every July from 2021 to 2025.
+- July 2020 is left out. Ohio's statewide count that month (1,538,558) is about 10% above June 2020 (1,403,021) and August 2020 (1,399,895), and the county sheet shows the same jump. FNS does not explain it. Keeping it would make 2020 to 2021 look like a large drop.
+- The count is by the county agency that handles the case. That is usually the county where the household lives.
+
+**Uncertainty.** No error bars; these are administrative counts. As a cross-check, Ohio's own monthly report (ODJFS Public Assistance Monthly Statistics, Caseload Summary Statistics Report, July 2025, `https://dam.assets.ohio.gov/image/upload/jfs.ohio.gov/PRC/CaseloadSummaryReportJuly2025.pdf`) counts "individuals in receipt" a little lower than FNS: 1,389,247 statewide versus 1,446,062 (3.9% lower), and 163,303 in Franklin versus 170,410 (4.2% lower). The Ohio report combines Hocking, Ross and Vinton as "South Central" (20,036 versus 20,662 from FNS) and Defiance with Paulding (5,804 versus 6,013). We did not find a published reason for the gap.
+
+**License and attribution.** Public domain. Credit: USDA Food and Nutrition Service, SNAP Data Tables.
+
+## SNAP monthly state participation (USDA Food and Nutrition Service)
+
+**What it is.** Monthly SNAP households, persons and benefit cost by state, one Excel file per fiscal year (October to September). We use Ohio's "Persons" column for the Ohio figure.
+
+**Where it comes from.** Same FNS page, file `https://www.fns.usda.gov/sites/default/files/resource-files/snap-zip-fy69tocurrent-10.zip` (1.7 MB), files `FY20.xlsx` through `FY26.xlsx`, Ohio block on the `MWRO` sheet. Saved with curl to `data/raw/fns/` for the same reason as above.
+
+**Version and vintage.** The FY23 to FY26 files are dated 2026-10-07 inside the zip; the sheet header reads "Data as of October 9, 2026." Ohio runs through July 2026.
+
+**Coverage.** Ohio, every month from October 2019 to July 2026. The sheet title says P-EBT (pandemic school meal benefits) and "other" are excluded. The full monthly run is in `extras.snap_persons_ohio_monthly`.
+
+**Changes over time.** None noted for 2019-2026.
+
+**Suppressed, censored or masked values.** None. August and September 2026 show "--" (not yet reported) and are dropped.
+
+**Missing data.** Only the not-yet-reported months above.
+
+**Revisions.** FNS's state persons table says the latest two months are preliminary and "subject to significant revision." The July values we use are at least 15 months old.
+
+**Units and rounding.** People, whole numbers.
+
+**Known quirks.** The state persons table notes that the data "may include disaster assistance." The July 2020 spike described above is in this file too.
+
+**Uncertainty.** No error bars.
+
+**License and attribution.** Public domain. Credit: USDA Food and Nutrition Service, SNAP Data Tables.
+
+## Population denominator
+
+Census Bureau county and state population estimates, vintage 2025, as built in `data/processed/popest.json` (metric `population_estimate`, July 1, 2020-2025). See `docs/datasets/popest.md`. Each July SNAP count is divided by the July 1 estimate of the same year.
+
+Built by `scripts/41_childcare.py`.
+
+## Licensed early care and education programs (Ohio Department of Children and Youth)
+
+**What it is.** A list of early care and education programs in Ohio, one row per program, with its county,
+program type, status, address and Step Up To Quality rating. It is the data behind DCY's Step Up To Quality
+program locator map. We count the licensed programs that are open in each county.
+
+**Where it comes from.** State of Ohio ArcGIS layer `Ohio_Daycares_view`:
+`https://maps.ohio.gov/arcgis/rest/services/Hosted/Ohio_Daycares_view/FeatureServer/0` (portal item
+`e7b80e83d8764427b5de7fde6f67f83d`, title "Ohio Daycare Centers", owner `oitogrip`). Queried as JSON through
+the public ArcGIS REST query endpoint, 1,000 records per request. No login. Each row links to the program's
+page on Ohio Child Care Search (`https://childcaresearch.ohio.gov/provider/<number>`). Saved at
+`data/raw/dcy/ohio_daycares_<pull date>.json`.
+
+**Version and vintage.** The item description says the layer is updated weekly. It keeps no history: each
+update replaces the list. The portal item was last modified October 21, 2026; we pulled it November 9, 2026
+(8,707 rows). Values are a snapshot on the pull date, so `series` has one point.
+
+**Coverage.** All 88 counties. We keep five licensed program types: child care centers (4,242 open), family
+child care Type B homes (1 to 6 children; 1,635), preschools (1,494), family child care Type A homes (7 to 12
+children; 335) and school-age child care (241), for 7,947 in all. "Open" includes 17 programs whose status is
+"Enforcement" (licensed, under an enforcement action). We drop 392 inactive programs of these five types,
+288 day camps (registered with the state, not licensed), 17 certified in-home aides and 63 out-of-state
+programs registered to take Ohio subsidy. Preschools and school-age programs run by school districts,
+nonpublic schools, county developmental disabilities boards and community schools used to be licensed by the
+Ohio Department of Education; DCY's SFY 2025 licensing report lists them among the program types DCY now
+licenses. The layer has no
+licensed capacity (number of children a program may serve), no ages served and no enrollment.
+
+**Fields used and metrics built.**
+
+| Metric | Built from |
+|---|---|
+| childcare_providers | Count of rows per `county` where `program_type` is one of the five licensed types and `program_status` is Open or Enforcement |
+| extras.providers_by_type | The same count split by `program_type` |
+
+County names in the layer are matched to FIPS codes using the Census Bureau county names. Every licensed,
+open program matched a county.
+
+**Changes over time.** Not applicable to a single snapshot. DCY's own yearly totals use a different basis:
+the SFY 2025 licensing report counts 8,950 programs licensed at any time from July 1, 2024 to June 30, 2025
+(4,586 centers, 397 Type A, 2,111 Type B, 1,539 preschools, 317 school-age). Our point-in-time count is lower
+because programs that closed during the year are not in today's list.
+
+**Suppressed, censored or masked values.** None. Type B homes are listed under the provider's name.
+
+**Missing data.** 993 Type B homes and 26 out-of-state programs have no program number. Each still has a
+unique provider link, which we use as the record key. No licensed, open program lacks a county.
+
+**Revisions.** The list is replaced weekly. We keep the dated snapshot and reuse it on later runs; pass
+`--refresh` to pull a new one.
+
+**Units and rounding.** Programs, as whole numbers. Ohio is the sum of the 88 counties, because the state does
+not publish a point-in-time total on the same basis.
+
+**Known quirks.** A program counts once regardless of size: a six-child Type B home and a 300-child center
+each count as one. One school building can hold two licenses, a preschool and a school-age program, and then
+counts twice (Vinton County's 8 programs are 1 Head Start center, 3 school preschools and 4 school-age
+programs at the same or nearby school buildings). Program type labels use the layer's spelling ("Pre School").
+
+**Uncertainty.** None published. The state's license text says the layer is provided "as is" without a
+guarantee that it is complete or error free.
+
+**License and attribution.** State of Ohio geospatial data, public use. Credit: "Ohio Department of Children
+and Youth, licensed early care and education programs, via the State of Ohio GIS (maps.ohio.gov)."
+
+Built by `scripts/43_crime.py` into `data/processed/crime.json`. Raw files are cached under
+`data/raw/fbi_cde/`. Pulled 2026-11-09.
+
+Metrics: `violent_crime_rate` and `property_crime_rate`, per 100,000 people, 2015 through 2025.
+The owner asked for "petty crime." The FBI has no category by that name; property crime
+(burglary, larceny-theft, motor vehicle theft) is the closest standard category.
+
+## Return A master files (FBI Uniform Crime Reporting Program)
+
+**What it is.** One fixed-width record per law enforcement agency per year. Each record holds the agency's population, the counties it serves, and for each month the count of offenses known to police ("actual" offenses, after unfounded reports are removed) for the Part I crimes. We use murder and nonnegligent manslaughter, rape, robbery and aggravated assault (violent), and burglary, larceny-theft and motor vehicle theft (property).
+
+**Where it comes from.** FBI Crime Data Explorer (CDE), Documents and Downloads, Master Files, "Return A". The page asks `https://cde.ucr.cjis.gov/LATEST/s3/signedurl?key=master_files/reta/reta-<year>.zip` for a short-lived download link. No key or login. One zip per year, about 6 MB, holding one text file (about 195 MB) for the whole country. Ohio rows have UCR state code 34. The record layout comes from the FBI's "Ret A Rec Descrip.pdf" (in `reta-help.zip`, a scanned image) and matches the public setup file by Jacob Kaplan (`jacobkap/crime_data`, `setup_files/ucr_return_a.sps`). Header: ORI in columns 4-10, population group 11-12, "covered by" ORI 24-30, three population and county pairs in 45-89. Months start at column 306, 590 columns each; within a month, columns 3-8 are the date of last update and the actual-offense card starts at column 158 of the block.
+
+**Version and vintage.** The 2025 file is dated 2026-05-07. The CDE site says its crime data were refreshed 2026-10-15, so the website can show counts a little higher than the master file. Example: Columbus Police, 2025 violent crime, 3,517 in the master file and 3,590 on the CDE agency page (most of the gap is rape, 987 vs. 1,040). Vinton County Sheriff: 21 vs. 22 violent, 40 vs. 40 property.
+
+**Coverage.** 2015 through 2025. Ohio has about 950 agencies in each file. About half of them sent all 12 months in a given year. Statewide, agencies that sent all 12 months served 84.7% to 90.4% of Ohioans, depending on the year (86.3% in 2025).
+
+How we build a county figure:
+
+- **Reported month.** A month counts as reported when the record shows a nonzero date of last update, or an actual-offense card marked as sent. We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
+- **Full-year agencies only.** An agency counts toward a county's rate only if it reported all 12 months. We do not fill in missing months.
+- **County assignment.** The FBI codes each agency's population to up to three counties. UCR county codes number Ohio's counties A to Z (1 = Adams, 88 = Wyandot), so FIPS = 2 x code - 1. We use the FBI's county fields, not our own geography.
+- **Agencies spanning counties.** 54 Ohio agencies had population in more than one county in 2025 (Columbus covers parts of Franklin, Delaware and Fairfield). We split the population as the FBI does. The FBI does not split offenses by county, so we split them in the same shares as the population. This assumes crime is spread evenly across an agency's area.
+- **Agencies covered by another agency.** Some small departments do not report on their own; a sheriff or nearby city reports for them. The FBI puts their offenses and their population in the covering agency's record, so we skip the covered agency to avoid counting it twice. With this rule, the FBI's county populations add up to the Census estimate for Ohio exactly in 2025 (11,900,510), and each county is within 2.3% of its Census estimate.
+- **Agencies with no resident population.** Campus police, park districts, airport police and drug task forces have population 0. Their offenses count in the county the FBI codes them to, if they reported all 12 months. They add crimes but no people, so they raise a county's rate a little.
+- **State police and statewide agencies.** The Ohio State Highway Patrol (population groups 8E and 9E, and ORIs starting OHOHP), statewide state agencies such as the Bureau of Criminal Investigation and Department of Natural Resources, and federal agencies (U.S. Marshals, Secret Service, National Park Service units) are left out of county figures. Some have no county code. Others are coded to the county of a post or headquarters, not where the crimes happened.
+- **Rate.** Offenses of full-year agencies divided by the population those same agencies serve, times 100,000. The denominator is the covered population, not the full county.
+- **Coverage.** Population served by full-year agencies divided by the population of all agencies coded to the county, as a percent. Stored by year in `extras.coverage`. When it is below 80%, the county value is null with the flag "low reporting (<80% of people covered)".
+
+Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 2019: 24; 2020: 27; 2021: 31; 2022: 24; 2023: 25; 2024: 22; 2025: 29. The 2025 list includes some large counties (for example Lorain, Mahoning, Greene, Clark, Trumbull and Wood), where a main department sent fewer than 12 months to the FBI in time for the master file.
+
+**Changes over time.** On January 1, 2021, the FBI stopped taking summary (SRS) reports and moved to NIBRS-only collection. Agencies that had not switched to NIBRS had no way to send data for 2021. From 2022 the FBI again accepted SRS reports from agencies that had not switched. Ohio has run its own incident-based system (OIBRS) for many years, so most Ohio agencies were already on NIBRS, and the effect was smaller than in many states: statewide coverage fell from 87.2% in 2020 to 85.3% in 2021, and counties below 80% rose from 27 to 31, then came back to 24 in 2022. Vinton County fell to 12.4% coverage in 2021 and is null that year. For NIBRS agencies, the FBI converts incident reports into Return A counts by applying the Hierarchy Rule (only the most serious offense in an incident counts), so NIBRS and SRS agencies are counted the same way in this file. The FBI broadened its rape definition in 2013 and stopped accepting the old definition in 2017; in 2015 and 2016 a few SRS agencies may still have used the old, narrower definition.
+
+**Suppressed, censored or masked values.** None. Counts are not suppressed. Some monthly cells are negative (an overpunch letter in the last digit, for example `0001J` = -11) when an agency removes offenses reported in an earlier month. We keep them, so yearly sums are net.
+
+**Missing data.** A month with no report looks like a month with zero crimes in the count fields. That is why we use the reporting flags and only full-year agencies. A county value is null when coverage is below 80%.
+
+**Revisions.** Agencies can send late or corrected data. The CDE site updates; the master file for a year is a snapshot. Re-running with a newer master file can change recent years. Delete `data/raw/fbi_cde/reta-<year>.zip` to pull a new copy.
+
+**Units and rounding.** Counts are whole numbers. Rates are our calculation, stored at full precision. Offenses of multi-county agencies are split by population share, so county counts in `extras.crime_counts` can have decimals.
+
+**Known quirks.** Two Ohio ORIs appear twice in the 2020 and later files; we keep the row with more reported months. Big-city ORIs use letters (OHCOP00 is Columbus) and are kept. Agency records with population 0 and no county code are dropped. The "number of months reported" field in the header does not match the monthly flags (it behaves more like the last month reported), so we do not use it.
+
+**Uncertainty.** No error bars. Small counties have small counts: Vinton County's 2025 violent rate rests on 21 offenses, and its rates swing widely from year to year (from 70 to 237 per 100,000 between 2015 and 2025). Rates only cover the people served by full-year agencies; if the agencies that did not report have different crime levels, the county rate is off by an unknown amount.
+
+**License and attribution.** Public domain (U.S. government work). Credit: FBI, Uniform Crime Reporting Program, Return A master files, via the Crime Data Explorer.
+
+## Crime in the United States, state estimates (FBI)
+
+**What it is.** The FBI's estimated number of violent and property crimes for Ohio, and its population, for each year. Used for the Ohio statewide figure.
+
+**Where it comes from.** CDE Documents and Downloads, "Crime in the United States," estimations zip for each edition (`cius/<year>/cius-estimations-<year>.zip`), Table 4 "Crime in the United States by Region, Geographic Division, and State," xlsx. Each edition has two years. We read the 2022 through 2025 editions and keep each year from the latest edition that has it. Rate = estimated count / population x 100,000 at full precision (the table rounds to one decimal).
+
+**Version and vintage.** 2025 edition files dated 2026-08-03.
+
+**Coverage.** Ohio, 2021 through 2025. The FBI publishes estimates for earlier years too, but those editions are old `.xls` files that the project's Python setup cannot read, so the `ohio` series starts in 2021. `extras.ohio_reported_agencies` gives a statewide rate for every year built the same way as the counties (all full-year local agencies); it runs higher than the FBI estimate (for 2025, 293.8 vs. 275.6 violent and 1,513 vs. 1,429 property per 100,000).
+
+**Changes over time.** The FBI estimates crime for agencies that sent fewer than 12 months: for 3 to 11 months it scales up the agency's own data; for fewer than 3 months it uses similar agencies in the state. The 2021 estimates came out as a limited release because national NIBRS participation was low that year.
+
+**Suppressed, censored or masked values.** None for Ohio.
+
+**Missing data.** None for Ohio, 2021 through 2025.
+
+**Revisions.** Each edition can revise the prior year. We use the later edition.
+
+**Units and rounding.** Counts, whole numbers. Published rates to one decimal.
+
+**Known quirks.** Table 4 file names start with `Table_4` in the 2022 and 2023 editions and `CIUS_Table_4` in later ones.
+
+**Uncertainty.** The FBI does not publish error bars for these estimates.
+
+**License and attribution.** Public domain. Credit: FBI, Crime in the United States.
+
+## Sources checked and not used
+
+- **CDE API at api.usa.gov.** Works with `DEMO_KEY`, but the limit was 10 requests per hour, too low for about 950 agencies. Without a key it returns 403. The CDE site's own backend (`cde.ucr.cjis.gov/LATEST/...`) answers without a key, and we used it only to check our reporting flags and counts.
+- **Ohio Office of Criminal Justice Services (OIBRS).** The OCJS website returned "not found" to plain scripted requests on 2026-11-09, so we could not reach its OIBRS data or dashboards. Ohio agencies' OIBRS data reach the FBI through the state program, so the FBI files carry the same reports in a form that is consistent across states and years.
+
+Built by `scripts/50_national.py` into `data/processed/national.json`. Raw pulls are cached under
+`data/raw/census/national/`, `data/raw/census_pep/`, `data/raw/bls_laus_national/`, `data/raw/bls_qcew/`
+and `data/raw/cdc/national/`. Pulled 2026-11-09.
+
+## National benchmark (same sources as the county layers)
+
+**What it is.** For each dashboard measure that has a same-definition state figure, the value for all
+50 states and DC (keyed by USPS code) and for the United States. The page uses it to show the U.S. value
+and Ohio's rank among the 51. Puerto Rico is left out.
+
+**Where it comes from.** The same publishers, tables, lines, periods and vintages as the county layers:
+
+| Measures | Source and query | Period |
+|---|---|---|
+| All ACS measures in `income.json` and `people.json` except population | ACS 5-year, same tables and lines as `20_acs.py` (its `compute` function is reused), `for=state:*` and `for=us:1` | 2020-2024 |
+| `prime_age_epop` | ACS 5-year B23001, same lines as `23_age.py`; group-quarters flag from B26001 and B01003 at the same 5% cutoff | 2020-2024 |
+| `unemployment_rate`, `labor_force_change_pct` | LAUS state series `LAUST{fips}00000000000{03,06}`, not seasonally adjusted, annual averages. U.S.: CPS `LNU04000000` (rate) and `LNU01000000` (labor force), annual averages | 2025; 2019 to 2025 |
+| `avg_weekly_wage`, `manufacturing_share`, `health_care_share` | QCEW annual area files `{fips}000.csv` and `US000.csv`. Same cells as `10_jobs_industry.py` at the state (5x) and national (1x) aggregation levels | 2025 |
+| `uninsured_under65`, `uninsured_under65_low_income` | SAHIE API, same categories as `30_health.py`, `for=state:*` and `for=us:*` | 2024 |
+| `saipe_poverty_rate`, `saipe_child_poverty_rate`, `saipe_median_income` | SAIPE API, `for=state:*` and `for=us:*` | 2024 |
+| `pop_change_pct` and the three components-of-change rates | Vintage 2025 `co-est2025-alldata.csv` state rows (the file `21_popest.py` reads); U.S. row from `NST-EST2025-ALLDATA.csv` | Apr. 2020 to July 2025 |
+| `prime_age_share`, `age65_share`, `general_fertility_rate` | Vintage 2025 `cc-est2025-agesex-all.csv`, each state summed from its counties as `23_age.py` does for Ohio; births from the state rows above. U.S.: `nc-est2025-agesex-res.csv` and the NST U.S. births | July 1, 2025; year ending June 30, 2025 |
+| `overdose_rate_per100k` | CDC VSRR state file `xkb8-kh2a`, indicator "Number of Drug Overdose Deaths", period "12 month-ending", field `data_value`, over the Census July 1, 2025 population | 12 months ending March 2026 |
+
+**The U.S. value.** It is the publisher's own national figure in every case (ACS `us:1`, CPS annual
+average, QCEW `US000`, SAHIE and SAIPE U.S. rows, the Census national population files, CDC's U.S. row),
+not an average of states. `us_source` names it for each measure.
+
+**Check against the Ohio figures.** The script computes Ohio the same way as every other state and stops
+if Ohio does not equal the `ohio` value in the layer file at display precision. On the 2026-11-09 run
+all 33 measures matched exactly. The check results are stored in `checks`.
+
+**Suppressed values.** BLS withholds the 2025 private manufacturing total for Alaska, DC, Hawaii,
+Louisiana, Maryland and Wyoming to protect employer privacy. Those six are null with the flag
+"suppressed", so Ohio's manufacturing rank is out of 45 states.
+
+**Overdose deaths.** The state file counts deaths that occurred in the state, not deaths of state
+residents, as the Ohio figure on the dashboard does. CDC reports New York City apart from the rest of New
+York; the New York value adds the two. Every state and the U.S. carry CDC's flag "Underreported due to
+incomplete data" for this period, stored in `flags`. CDC also publishes a predicted count that adjusts
+for records still coming in. We use the reported count, as the dashboard does; the gap between the two is
+stored in `predicted_minus_reported_pct` (0% for Ohio, 0.8% for the U.S., up to 21% for Oregon and 13%
+for Nevada), so those states' rates read low next to Ohio's. Rates are not age-adjusted.
+
+**Known quirks.** U.S. net domestic migration is zero by definition, because moves between counties
+cancel out nationally. The prime-age work rate flags DC, where 5% of residents live in group quarters.
+
+**Left out, and why.**
+
+| Measure | Reason |
+|---|---|
+| `labor_force`, `employed`, `private_jobs`, `population`, `population_estimate`, `overdose_deaths_12mo` | Counts. A state total does not compare with a county total; the matching rate or share is used where one exists. |
+| `top_industry_share` | A county concept: the largest disclosed 3-digit industry, where the set of withheld industries differs by place. |
+| `concentration_hhi` | A county concept built on disclosed county supersectors. |
+| The ten `places_*` measures | The CDC PLACES county file has no state rows, so the dashboard has no Ohio figure to compare with. |
+
+**License and attribution.** Public domain. Credit: U.S. Census Bureau (American Community Survey,
+Population Estimates Program, SAHIE, SAIPE); U.S. Bureau of Labor Statistics (LAUS, CPS, QCEW); CDC,
+National Center for Health Statistics.
+
+## Priorities tab: how the page combines measures (derived, not a dataset)
+
+**Gap.** For each judged measure, a county's gap is its distance from Ohio's value, signed so that positive means
+worse, divided by Ohio's value or by the spread of the measure across counties (standard deviation), whichever is
+larger, and capped at 100%. The spread is used for measures near zero, such as labor force growth since 2019.
+Measures with no statewide figure (CDC PLACES) compare with the median county. Prime-age work rates flagged for
+group quarters (5% or more of residents in prisons, dorms or nursing homes) are left out of every count.
+
+**Issues.** Ten groups of measures, set in `scripts/90_build.py` (`ISSUES`); an issue keeps only the measures that
+are on the page. A county's issue gap is the average of its measure gaps. "Behind" means an issue gap above 3%, the
+same "near Ohio" band used on the other tabs.
+
+**By issue.** For each issue: counties behind; residents of those counties (Census estimate, July 1, 2025); the
+middle issue gap among those counties; counties that worsened on more of the issue's measures than they improved on
+(using the "since 2019 / 10 years" switch; dollar measures left out because they are not adjusted for inflation);
+and Ohio against the U.S. on measures with a same-definition state figure (`scripts/50_national.py`). The order is a
+weighted average of the five factors, each scaled from 0 (lowest issue) to 1 (highest issue), with weights the
+viewer sets. Equal weights by default.
+
+**By place.** Counties ranked by the number of issues they are behind on, then by their average issue gap. County
+groups come from k-means clustering (six groups) on each county's issue gaps, started from six counties spread
+evenly across the overall gap, so the result is the same on every load. Groups are named by their largest shared
+gaps. They describe which problems occur together, not causes.
+
+**Change window.** "Since 2019" compares the latest value with the period ending in 2019 (2015-2019 for ACS
+five-year data). "Over 10 years" compares with the period ending ten years before the latest (2010-2014 for ACS).
+A source with less history uses its earliest period, and the page names it.
