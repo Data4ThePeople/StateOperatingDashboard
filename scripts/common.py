@@ -107,7 +107,7 @@ def read_csv(name):
 
 def write_json(name, obj):
     """Write a processed layer. Keys are 5-digit county FIPS strings ("39001")."""
-    PROC.mkdir(parents=True, exist_ok=True)
+    (PROC / name).parent.mkdir(parents=True, exist_ok=True)
     (PROC / name).write_text(json.dumps(obj, separators=(",", ":")))
     print(f"wrote data/processed/{name}")
 

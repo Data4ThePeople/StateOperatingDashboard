@@ -1,14 +1,19 @@
-"""Tract and district data for Ohio's 10th Congressional District (2025 map). Writes data/processed/oh10/data.json.
+"""Tract and district data for a congressional district. Writes data/processed/<key>/data.json.
+Run: .venv/bin/python scripts/61_district_data.py <key> (keys in districts.py; run 60_district_geo.py first)
 
-- ACS 5-year 2020-2024 for every 2020 census tract in Butler, Greene and Montgomery counties, plus Ohio (state:39)
-  and the U.S. (us:1), all computed with the same code (20_acs.compute and the additions below).
-- District values: the ACS table lines summed over the district's 220 tracts (margins of error combined as the
-  square root of the sum of squares), then computed the same way. Medians cannot be summed, so the district's
-  median household income is interpolated from its income brackets (B19001).
+- ACS 5-year 2020-2024 for every 2020 census tract in the district's counties, plus the state and the U.S. (us:1),
+  all computed with the same code (20_acs.compute and the additions below).
+- District values: when the Census Bureau publishes ACS for the district's own lines (districts.py acs_district),
+  those published estimates, with their margins of error. Otherwise, built from tracts: each ACS table line summed over every tract with district residents, weighted by the share of
+  the tract's 2020 census residents who live inside the district (1 for a tract wholly inside). Margins of error
+  are weighted the same way and combined as the square root of the sum of squares. This assumes the residents on
+  each side of a line that splits a tract are alike. Medians cannot be summed, so the district's median household
+  income is interpolated from its income brackets (B19001).
+- Map and tract scorecards: tracts where most 2020 residents live inside the district, with whole-tract values.
 - CDC PLACES 2025 release, census tract data: modeled crude prevalence for adults 18 and older. District value
-  = tract values weighted by adults 18 and older.
-- County table: county-only measures for the three counties, read from the state dashboard's processed layers
-  (same values the state page shows), with Ohio and U.S. figures where the state page has them.
+  = tract values weighted by adults 18 and older times the same inside share.
+- County table: Ohio reads the statewide dashboard's processed layers (same values the state page shows); other
+  states use district_counties.py. State and U.S. figures come from the same places.
 """
 import importlib
 import json
@@ -18,14 +23,17 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).parent))
+import districts  # noqa: E402
 from common import PROC, RAW, cached, census, write_json  # noqa: E402
 
+CFG = districts.get(sys.argv)
+KEY, STF = CFG["key"], CFG["state"]
 acs = importlib.import_module("20_acs")
 YEAR, PERIOD = 2024, "2020-2024"
-COUNTIES = ["017", "057", "113"]
-GEO = json.loads((PROC / "oh10" / "geo.json").read_text())
-INSIDE = sorted(t for t, v in GEO["tracts"].items() if v["in_district"])
-assert len(INSIDE) == 220
+GEO = json.loads((PROC / KEY / "geo.json").read_text())
+INSIDE = sorted(t for t, v in GEO["tracts"].items() if v["in_district"])          # mapped tracts
+WEIGHT = {t: v["pop2020_in_district"] / v["pop2020"] for t, v in GEO["tracts"].items() if v["pop2020_in_district"]}
+COUNTIES = sorted({t[2:5] for t in WEIGHT})
 CV_MAX = 30.0          # an estimate whose coefficient of variation is above this is shown as unreliable
 EXTRA = ["B23001", "B05012", "B03002", "B01001"]
 TABLES = [t for t in acs.TABLES if t not in ("B19083", "B01002")] + EXTRA
@@ -34,15 +42,15 @@ BRACKETS = [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 75, 100, 125, 150, 200]  
 
 
 def pull():
-    """{geo: {var: (est, moe)}} for each tract ('39113000100'), 'ohio' and 'us'."""
+    """{geo: {var: (est, moe)}} for each tract ('39113000100'), 'state' and 'us'."""
     out = {}
     for t in TABLES:
-        geos = [("tract_" + c, {"for": "tract:*", "in": f"state:39 county:{c}"}) for c in COUNTIES]
-        geos += [("state", {"for": "state:39"}), ("us", {"for": "us:1"})]
+        geos = [("tract_" + c, {"for": "tract:*", "in": f"state:{STF} county:{c}"}) for c in COUNTIES]
+        geos += [("state", {"for": f"state:{STF}"}), ("us", {"for": "us:1"})]
         for tag, g in geos:
-            rows = census(f"{YEAR}/acs/acs5", dict(get=f"NAME,group({t})", **g), f"oh10/acs5_{YEAR}_{t}_{tag}.json")
+            rows = census(f"{YEAR}/acs/acs5", dict(get=f"NAME,group({t})", **g), f"{KEY}/acs5_{YEAR}_{t}_{tag}.json")
             for r in rows:
-                key = "us" if tag == "us" else "ohio" if tag == "state" else r["state"] + r["county"] + r["tract"]
+                key = tag if tag in ("us", "state") else r["state"] + r["county"] + r["tract"]
                 d = out.setdefault(key, {})
                 for k, v in r.items():
                     if k.startswith(t + "_") and k.endswith("E") and not k.endswith("EA"):
@@ -120,16 +128,17 @@ def compute(d):
     return out
 
 
-def aggregate(dicts):
+def aggregate(dicts, weights):
+    """Weighted sum of table lines; margins of error scaled by the same weight, root sum of squares."""
     keys = set().union(*dicts)
     out = {}
     for k in keys:
-        vals = [d.get(k, (None, None)) for d in dicts]
-        if any(v[0] is None for v in vals):
+        vals = [(d.get(k, (None, None)), w) for d, w in zip(dicts, weights)]
+        if any(v[0] is None for v, _ in vals):
             out[k] = (None, None)
             continue
-        m = None if any(v[1] is None for v in vals) else math.sqrt(sum(v[1] ** 2 for v in vals))
-        out[k] = (sum(v[0] for v in vals), m)
+        m = None if any(v[1] is None for v, _ in vals) else math.sqrt(sum((w * v[1]) ** 2 for v, w in vals))
+        out[k] = (sum(w * v[0] for v, w in vals), m)
     return out
 
 
@@ -183,16 +192,47 @@ def cell(v):
     return {"v": est, "moe": moe, "weak": cv is not None and cv > CV_MAX}
 
 
+def state_page_counties(fips_names):
+    """County-only measures from the Ohio statewide dashboard's layers, with Ohio and U.S. figures."""
+    lay = {}
+    for p in PROC.glob("*.json"):
+        j = json.loads(p.read_text())
+        if isinstance(j, dict) and "metrics" in j and "counties" in j:
+            for k in j["metrics"]:
+                lay[k] = j
+    nat = json.loads((PROC / "national.json").read_text())["national"]
+    ctab = {}
+    for k in COUNTY_ONLY:
+        j = lay[k]
+        m = j["metrics"][k]
+        row = {"label": m["label"], "unit": m["unit"], "decimals": m["decimals"], "better": m["better"],
+               "source": m["source"], "period_label": m.get("period_label"), "note": m.get("note")}
+        for f, name in fips_names.items():
+            c = j["counties"].get(f, {}).get(k) or {}
+            row[name] = {"v": c.get("latest"), "period": c.get("period"), "flag": c.get("flag")}
+        o = j["ohio"].get(k) or {}
+        row[CFG["state_name"]] = {"v": o.get("latest"), "period": o.get("period")}
+        row["U.S."] = {"v": nat[k]["us"], "period": nat[k]["period"]} if k in nat else {"v": None}
+        ctab[k] = row
+    return ctab
+
+
 if __name__ == "__main__":
     raw = pull()
     tr = {t: d for t, d in raw.items() if len(t) == 11}
-    assert set(INSIDE) <= set(tr), sorted(set(INSIDE) - set(tr))[:5]
-    district = compute(aggregate([tr[t] for t in INSIDE]))
-    district["median_household_income"] = (median_from_brackets(aggregate([tr[t] for t in INSIDE])), None)
-    # check: the bracket method against the published Ohio and U.S. medians
-    for g in ("ohio", "us"):
+    assert set(WEIGHT) <= set(tr), sorted(set(WEIGHT) - set(tr))[:5]
+    wt = sorted(WEIGHT)
+    agg = aggregate([tr[t] for t in wt], [WEIGHT[t] for t in wt])
+    district = compute(agg)
+    district["median_household_income"] = (median_from_brackets(agg), None)
+    print(f"{len(wt)} tracts with district residents ({sum(WEIGHT[t] < 1 for t in wt)} split); {len(INSIDE)} mapped; "
+          f"weighted ACS population {agg['B01003_001'][0]:,.0f} vs 2020 census {GEO['district_pop2020']:,}")
+    # check: the bracket method against the published state and U.S. medians
+    median_check = {}
+    for g in ("state", "us"):
         pub, est = raw[g]["B19013_001"][0], median_from_brackets(raw[g])
-        print(f"{g} median income: published {pub:,.0f}, from brackets {est:,.0f} ({(est - pub) / pub * 100:+.1f}%)")
+        median_check[g] = (est - pub) / pub * 100
+        print(f"{g} median income: published {pub:,.0f}, from brackets {est:,.0f} ({median_check[g]:+.1f}%)")
     race = ["nh_white_share", "nh_black_share", "hispanic_share", "nh_asian_share", "nh_multi_share", "nh_other_share"]
     assert abs(sum(district[r][0] for r in race) - 100) < 1e-6
 
@@ -201,13 +241,34 @@ if __name__ == "__main__":
                for k, (a, b, c, d_, e, n) in M.items()}
     tracts = {t: {k: cell(v) for k, v in compute(tr[t]).items()} for t in INSIDE}
     dist = {k: {"v": v[0], "moe": v[1]} for k, v in district.items()}
-    ohio = {k: {"v": v[0], "moe": v[1]} for k, v in compute(raw["ohio"]).items()}
+    built = dict(dist)
+    if CFG.get("acs_district"):
+        pub = {}
+        for t in TABLES:
+            rows = census(f"{YEAR}/acs/acs5", dict(get=f"NAME,group({t})", **{"for": CFG["acs_district"], "in": f"state:{STF}"}),
+                          f"{KEY}/acs5_{YEAR}_{t}_cd.json")
+            assert len(rows) == 1 and "119th Congress" in rows[0]["NAME"], rows[0]["NAME"]
+            r = rows[0]
+            for k, v in r.items():
+                if k.startswith(t + "_") and k.endswith("E") and not k.endswith("EA"):
+                    pub[k[:-1]] = (acs.num(v), acs.moe_num(r.get(k[:-1] + "M")))
+        pc = compute(pub)
+        pc["median_household_income"] = pub["B19013_001"]
+        print(f"published {r['NAME']}; built from tracts vs published (outside the published margin marked *):")
+        for k, (v, m) in pc.items():
+            b = built[k]["v"]
+            print(f"   {k:26} built {b:>10.1f} published {v:>10.1f} ±{m or 0:<7.1f}{' *' if m and abs(b - v) > m else ''}")
+        dist = {k: {"v": v[0], "moe": v[1]} for k, v in pc.items()}
+    state = {k: {"v": v[0], "moe": v[1]} for k, v in compute(raw["state"]).items()}
     us = {k: {"v": v[0], "moe": v[1]} for k, v in compute(raw["us"]).items()}
 
     # CDC PLACES tract data
-    q = {"$where": "countyfips in ('39017','39057','39113') and datavaluetypeid='CrdPrv'", "$limit": "50000"}
-    rows = json.loads(cached(RAW / "oh10" / "places_tract_2025.json", "https://data.cdc.gov/resource/cwsq-ngmh.json?" + urlencode(q)))
-    meta = json.loads(cached(RAW / "oh10" / "places_tract_meta.json", "https://data.cdc.gov/api/views/cwsq-ngmh.json"))
+    cf = ",".join(f"'{STF}{c}'" for c in COUNTIES)
+    ms = ",".join(f"'{code}'" for _, code, _, _ in PLACES)
+    q = {"$where": f"countyfips in ({cf}) and datavaluetypeid='CrdPrv' and measureid in ({ms})", "$limit": "50000"}
+    rows = json.loads(cached(RAW / KEY / "places_tract_2025.json", "https://data.cdc.gov/resource/cwsq-ngmh.json?" + urlencode(q)))
+    assert len(rows) < 50000
+    meta = json.loads(cached(RAW / KEY / "places_tract_meta.json", "https://data.cdc.gov/api/views/cwsq-ngmh.json"))
     for mid, code, label, better in PLACES:
         rs = {r["locationname"]: r for r in rows if r["measureid"] == code}
         years = {r["year"] for r in rs.values()}
@@ -225,38 +286,32 @@ if __name__ == "__main__":
                 continue
             v, lo, hi = float(r["data_value"]), float(r["low_confidence_limit"]), float(r["high_confidence_limit"])
             tracts[t][mid] = {"v": v, "moe": (hi - lo) / 2, "weak": False}
-            w = float(r["totalpop18plus"])
-            num, den = num + v * w, den + w
+        for t in wt:
+            r = rs.get(t)
+            if r and r.get("data_value") not in (None, ""):
+                w = float(r["totalpop18plus"]) * WEIGHT[t]
+                num, den = num + float(r["data_value"]) * w, den + w
         dist[mid] = {"v": num / den, "moe": None}
         missing = [t for t in INSIDE if tracts[t][mid]["v"] is None]
         if missing:
             print(f"PLACES {code}: no value for {missing}")
 
-    # county-only measures from the state dashboard's layers
-    lay = {}
-    for p in PROC.glob("*.json"):
-        j = json.loads(p.read_text())
-        if isinstance(j, dict) and "metrics" in j and "counties" in j:
-            for k in j["metrics"]:
-                lay[k] = j
-    nat = json.loads((PROC / "national.json").read_text())["national"]
-    ctab = {}
-    for k in COUNTY_ONLY:
-        j = lay[k]
-        m = j["metrics"][k]
-        row = {"label": m["label"], "unit": m["unit"], "decimals": m["decimals"], "better": m["better"],
-               "source": m["source"], "period_label": m.get("period_label"), "note": m.get("note")}
-        for f, name in (("39113", "Montgomery"), ("39057", "Greene"), ("39017", "Butler")):
-            c = j["counties"].get(f, {}).get(k) or {}
-            row[name] = {"v": c.get("latest"), "period": c.get("period"), "flag": c.get("flag")}
-        o = j["ohio"].get(k) or {}
-        row["Ohio"] = {"v": o.get("latest"), "period": o.get("period")}
-        row["U.S."] = {"v": nat[k]["us"], "period": nat[k]["period"]} if k in nat else {"v": None}
-        ctab[k] = row
+    names = {}                                    # county name: 2020 residents inside the district, largest first
+    for t, w in WEIGHT.items():
+        c = GEO["tracts"][t]["county"]
+        names[c] = names.get(c, 0) + GEO["tracts"][t]["pop2020_in_district"]
+    order = sorted(names, key=lambda c: -names[c])
+    code = {GEO["tracts"][t]["county"]: t[2:5] for t in WEIGHT}
+    if CFG["county_from_state_page"]:
+        ctab = state_page_counties({STF + code[c]: c for c in order})
+    else:
+        import district_counties
+        ctab = district_counties.table(KEY, STF, CFG["st"], CFG["state_name"], {code[c]: c for c in order})
 
-    write_json("oh10/data.json", {"metrics": metrics, "tracts": tracts, "district": dist, "ohio": ohio, "us": us,
-                                  "county_table": ctab, "cv_max": CV_MAX, "period": PERIOD})
+    write_json(f"{KEY}/data.json", {"metrics": metrics, "tracts": tracts, "district": dist, "state": state, "us": us,
+                                    "county_table": ctab, "county_order": order, "cv_max": CV_MAX, "period": PERIOD,
+                                    "median_check": median_check, "district_published": bool(CFG.get("acs_district"))})
     weak = {k: sum(tracts[t][k]["weak"] for t in INSIDE) for k in metrics}
     print("tracts with unreliable estimates, by measure:", {k: v for k, v in weak.items() if v})
     for k in ("poverty_rate", "below_200_share", "median_household_income", "uninsured_acs", "prime_age_epop", "places_diabetes"):
-        print(f"{k:28} district {dist[k]['v']:>10.1f}  ohio {ohio.get(k, {}).get('v') or float('nan'):>10.1f}  us {us.get(k, {}).get('v') or float('nan'):>10.1f}")
+        print(f"{k:28} district {dist[k]['v']:>10.1f}  state {state.get(k, {}).get('v') or float('nan'):>10.1f}  us {us.get(k, {}).get('v') or float('nan'):>10.1f}")

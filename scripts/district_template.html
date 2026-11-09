@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only">
-<title>Ohio's 10th District</title>
-<meta name="description" content="Ohio's 10th Congressional District (2025 map) by census tract and county, from public Census Bureau and CDC data. Draft.">
+<title>__TITLE__</title>
+<meta name="description" content="__DESC__">
 <style>
 /* Layout: header, three tabs; neighborhoods = map card beside a tract scorecard, stacking on narrow screens */
 :root{
@@ -56,6 +56,7 @@ button:focus-visible,tr:focus-visible,.rank div:focus-visible{outline:2px solid 
 #map path.sel{stroke:var(--ink);stroke-width:3}
 #map path.out{fill:var(--outside);stroke:var(--bg);stroke-width:.5}
 #map path.co{fill:none;stroke:var(--ink2);stroke-width:1.2;pointer-events:none}
+#map path.dl{fill:none;stroke:var(--ink);stroke-width:2.2;pointer-events:none}
 .legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink2);margin:8px 0}
 .legend span{display:inline-flex;align-items:center;gap:4px}
 .legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
@@ -95,7 +96,7 @@ footer p{max-width:110ch}
 <body>
 <div class="wrap">
 <header>
-  <h1>Ohio's 10th Congressional District</h1>
+  <h1>__H1__</h1>
   <p id="intro"></p>
   <span class="draft">Working draft, November 9, 2026. These figures have not yet been through an independent tie-out.</span>
 </header>
@@ -105,6 +106,7 @@ footer p{max-width:110ch}
 </div>
 <div id="tip"></div>
 <script>
+const CFG = __CFG__;
 const DATA = __DATA__;
 const GEO = __GEO__;
 const BASEMAP = __BASE__;
@@ -188,17 +190,17 @@ function drawTabs(){
 
 function districtView(){
   const ids = id => Object.keys(M).filter(k => M[k].theme === id && k !== "population");
-  let h = `<div class="card"><h2>How the district compares with Ohio and the U.S.</h2>
-    <p class="sub">The table below shows each measure for the district as a whole, for Ohio and for the U.S. Census figures are 2020-2024 five-year survey estimates (American Community Survey), added up across the district's 220 tracts. Health figures are CDC model estimates for adults, ${M.places_diabetes.period}, which are not published for Ohio or the U.S. in the same form. Click a row to map it by tract.</p>
-    <table><tr><th>Measure</th><th class="n">OH-10</th><th class="n">Ohio</th><th class="n">U.S.</th><th>District vs. Ohio</th></tr>`;
+  let h = `<div class="card"><h2>How the district compares with ${CFG.state} and the U.S.</h2>
+    <p class="sub">The table below shows each measure for the district as a whole, for ${CFG.state} and for the U.S. Census figures are 2020-2024 five-year survey estimates (American Community Survey)${DATA.district_published ? ", as the Census Bureau publishes them for the district's own boundary" : `, added up across the ${CFG.touched} tracts with district residents${CFG.split ? `; the ${CFG.split} tracts split by the district line count by the share of their residents inside it` : ""}`}. Health figures are CDC model estimates for adults, ${M.places_diabetes.period}, which are not published for ${CFG.state} or the U.S. in the same form. Click a row to map it by tract.</p>
+    <table><tr><th>Measure</th><th class="n">${CFG.short}</th><th class="n">${CFG.state}</th><th class="n">U.S.</th><th>District vs. ${CFG.state}</th></tr>`;
   THEMES.forEach(([k, lab]) => {
     h += `<tr class="grp"><td colspan="5">${lab}</td></tr>`;
     ids(k).forEach(id => {
-      const d = DATA.district[id], o = DATA.ohio[id], u = DATA.us[id];
-      h += `<tr class="click" tabindex="0" data-m="${id}"><td>${M[id].label}</td><td class="n">${fmt(d.v, id)}${d.moe && M[id].unit === "pct" ? ` <span class="muted">±${d.moe.toFixed(1)}</span>` : ""}</td><td class="n">${o ? fmt(o.v, id) : "n/a"}</td><td class="n">${u ? fmt(u.v, id) : "n/a"}</td><td>${o ? badge(vs(d.v, o.v, id), "Ohio") : ""}</td></tr>`;
+      const d = DATA.district[id], o = DATA.state[id], u = DATA.us[id];
+      h += `<tr class="click" tabindex="0" data-m="${id}"><td>${M[id].label}</td><td class="n">${fmt(d.v, id)}${d.moe && M[id].unit === "pct" ? ` <span class="muted">±${d.moe.toFixed(1)}</span>` : ""}</td><td class="n">${o ? fmt(o.v, id) : "n/a"}</td><td class="n">${u ? fmt(u.v, id) : "n/a"}</td><td>${o ? badge(vs(d.v, o.v, id), CFG.state) : ""}</td></tr>`;
     });
   });
-  h += `</table><p class="sub" style="margin-top:8px">± is the 90% margin of error. "Near" means within 3% of Ohio's value or 0.3 percentage points. The district's median household income is estimated from its income brackets, since medians cannot be added up; the same method gives Ohio's published median within 0.2%.</p></div>`;
+  h += `</table><p class="sub" style="margin-top:8px">± is the 90% margin of error. "Near" means within 3% of ${CFG.state}'s value or 0.3 percentage points.${DATA.district_published ? "" : ` The district's median household income is estimated from its income brackets, since medians cannot be added up; the same method gives ${CFG.state}'s published median within ${Math.abs(DATA.median_check.state).toFixed(1)}%.`}</p></div>`;
   return h;
 }
 
@@ -216,7 +218,7 @@ function drawMap(){
   const id = st.metric, sc = scale(id), d = DATA.district[id];
   const dtext = `The district as a whole: ${fmt(d.v, id)}.`;
   const vb = st.vb || BASE, k0 = BASE[2] / vb[2];
-  let svg = `<svg viewBox="${vb.join(" ")}" role="img" aria-label="Map of census tracts in Ohio's 10th District: ${esc(M[id].label)}"><defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern><pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern></defs>`;
+  let svg = `<svg viewBox="${vb.join(" ")}" role="img" aria-label="Map of census tracts in ${esc(CFG.title)}: ${esc(M[id].label)}"><defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern><pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern></defs>`;
   Object.entries(GEO.tracts).forEach(([t, g]) => { if (!g.in_district) svg += `<path class="out" d="${g.d}"/>`; });
   IN.forEach(t => {
     const c = DATA.tracts[t][id], col = sc.color(c ? c.v : null);
@@ -225,8 +227,13 @@ function drawMap(){
   });
   if (st.base) svg += baseLayer();
   Object.values(GEO.counties).forEach(c => svg += `<path class="co" d="${c.d}"/>`);
+  if (GEO.district_line) svg += `<path class="dl" d="${GEO.district_line}"/>`;
   if (st.tract) svg += `<path d="${GEO.tracts[st.tract].d}" fill="none" stroke="#121212" stroke-width="3" pointer-events="none"/>`;
   Object.values(GEO.counties).forEach(c => {
+    if (c.lx !== undefined){
+      if (c.lx !== null) svg += `<text class="clab" data-fs="12" x="${c.lx}" y="${c.ly}" font-size="${12 / k0}" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="${3 / k0}">${c.name} County</text>`;
+      return;
+    }
     const pts = (c.d.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/g) || []).map(p => p.split(",").map(Number));
     if (!pts.length) return;
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
@@ -244,7 +251,7 @@ function drawMap(){
     <p class="sub" style="margin:4px 0 0">Use + and &minus; to zoom (or pinch on a trackpad), and drag to move around a zoomed map. Reset shows the whole district.</p>
     <div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}
       <span><i style="background:url(#);background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN} of ${IN.length} tracts)</span>
-      <span><i style="background:var(--outside);border:1px solid var(--rule)"></i>Butler County outside the district</span></div>
+      <span><i style="background:var(--outside);border:1px solid var(--rule)"></i>${CFG.outside}</span>${GEO.district_line ? `<span><i style="background:none;border:2px solid var(--ink);height:8px"></i>District line</span>` : ""}</div>
     <p class="sub">${M[id].note} Source: ${M[id].source}.</p>
     <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
     <div class="rank">${show.map(t => `<div tabindex="0" data-t="${t}"><b>${r[t]}</b><span class="nm">${GEO.tracts[t].label}${DATA.tracts[t][id].weak ? " *" : ""}</span><span class="v">${fmt(tv(t, id), id)}</span></div>`).join("")}</div>
@@ -274,8 +281,9 @@ let BASE_SVG = null;
 function baseLayer(){
   if (BASE_SVG) return BASE_SVG;
   const B = BASEMAP, halo = `style="paint-order:stroke" stroke="#ffffff" stroke-linejoin="round"`;
-  const clip = Object.values(GEO.counties).map(c => c.d).join("");
-  let g = `<defs><clipPath id="basecl"><path d="${clip}"/></clipPath></defs><g class="base lines" clip-path="url(#basecl)">`;
+  // "counties" maps clip roads to the district's counties; "bbox" maps show roads everywhere in view
+  const clip = GEO.context === "counties" ? Object.values(GEO.counties).map(c => c.d).join("") : null;
+  let g = clip ? `<defs><clipPath id="basecl"><path d="${clip}"/></clipPath></defs><g class="base lines" clip-path="url(#basecl)">` : `<g class="base lines">`;
   g += `<path d="${B.water}" fill="#eef3f8" fill-opacity=".9" stroke="#8fa6bf" stroke-width=".6"/>`;
   g += `<path d="${B.secondary}" fill="none" stroke="#ffffff" stroke-opacity=".9" stroke-width="1.2"/>`;
   g += `<path d="${B.primary}" fill="none" stroke="#55534e" stroke-opacity=".75" stroke-width="3"/>`;
@@ -366,7 +374,7 @@ function drawPanel(){
       const c = DATA.tracts[t][id], r = ranks(id);
       h += `<div class="tile${id === st.metric ? " on" : ""}" tabindex="0" data-m="${id}"><div class="lab">${M[id].label}</div>
         <div class="val">${fmt(c.v, id)}${moeTxt(c, id)}${badge(vs(c.v, DATA.district[id].v, id), "district")}</div>
-        <div class="cmp">District ${fmt(DATA.district[id].v, id)}${DATA.ohio[id] ? " · Ohio " + fmt(DATA.ohio[id].v, id) : ""}${r[t] ? ` · rank ${r[t]} of ${r._n}` : ""}</div>
+        <div class="cmp">District ${fmt(DATA.district[id].v, id)}${DATA.state[id] ? ` · ${CFG.state} ` + fmt(DATA.state[id].v, id) : ""}${r[t] ? ` · rank ${r[t]} of ${r._n}` : ""}</div>
         ${c.weak && c.v !== null ? `<div class="weak">Uncertain estimate</div>` : ""}</div>`;
     });
     h += `</div>`;
@@ -378,14 +386,15 @@ function drawPanel(){
 }
 
 function countiesView(){
-  const T = DATA.county_table, cols = ["Montgomery","Greene","Butler","Ohio","U.S."];
+  const T = DATA.county_table, cols = [...DATA.county_order, CFG.state, "U.S."];
+  const nc = DATA.county_order.length, cw = ["one","two","three","four","five","six"][nc - 1] || nc;
   let h = `<div class="card"><h2>Measures published only for whole counties</h2>
-    <p class="sub">These sources do not report by tract, so this table shows the three counties in the district. Montgomery and Greene are entirely in the district. Butler County figures cover the whole county, and only about ${Math.round(GEO.tracts && 81354 / 390357 * 100)}% of Butler County residents live in the district. Values are the same ones the statewide county dashboard shows.</p>
+    <p class="sub">These sources do not report by tract, so this table shows the ${cw} ${nc === 1 ? "county" : "counties"} in the district. ${CFG.county_note}</p>
     <table><tr><th>Measure</th>${cols.map(c => `<th class="n">${c}</th>`).join("")}<th>Period</th></tr>`;
   Object.entries(T).forEach(([id, r]) => {
     h += `<tr><td>${r.label}</td>${cols.map(c => { const x = r[c] || {}; return `<td class="n">${fmt(x.v, id)}${x.flag && x.v !== null ? ` <span class="muted" title="${esc(x.flag)}">*</span>` : ""}</td>`; }).join("")}<td class="muted">${esc(r.period_label || "")}</td></tr>`;
   });
-  h += `</table><p class="sub" style="margin-top:8px">n/a means the publisher withheld the figure or does not publish it for that place. For crime, it means agencies covering at least 80% of the county's residents did not report a full year; Greene County fell below that in 2025. * marks a figure the source flags; hover for the reason. Sources: ${[...new Set(Object.values(T).map(r => r.source))].map(esc).join("; ")}.</p></div>`;
+  h += `</table><p class="sub" style="margin-top:8px">n/a means the publisher withheld the figure or does not publish it for that place.${CFG.county_note_extra} * marks a figure the source flags; hover for the reason. Sources: ${[...new Set(Object.values(T).map(r => r.source))].map(esc).join("; ")}.</p></div>`;
   return h;
 }
 
@@ -398,9 +407,8 @@ function render(){
   $("main").querySelectorAll("tr.click[data-m]").forEach(r => r.onclick = () => { st.metric = r.dataset.m; st.tab = "tracts"; render(); window.scrollTo(0, 0); });
 }
 
-$("intro").textContent = `All of Montgomery and Greene counties and part of Butler County, under the congressional map the Ohio Redistricting Commission adopted on October 31, 2025. ${GEO.district_pop2020.toLocaleString("en-US")} residents in the 2020 census, in ${IN.length} census tracts. Tracts are neighborhoods of about 4,000 people that the Census Bureau draws to stay fixed for a decade.`;
-$("foot").innerHTML = `<p>District: Ohio Redistricting Commission block assignment file for the plan adopted October 31, 2025, with 2020 census block population. A tract is counted in the district when most of its 2020 residents are; four tracts are split by the line, and the two counted in have 51% and 98% of their residents inside. Tract outlines: Census Bureau TIGERweb (2020 tracts). Major roads, rivers, lakes and place names: Census Bureau TIGERweb. Tract names: the city, village or Census-designated place holding at least half of the tract's residents, or else the township containing its center.</p>
-<p>Census figures: American Community Survey 5-year estimates, 2020-2024, tables B01001, B03002, B05012, B15003, B18101, B19001, B19013, B22003, B23001, B25070, B25091, B27010, C17002, C27007. Health: CDC PLACES, census tract data, 2025 release. County table: BLS, CDC, FBI, USDA FNS, Ohio Department of Education and Workforce, Ohio Department of Children and Youth, Census Bureau, as listed on the statewide dashboard. Built by Data 4 The People.</p>`;
+$("intro").textContent = CFG.intro;
+$("foot").innerHTML = CFG.foot;
 const fromHash = () => { const h = location.hash.slice(1); if (["district","tracts","counties"].includes(h)) st.tab = h; };
 fromHash(); addEventListener("hashchange", () => { fromHash(); render(); });
 render();

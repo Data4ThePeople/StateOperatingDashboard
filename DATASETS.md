@@ -840,3 +840,43 @@ gaps. They describe which problems occur together, not causes.
 **Change window.** "Since 2019" compares the latest value with the period ending in 2019 (2015-2019 for ACS
 five-year data). "Over 10 years" compares with the period ending ten years before the latest (2010-2014 for ACS).
 A source with less history uses its earliest period, and the page names it.
+
+## Congressional district pages (derived from the sources above; OH-10 and IL-6)
+
+**What it is.** One page per district, built by `scripts/60_district_geo.py`, `61_district_data.py`,
+`63_district_basemap.py` and `62_district_build.py`, each run with a district key from `scripts/districts.py`
+(`oh10`, `il06`). Output: `data/processed/<key>/` and `dist/<key>/index.html`.
+
+**District lines.** OH-10: the Ohio Redistricting Commission's block assignment file for the map adopted October 31,
+2025 (map 430 on redistricting.ohio.gov). IL-6: the Census Bureau's block equivalency file for the 119th Congress
+(`NationalCD119.txt` in cd119.zip), which carries the map Illinois enacted in 2021. Each block gets its 2020 census
+population (P.L. 94-171, P1_001N). The block sums match the official 2020 counts: 786,629 for OH-10 (Ohio Secretary of
+State) and 753,677 for IL-6 (Census API, 2020/dec/cd119). IL-6's drawn outline is TIGERweb Current layer 54 (120th
+Congressional Districts, January 1, 2026 vintage); every tract wholly inside the district by block population falls
+inside that outline, and no tract with zero district residents does.
+
+**Tracts.** 2020 census tracts. A tract is mapped, ranked and given a scorecard when most of its 2020 residents live
+in the district; those figures cover the whole tract. OH-10: 220 mapped tracts, 4 split by the line. IL-6: 170 mapped
+tracts, 57 split, 199 with any district residents. Names: the place holding at least half of a tract's 2020 residents
+(Census 2020 place block assignment file), or else the township holding the tract's internal point.
+
+**District figures.** IL-6: ACS 5-year 2020-2024 estimates the Census Bureau publishes for the district itself
+(geography "congressional district", 119th Congress lines), with their margins of error. OH-10 (no published
+estimates for the 2025 lines yet): each ACS table line summed over every tract with district residents, weighted by
+the share of the tract's 2020 residents inside the district; margins of error weighted the same way and combined as
+the square root of the sum of squares. This assumes residents on both sides of a split are alike. The district median
+household income is interpolated from its B19001 brackets (the same method gives Ohio's published median within 0.2%).
+Check of the tract method against IL-6's published figures: 23 of 24 measures fall within the published margin of error;
+Black, not Hispanic is 5.3% built against 5.0% published (margin 0.3). CDC PLACES district figures (both pages): tract
+values weighted by adults 18 and older times the same inside share.
+
+**County table.** OH-10 reads the Ohio statewide layers, so its county values are the ones the state page shows. IL-6
+(`scripts/district_counties.py`) pulls six measures for Cook and DuPage with the same methods as the Ohio layers, for
+the period of the state and U.S. figures in `national.json`: LAUS unemployment (2025 annual average), QCEW average weekly
+wage (2025, all ownerships), SAHIE uninsured under 65 (2024), SAIPE child poverty (2024), CDC VSRR provisional overdose
+deaths per 100,000 (12 months ending March 2026, over 2025 population) and population change from the April 2020 base
+to July 2025. Illinois and U.S. values come from `national.json`. Ohio-only sources (reading, child care, SNAP persons,
+crime) are not on the IL-6 page.
+
+**Base map.** TIGERweb primary and secondary roads, area water and 2020 place names (see the script docstring). For
+IL-6, place names that would overlap a larger name at the zoom where they appear, or run past the map edge, are dropped.

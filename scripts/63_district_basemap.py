@@ -1,5 +1,6 @@
-"""Base map for the OH-10 tract map: roads, water and place names, drawn as SVG in the page itself (the shared
-page cannot load map tiles from other sites). Writes data/processed/oh10/basemap.json.
+"""Base map for a district's tract map: roads, water and place names, drawn as SVG in the page itself (the shared
+page cannot load map tiles from other sites). Writes data/processed/<key>/basemap.json.
+Run: .venv/bin/python scripts/63_district_basemap.py <key> (after 60_district_geo.py)
 
 Sources, all U.S. Census Bureau TIGERweb (public domain), clipped to the map's bounding box:
 - Transportation layer 2 (primary roads: interstates and other limited-access highways) and layer 6 (secondary
@@ -7,7 +8,8 @@ Sources, all U.S. Census Bureau TIGERweb (public domain), clipped to the map's b
 - Hydro layer 1 (area water: rivers wide enough to map as areas, lakes, reservoirs); small ponds dropped.
 - 2020 incorporated places (layer 26) and Census-designated places (layer 28): name and internal point, with
   2020 census population (P.L. 94-171) to decide which names show at full view.
-Same projection as data/processed/oh10/geo.json.
+Same projection as data/processed/<key>/geo.json. Names are kept when their point is inside the district's
+counties ("counties" maps, where roads are clipped to those counties) or inside the map ("bbox" maps).
 """
 import json
 import math
@@ -16,9 +18,12 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).parent))
+import districts  # noqa: E402
 from common import PROC, RAW, cached, census, write_json  # noqa: E402
 
-GEO = json.loads((PROC / "oh10" / "geo.json").read_text())
+CFG = districts.get(sys.argv)
+KEY, STF = CFG["key"], CFG["state"]
+GEO = json.loads((PROC / KEY / "geo.json").read_text())
 P = GEO["proj"]
 BB = P["bbox"]
 W, H = map(float, GEO["viewBox"].split()[2:])
@@ -36,7 +41,7 @@ def query(svc, layer, name, fields, offset=0.0001, geometry=True):
                  spatialRel="esriSpatialRelIntersects", where="1=1", outFields=fields, outSR="4326",
                  returnGeometry="true" if geometry else "false", maxAllowableOffset=str(offset), geometryPrecision="5",
                  resultOffset=str(start), resultRecordCount="5000", f="geojson" if geometry else "json")
-        j = json.loads(cached(RAW / "oh10" / "basemap" / f"{name}_{start}.json", BASE.format(svc, layer) + urlencode(q)))
+        j = json.loads(cached(RAW / KEY / "basemap" / f"{name}_{start}.json", BASE.format(svc, layer) + urlencode(q)))
         got = j["features"]
         feats += got
         if len(got) < 5000:
@@ -120,13 +125,13 @@ if __name__ == "__main__":
 
     # place names: 2020 incorporated places and CDPs whose internal point is in view
     pops = {r["place"]: int(r["P1_001N"]) for r in
-            census("2020/dec/pl", {"get": "NAME,P1_001N", "for": "place:*", "in": "state:39"}, "oh10/pl2020_place_pop.json")}
+            census("2020/dec/pl", {"get": "NAME,P1_001N", "for": "place:*", "in": f"state:{STF}"}, f"{KEY}/pl2020_place_pop.json")}
     seen = set()
     for layer, nm in ((26, "places_inc"), (28, "places_cdp")):
         q = BASE.format("tigerWMS_Census2020", layer) + urlencode(dict(
-            where="STATE='39'", geometry=",".join(map(str, BB)), geometryType="esriGeometryEnvelope", inSR="4326",
+            where=f"STATE='{STF}'", geometry=",".join(map(str, BB)), geometryType="esriGeometryEnvelope", inSR="4326",
             spatialRel="esriSpatialRelIntersects", outFields="PLACE,BASENAME,INTPTLAT,INTPTLON", returnGeometry="false", f="json"))
-        for f in json.loads(cached(RAW / "oh10" / "basemap" / f"{nm}.json", q))["features"]:
+        for f in json.loads(cached(RAW / KEY / "basemap" / f"{nm}.json", q))["features"]:
             a = f["attributes"]
             x, y = xy((float(a["INTPTLON"]), float(a["INTPTLAT"])))
             if not (10 <= x <= W - 10 and 10 <= y <= H - 10) or a["PLACE"] in seen:
@@ -135,9 +140,10 @@ if __name__ == "__main__":
             pop = pops.get(a["PLACE"], 0)
             labels.append({"t": a["BASENAME"], "x": round(x, 1), "y": round(y, 1), "pop": pop,
                            "kind": "city" if pop >= 25000 else "town" if pop >= 5000 else "small"})
-    # keep labels whose anchor is inside one of the three counties (the street layer is clipped to them)
+    # keep labels whose anchor is inside one of the district's counties (the street layer is clipped to them)
     rings = []
-    for f in json.loads((RAW / "oh10" / "tiger_counties.geojson").read_text())["features"]:
+    cfile = "tiger_counties.geojson" if GEO["context"] == "counties" else "tiger_counties_bbox.geojson"
+    for f in json.loads((RAW / KEY / cfile).read_text())["features"]:
         g = f["geometry"]
         for poly in ([g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]):
             rings.append([xy(p) for p in poly[0]])
@@ -149,8 +155,33 @@ if __name__ == "__main__":
                 c = not c
         return c
     labels = [l for l in labels if any(inside(l["x"], l["y"], r) for r in rings)]
-    out["labels"] = sorted(labels, key=lambda l: -l.get("pop", 10**9))
+    labels = sorted(labels, key=lambda l: -l.get("pop", 10**9))
+    if GEO["context"] == "bbox":
+        # dense suburbs: drop a name that would run past the map edge, or that would overlap a bigger name shown at
+        # the same zoom or sooner. Cities and routes show at full view, towns from 1.8x, small places from 3.5x;
+        # text keeps its screen size, so at zoom z a name covers 1/z as many map units.
+        zoom = {"route": 1, "city": 1, "town": 1.8, "small": 3.5}
+        char = {"route": (6.5, 10), "city": (7.4, 12), "town": (6.4, 11), "small": (5.8, 10)}
+
+        def box(l, z):
+            cw, fh = char[l["kind"]]
+            hw, hh = len(l["t"]) * cw / 2 / z, fh / 2 / z
+            return l["x"] - hw, l["y"] - hh, l["x"] + hw, l["y"] + hh
+
+        kept = []
+        for l in labels:
+            z = zoom[l["kind"]]
+            b = box(l, z)
+            if b[0] < 2 or b[2] > W - 2:
+                continue
+            if any(zoom[k["kind"]] <= z and b[0] < c[2] and c[0] < b[2] and b[1] < c[3] and c[1] < b[3]
+                   for k in kept for c in [box(k, z)]):
+                continue
+            kept.append(l)
+        print("names dropped for overlap or edge:", [l["t"] for l in labels if l not in kept])
+        labels = kept
+    out["labels"] = labels
     print("labels:", len(labels), [l["t"] for l in out["labels"][:12]])
     out["source"] = "U.S. Census Bureau TIGERweb: roads, area water, 2020 places"
-    write_json("oh10/basemap.json", out)
+    write_json(f"{KEY}/basemap.json", out)
     print("basemap KB:", len(json.dumps(out)) // 1024)

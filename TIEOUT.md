@@ -63,3 +63,8 @@ now "People below 200% of the poverty line" (values unchanged).
   from April 2020, as their notes said).
 - `scripts/50_national.py`: U.S. and state figures for the six race and ethnicity groups, female share and
   foreign-born share. Ohio's value from the state files matches the county-built value for all eight.
+- Congressional district pages (OH-10 and IL-6, DATASETS.md "Congressional district pages"): not yet through any
+  independent tie-out. Claude's checks: block sums equal the official 2020 counts for both districts; IL-6's outline
+  agrees with block assignment for every whole-inside and zero-resident tract; IL-6 figures built from tracts agree with
+  the Census Bureau's published district estimates on 23 of 24 measures (Black, not Hispanic: 5.3% built, 5.0%
+  published); OH-10's bracket-interpolated median is within 0.2% of Ohio's published median when applied to Ohio.
