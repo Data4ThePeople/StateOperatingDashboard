@@ -9,7 +9,7 @@ import json
 
 from common import DIST, PROC, ROOT
 
-LAYERS = ["jobs", "income", "people", "popest", "health"]
+LAYERS = ["jobs", "income", "people", "popest", "health", "prices"]
 ORDER = {
     "jobs": ["unemployment_rate", "labor_force_change_pct", "labor_force", "private_jobs", "avg_weekly_wage",
              "top_industry_share", "concentration_hhi", "manufacturing_share", "health_care_share"],
@@ -28,7 +28,16 @@ NO_JUDGMENT = {"top_industry_share", "concentration_hhi"}
 # measures that are already a change; a "change over time" view of them would be a change of a change
 IS_CHANGE = {"labor_force_change_pct", "pop_change_pct", "natural_change_rate", "net_international_migration_rate", "net_domestic_migration_rate"}
 # measures shown but left out of the overview count, because a sibling measure already covers them
-NOT_IN_OVERVIEW = {"below_200_share", "medicaid_share", "saipe_poverty_rate", "saipe_median_income", "overdose_deaths_12mo", "uninsured_under65_low_income"}
+# overdose rate: CDC withholds 45 of 88 counties, so "worst fourth" would be of 43 counties, not 88
+NOT_IN_OVERVIEW = {"overdose_rate_per100k", "below_200_share", "medicaid_share", "saipe_poverty_rate", "saipe_median_income", "overdose_deaths_12mo", "uninsured_under65_low_income"}
+
+LABELS = {
+    "near_poverty_share": "Near poverty: people at 100% to 199% of the poverty line",
+    "health_care_share": "Health care and social assistance share of private jobs",
+}
+# CDC flags every 2026 month of the statewide file "Underreported due to incomplete data"
+OHIO_FLAGS = {"overdose_deaths_12mo": "CDC marks this statewide figure as underreported due to incomplete data",
+              "overdose_rate_per100k": "CDC marks this statewide figure as underreported due to incomplete data"}
 
 if __name__ == "__main__":
     out = {"metrics": {}, "counties": {}, "ohio": {}, "extras": {}}
@@ -52,6 +61,10 @@ if __name__ == "__main__":
         print(f"{name}: {len(d['metrics'])} measures, {len(d['counties'])} counties")
     for mid, m in out["metrics"].items():
         m["theme"] = THEME_OVERRIDE.get(mid, m.get("theme"))
+        m["label"] = LABELS.get(mid, m["label"])
+        if mid in OHIO_FLAGS and mid in out["ohio"] and out["ohio"][mid].get("period", "")[:4] >= "2026":
+            out["ohio"][mid]["flag"] = OHIO_FLAGS[mid]
+            m["note"] = m["note"] + " The statewide figure counts deaths that happened in Ohio; county figures count residents. CDC marks recent statewide months as underreported because records are still coming in."
         if mid in HIDE:
             m["hidden"] = True
         if mid in NOT_IN_OVERVIEW:

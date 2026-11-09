@@ -75,7 +75,7 @@ Built by `scripts/30_health.py` into `data/processed/health.json`. Raw pulls are
 
 **Units and rounding.** Percent of adults 18 and older (18 to 64 for the insurance measure), one decimal. The 95% confidence interval is in `extras.places_ci95` as [low, high].
 
-**Known quirks.** No state figure in the county file, so the Ohio entries are null with a flag. The PLACES insurance measure (adults 18 to 64, survey-based) differs from the SAHIE rate (under 65, Census model); expect them to disagree.
+**Known quirks.** No state figure in the county file. The page compares each county with the median of Ohio's 88 counties instead, labels it "median county", and leaves these measures out of the overview count. The PLACES insurance measure (adults 18 to 64, survey-based) differs from the SAHIE rate (under 65, Census model); expect them to disagree.
 
 **Uncertainty.** Model-based. Counties with similar population makeup get similar estimates, so real local differences can be muted.
 

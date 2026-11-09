@@ -36,7 +36,7 @@ header p{margin:0 0 6px;color:var(--ink2);max-width:860px}
 #map svg{width:100%;height:auto;display:block}
 #map path{stroke:#fff;stroke-width:.8;cursor:pointer}
 #map path:hover{stroke:var(--ink);stroke-width:1.6}
-#map path.sel{stroke:var(--sel);stroke-width:2.4}
+#map path.sel{stroke:#000;stroke-width:4}
 .legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink2);margin:8px 0}
 .legend span{display:inline-flex;align-items:center;gap:4px}
 .legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
@@ -52,6 +52,7 @@ select{font:inherit;padding:5px 8px;border:1px solid var(--rule);border-radius:6
 .tile.on{border-color:var(--ink)}
 .tile .lab{font-size:12px;color:var(--ink2);min-height:2.6em}
 .tile .val{font-size:22px;font-family:var(--serif)}
+.tile .moe{font-family:var(--sans);font-size:12px;color:var(--ink3)}
 .tile .cmp{font-size:12px;color:var(--ink2)}
 .tile .flag{font-size:11px;color:#9e1f22}
 .tile svg{display:block;width:100%;height:42px;margin-top:4px;overflow:visible}
@@ -85,7 +86,7 @@ footer{margin-top:16px;font-size:12px;color:var(--ink3);border-top:1px solid var
 <header>
   <h1>Ohio County Dashboard</h1>
   <p>How each of Ohio's 88 counties is doing on jobs, income, health and population, from public federal data. Pick an issue, then click a county for its scorecard.</p>
-  <span class="draft">Working draft, built November 9, 2026. Numbers have not yet been independently checked.</span>
+  <span class="draft">Working draft, November 9, 2026. Every number was recomputed from the publishers by an independent check; the page is still under review.</span>
 </header>
 <nav class="tabs" id="tabs"></nav>
 <div class="chips" id="chips"></div>
@@ -150,7 +151,8 @@ const val = (f, id) => { const o = get(f, id); return o && o.latest !== null && 
 // change from a base period (2019 if present, else the first) to the latest
 function baseIdx(series){
   if (!series || series.length < 2) return -1;
-  let i = series.findIndex(p => p[0].slice(0,4) >= "2019");
+  const end = p => p[0].length > 7 ? p[0].slice(-4) : p[0].slice(0, 4);  // "2015-2019" ends 2019; "2020-12" ends 2020
+  let i = series.findIndex(p => end(p) >= "2019");
   if (i < 0 || i === series.length - 1) i = 0;
   return i;
 }
@@ -277,9 +279,9 @@ function drawMap(){
     color = f => cl(h[f].n);
     legend = cols.map((c, i) => [c, i === 0 ? "0" : i === 4 ? br[3] + " or more" : br[i-1] + (br[i]-1 > br[i-1] ? " to " + (br[i]-1) : "")]);
     title = "Where problems stack up";
-    sub = `Number of the ${n} measures on this page where the county is in the worst fourth of Ohio's 88 counties.`;
+    sub = `How many of ${n} selected measures put the county in the worst fourth of Ohio's 88 counties.`;
     kind = "Measures in the worst fourth";
-    note = "A count, not a score. Each measure counts once, and some measures overlap (for example two poverty measures). Click a county for its scorecard.";
+    note = `A count, not a score. The ${n} measures are the ones that compare a county with a statewide figure and cover all 88 counties; duplicates of the same idea are counted once. The full list is under "Show notes and disclaimers." Click a county for its scorecard.`;
     valueOf = f => h[f].n;
     rankRows = FIPS.slice().sort((a, b) => h[b].n - h[a].n).map(f => [f, h[f].n + " of " + h[f].of]);
     $("ranktitle").textContent = "Counties with the most measures in the worst fourth";
@@ -303,7 +305,7 @@ function drawMap(){
   $("mtitle").textContent = title; $("msub").textContent = sub; $("mnote").textContent = note;
   const paths = FIPS.map(f => { const c = color(f);
     return `<path d="${GEO.counties[f].d}" data-f="${f}" fill="${c || "url(#nodata)"}" class="${f === st.county ? "sel" : ""}"><title></title></path>`; }).join("");
-  const sel = st.county ? `<path d="${GEO.counties[st.county].d}" fill="none" stroke="#121212" stroke-width="2.6" pointer-events="none"/>` : "";
+  const sel = st.county ? `<path d="${GEO.counties[st.county].d}" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round" pointer-events="none"/><path d="${GEO.counties[st.county].d}" fill="none" stroke="#000" stroke-width="4" stroke-linejoin="round" pointer-events="none"/>` : "";
   $("map").innerHTML = `<svg viewBox="${GEO.viewBox}" role="img" aria-label="${title}, map of Ohio counties"><defs><pattern id="nodata" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#f5f5f3"/><line x1="0" y1="0" x2="0" y2="6" stroke="#c8c6bf" stroke-width="2"/></pattern></defs>${paths}${sel}</svg>`;
   $("map").querySelectorAll("path[data-f]").forEach(p => {
     const f = p.dataset.f;
@@ -360,7 +362,7 @@ function tile(f, id){
   const m = M[id], o = get(f, id), r = ranks(id), c = change(f, id), vo = f === "ohio" ? null : vsOhio(f, id);
   return `<div class="tile ${id === st.metric ? "on" : ""}" data-m="${id}">
     <div class="lab">${m.label}<br><span class="muted">${o && o.period ? o.period : m.period_label}</span></div>
-    <div class="val">${fmt(val(f, id), id)}${badge(vo, id)}</div>
+    <div class="val">${fmt(val(f, id), id)}${o && o.moe ? `<span class="moe"> ±${fmt(o.moe, id).replace(/^\$/, "$").replace(/%$/, "")}${m.unit === "pct" ? " pts" : ""}</span>` : ""}${badge(vo, id)}</div>
     ${o && o.flag ? `<div class="flag">${FLAG(o.flag)}</div>` : ""}
     <div class="cmp">${f !== "ohio" ? (M[id].ref ? "Median county " : "Ohio ") + fmt(val("ohio", id), id) : ""}${f !== "ohio" && r[f] && m.better !== "none" ? " · rank " + r[f] + " of " + r._n : ""}${c ? " · " + fmtChange(c, id) + " since " + c.from + (m.nominal ? " (not adjusted for inflation)" : "") : ""}</div>
     ${spark(f, id)}
@@ -377,7 +379,7 @@ function industryBlock(f){
   const ts = val(f, "top_industry_share");
   if (top3 && top3.length){
     const t = top3[0];
-    h += `<div class="callout"><b>Concentration check.</b> At the detailed industry level, the largest single industry here is <b>${t.title}</b>, with ${t.share.toFixed(1)}% of private-sector jobs` +
+    h += `<div class="callout"><b>Concentration check.</b> ${(get(f, "top_industry_share") || {}).flag ? "Among the industries BLS publishes for this county, the largest" : "At the detailed industry level, the largest single industry here"} is <b>${t.title}</b>, with ${t.share.toFixed(1)}% of private-sector jobs` +
       (f !== "ohio" && val("ohio","top_industry_share") !== null ? ` (Ohio's largest industry holds ${val("ohio","top_industry_share").toFixed(1)}%)` : "") + `. ` +
       `The top three industries hold ${top3.reduce((s, x) => s + x.share, 0).toFixed(1)}% together.` +
       ((get(f, "top_industry_share") || {}).flag ? ` <span class="muted">${get(f, "top_industry_share").flag}.</span>` : "") + `</div>`;
@@ -416,7 +418,11 @@ function incomeBlock(f){
   if (dist && dist.shares){
     // cumulative share of households below each bracket's upper bound; brackets have uneven widths, so a cumulative line is the honest shape
     const tops = [10,15,20,25,30,35,40,45,50,60,75,100,125,150,200];  // thousands of dollars
-    const V = Object.keys(dist.shares).sort().map(k => { let c = 0; return {period:k, pts:[[0,0]].concat(tops.map((t, i) => [t, c += dist.shares[k][i]]))}; });
+    // ACS 5-year dollars are in the period's final year; move each bracket edge into 2024 dollars with R-CPI-U-RS
+    const PI = ((DATA.extras || {}).price_index || {}).years || {};
+    const toBase = k => PI["2024"] && PI[k.slice(-4)] ? PI["2024"] / PI[k.slice(-4)] : null;
+    const V = Object.keys(dist.shares).sort().filter(k => toBase(k)).map(k => { let c = 0; const r = toBase(k);
+      return {period:k, r, pts:[[0,0]].concat(tops.map((t, i) => [t * r, c += dist.shares[k][i]]))}; });
     const cols = ["#9ec5f4","#2a78d6","#104281"].slice(3 - V.length);
     const W = 640, H = 250, L = 40, R = 12, T = 10, B = 34;
     const x = t => L + t / 200 * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
@@ -424,11 +430,11 @@ function incomeBlock(f){
     [0, 25, 50, 75, 100].forEach(t => g += `<line x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}" stroke="#e3e2dd"/><text x="${L-6}" y="${y(t)+4}" font-size="11" text-anchor="end" fill="#8a8780">${t}%</text>`);
     [0, 50, 100, 150, 200].forEach(t => g += `<text x="${x(t)}" y="${H-12}" font-size="11" text-anchor="middle" fill="#8a8780">$${t ? t + ",000" : "0"}</text>`);
     V.forEach((v, k) => {
-      g += `<path d="${v.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("")}" fill="none" stroke="${cols[k]}" stroke-width="2"/>`;
-      v.pts.slice(1).forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="6" fill="transparent" data-t="${v.period}: ${p[1].toFixed(1)}% of households had income under $${p[0]},000"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="${cols[k]}" pointer-events="none"/>`);
+      g += `<path d="${v.pts.filter(p => p[0] <= 200).map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("")}" fill="none" stroke="${cols[k]}" stroke-width="2"/>`;
+      v.pts.slice(1).filter(p => p[0] <= 200).forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="6" fill="transparent" data-t="${v.period}: ${p[1].toFixed(1)}% of households had income under $${Math.round(p[0]).toLocaleString("en-US")},000 in 2024 dollars"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="2.5" fill="${cols[k]}" pointer-events="none"/>`);
     });
     g += `</svg>`;
-    h += `<h3>Share of households earning less than each income level</h3><p class="sub">Read up from any dollar amount: a higher line means more households below that income. ACS 5-year estimates, in each period's own dollars (not adjusted for inflation), so part of the shift over time is inflation. Households at $200,000 or more are above the right edge.</p><div class="dist">${g}</div>
+    h += `<h3>Share of households earning less than each income level</h3><p class="sub">Read up from any dollar amount: a higher line means more households below that income. All three periods are in 2024 dollars, adjusted for inflation with the Census Bureau's price index for income (R-CPI-U-RS). ACS 5-year estimates. The chart stops at $200,000.</p><div class="dist">${g}</div>
       <div class="legend lgw">${V.map((v, k) => `<span style="color:${cols[k]}"><b>${v.period}</b></span>`).join("")}</div>`;
   }
   return h;
@@ -439,17 +445,17 @@ function componentsBlock(f){
   if (!C || !C.natural_change) return "";
   const at = (k, y) => ((C[k] || []).find(p => p[0] === y) || [0, null])[1];
   const c = C.natural_change.map(p => ({year:p[0], natural:p[1], international:at("net_international_migration", p[0]), domestic:at("net_domestic_migration", p[0])}));
-  let h = `<h3>Where population change came from</h3><p class="sub">Census Bureau estimates, people per year (2020 is a partial year, April to July). Natural change is births minus deaths.</p><table><tr><th>Year</th><th class="n">Natural change</th><th class="n">Moved in from abroad</th><th class="n">Net move from other U.S. counties</th></tr>`;
+  let h = `<h3>Where population change came from</h3><p class="sub">Census Bureau estimates, people per year (2020 is a partial year, April to July). Natural change is births minus deaths.</p><table><tr><th>Year</th><th class="n">Natural change</th><th class="n">Net international migration</th><th class="n">Net move from other U.S. counties</th></tr>`;
   c.forEach(r => h += `<tr><td>${r.year}</td><td class="n">${fmt(r.natural, "population")}</td><td class="n">${fmt(r.international, "population")}</td><td class="n">${fmt(r.domestic, "population")}</td></tr>`);
   return h + `</table>`;
 }
 
 function reachBlock(){
   const rows = reach();
-  let h = `<h3>How widespread is each problem?</h3><p class="sub">For each measure, the number of counties doing worse than Ohio as a whole, and how many people live in those counties. A problem shared by many counties is one where a single statewide policy could reach the most people.</p>
+  let h = `<h3>How widespread is each problem?</h3><p class="sub">For each measure, the number of counties doing worse than Ohio as a whole, and how many people live in those counties. This shows which problems are shared across many counties and which sit in a few.</p>
     <table><tr><th>Measure</th><th class="n">Counties worse than Ohio</th><th class="n">People in those counties</th><th class="n">Counties getting worse</th></tr>`;
   rows.forEach(r => h += `<tr class="click" data-m="${r.id}"><td>${M[r.id].label}<br><span class="muted">${M[r.id].period_label}</span></td><td class="n">${r.n} of 88</td><td class="n">${r.pop ? (r.pop/1e6).toFixed(1) + " million" : "n/a"}</td><td class="n">${r.worsening === null ? "n/a" : r.worsening + " of 88"}</td></tr>`);
-  return h + `</table><p class="sub">"Getting worse" compares the latest value with 2019 (or the earliest year shown, if later). Population is the Census Bureau estimate for July 1, 2025. Dollar measures are not counted as "getting worse" because they are not adjusted for inflation. Measures with no statewide figure are left out.</p>`;
+  return h + `</table><p class="sub">"Getting worse" compares the latest value with 2019: the 2019 annual figure, or the 2015-2019 ACS period, or the earliest period after 2019 when nothing earlier exists. Population is the Census Bureau estimate for July 1, 2025. Dollar measures are not counted as "getting worse" because they are not adjusted for inflation. Measures with no statewide figure are left out.</p>`;
 }
 
 function drawPanel(){
@@ -470,7 +476,7 @@ function drawPanel(){
   } else {
     const ids = themeMetrics(st.theme);
     h += `<div class="tiles">${ids.map(id => tile(f, id)).join("")}</div>`;
-    h += `<p class="sub" style="margin-top:6px">Solid line: ${NAME(f)}. ${f !== "ohio" ? "Dashed gray line: Ohio (left off for counts, where the scales differ). " : ""}Click a tile to map that measure.</p>`;
+    h += `<p class="sub" style="margin-top:6px">± is the publisher's 90% margin of error, where one exists. Solid line: ${NAME(f)}. ${f !== "ohio" ? "Dashed gray line: Ohio (left off for counts, where the scales differ). " : ""}Click a tile to map that measure.</p>`;
     if (st.theme === "jobs") h += industryBlock(f);
     if (st.theme === "income") h += incomeBlock(f);
     if (st.theme === "people") h += componentsBlock(f);
@@ -485,7 +491,7 @@ function drawPanel(){
 
 function drawNotes(){
   const ids = Object.keys(M).filter(id => !M[id].hidden);
-  $("notes").innerHTML = `<p>This is a working draft. Each county is compared with Ohio as a whole, using the publisher's own statewide figure. "Near Ohio" means within 3% of Ohio's value (or 0.3 points for percentages). The overview counts how many measures put a county in the worst fourth of Ohio's counties; it does not weigh one measure against another, and it is not a ranking of how well a county is run. County figures for small counties carry wide margins of error, and many are modeled estimates rather than counts.</p>
+  $("notes").innerHTML = `<p>This is a working draft. Each county is compared with Ohio as a whole, using the publisher's own statewide figure, with two exceptions: CDC PLACES has no statewide figure, so those measures compare with the median county; and CDC's statewide overdose figure counts deaths that happened in Ohio, while county figures count residents. "Near Ohio" means within 3% of Ohio's value, or 0.3 points for percentages, whichever is larger. The overview counts how many measures put a county in the worst fourth of Ohio's counties; it does not weigh one measure against another, and it is not a ranking of how well a county is run. County figures for small counties carry wide margins of error, and many are modeled estimates rather than counts.</p>
   <table><tr><th>Measure</th><th>Latest</th><th>Source</th><th>Note</th></tr>${ids.map(id => `<tr><td>${M[id].label}</td><td>${M[id].period_label}</td><td>${M[id].source}<br><span class="muted">${M[id].vintage || ""}</span></td><td>${M[id].note}</td></tr>`).join("")}</table>`;
   $("built").textContent = DATA.built ? "Data pulled " + DATA.built + "." : "";
 }

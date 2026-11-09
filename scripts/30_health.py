@@ -93,7 +93,7 @@ sahie("0", "uninsured_under65", "Uninsured rate, under age 65",
       "Share of people under 65 with no health insurance. SAHIE is a model-based estimate that "
       "combines survey and administrative records; the margin shown is the 90% margin of error.")
 sahie("1", "uninsured_under65_low_income", "Uninsured rate, under 65 with low income",
-      "Share of people under 65 in households at or below 200% of the poverty line with no health "
+      "Share of people under 65 with income at or below 200% of the poverty line with no health "
       "insurance. Model-based estimate; the margin shown is the 90% margin of error.")
 
 # --------------------------------------------------------------------------- 2. Overdose deaths

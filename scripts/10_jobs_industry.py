@@ -315,7 +315,7 @@ def qcew():
 
     src = "BLS Quarterly Census of Employment and Wages"
     vint = f"annual averages {first}-{last}; pulled {TODAY}"
-    where = "Jobs are counted where the job is, not where the worker lives. Covers jobs under state unemployment insurance."
+    where = "Jobs are counted where the job is, not where the worker lives. Covers jobs under state unemployment insurance and, in the all-ownership total, federal civilian jobs."
     base = {"theme": "jobs", "source": src, "vintage": vint, "period_label": f"{last} annual average"}
     metrics = {
         "private_jobs": dict(base, label="Private-sector jobs", unit="count", decimals=0, better="none",
@@ -338,7 +338,7 @@ def qcew():
                                         "could be larger; the flag shows when more than 20% of private jobs "
                                         "sit in withheld industries."),
         "concentration_hhi": dict(base, label="Job concentration index", unit="index", decimals=0, better="lower",
-                                  note="Herfindahl index of private jobs across the 11 NAICS supersectors, 0 to 10,000; "
+                                  note="Herfindahl index of private jobs across the 10 private NAICS supersectors plus BLS's unclassified group, 0 to 10,000; "
                                        "higher means jobs depend on fewer sectors. Computed on disclosed sectors "
                                        "only, so it reads low where sectors are withheld."),
     }

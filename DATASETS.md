@@ -199,9 +199,9 @@ estimates and has no sampling error; it is stored as 0 in sums.
 periods.
 
 **Units and rounding.** Shares are percents (0-100) at full precision. Dollar values are nominal: each
-period is in dollars of its final year (2014, 2019, 2024), with no inflation adjustment. Income brackets in
-`extras.income_distribution` are the same nominal dollar cutoffs in every period, so part of any shift up
-the brackets is inflation.
+period is in dollars of its final year (2014, 2019, 2024), with no inflation adjustment in the data. The page's
+income-distribution chart moves each period's bracket edges into 2024 dollars with R-CPI-U-RS (see "Price
+index" below), so the three periods compare in real terms. Median household income tiles stay nominal and say so.
 
 **Known quirks.** The poverty line is a single federal measure that does not change with local living
 costs. Near-poverty and below-200% counts are people, not households or families. Survey answers tend to
@@ -358,7 +358,7 @@ Built by `scripts/30_health.py` into `data/processed/health.json`. Raw pulls are
 
 **Units and rounding.** Percent of adults 18 and older (18 to 64 for the insurance measure), one decimal. The 95% confidence interval is in `extras.places_ci95` as [low, high].
 
-**Known quirks.** No state figure in the county file, so the Ohio entries are null with a flag. The PLACES insurance measure (adults 18 to 64, survey-based) differs from the SAHIE rate (under 65, Census model); expect them to disagree.
+**Known quirks.** No state figure in the county file. The page compares each county with the median of Ohio's 88 counties instead, labels it "median county", and leaves these measures out of the overview count. The PLACES insurance measure (adults 18 to 64, survey-based) differs from the SAHIE rate (under 65, Census model); expect them to disagree.
 
 **Uncertainty.** Model-based. Counties with similar population makeup get similar estimates, so real local differences can be muted.
 
@@ -390,3 +390,23 @@ Built by `scripts/30_health.py` into `data/processed/health.json`. Raw pulls are
 
 **License and attribution.** Public domain. Credit: U.S. Census Bureau, Small Area Income and Poverty Estimates.
 
+
+## Price index, R-CPI-U-RS (U.S. Bureau of Labor Statistics)
+
+**What it is.** The Consumer Price Index retroactive series, all items, U.S. city average, not seasonally
+adjusted, December 1977 = 100. It applies today's CPI methods to past years, and it is the index the Census
+Bureau uses to compare household income across years.
+
+**Where it comes from.** https://www.bls.gov/cpi/research-series/r-cpi-u-rs-allitems.xlsx, one sheet,
+monthly values plus an annual average column. `scripts/22_prices.py` keeps the annual averages.
+
+**How we use it.** ACS 5-year dollars are in the final year of the period. To put a 2010-2014 bracket edge in
+2024 dollars we multiply it by index(2024) / index(2014) = 462.511 / 347.7 = 1.3302; for 2015-2019, by
+462.511 / 375.813. Only the income-distribution chart uses it.
+
+**Known quirks.** October 2025 is missing because of the 2025 lapse in appropriations; BLS computed the 2025
+annual average from 11 months. We use only 2014, 2019 and 2024.
+
+**Revisions.** The research series is revised each year when BLS updates it; we pull the current file.
+
+**License and attribution.** U.S. government work, public domain. Credit the U.S. Bureau of Labor Statistics.
