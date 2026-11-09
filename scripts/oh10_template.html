@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Ohio's 10th District</title>
+<meta name="description" content="Ohio's 10th Congressional District (2025 map) by census tract and county, from public Census Bureau and CDC data. Draft.">
+<style>
+/* Layout: header, three tabs; neighborhoods = map card beside a tract scorecard, stacking on narrow screens */
+:root{
+  --bg:#ffffff; --tile:#f5f5f3; --tile-hover:#ebebe7; --ink:#121212; --ink2:#55534e; --ink3:#8a8780; --rule:#e3e2dd;
+  --serif:Georgia,"Times New Roman",Times,serif; --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --good3:#104281; --good2:#2a78d6; --good1:#9ec5f4; --mid:#e6e5e1; --bad1:#f4b4ac; --bad2:#e34948; --bad3:#9e1f22;
+  --outside:#f1f0ec; --onink:#ffffff; --warnink:#9e1f22; --worsebg:#fde4e1; --betterbg:#dceafb;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:1320px;margin:0 auto;padding-block:16px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));container-type:inline-size}
+header h1{font-family:var(--serif);font-weight:400;font-size:30px;margin:4px 0 2px;text-wrap:balance}
+header p{margin:0 0 6px;color:var(--ink2);max-width:860px}
+.draft{display:inline-block;font-size:12px;border:1px solid var(--bad2);color:var(--warnink);padding:2px 8px;border-radius:10px;margin:4px 0 10px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:12px}
+.tabs button,.chips button,.seg button{font:inherit;border:1px solid var(--rule);background:var(--tile);color:var(--ink);padding:6px 12px;border-radius:18px;cursor:pointer}
+.tabs button{font-size:15px;font-weight:600}
+.tabs button[aria-pressed=true],.chips button[aria-pressed=true],.seg button[aria-pressed=true]{background:var(--ink);color:var(--onink);border-color:var(--ink)}
+button:focus-visible,tr:focus-visible,.rank div:focus-visible{outline:2px solid var(--good2);outline-offset:2px}
+.chipgroups{display:grid;gap:6px;margin-bottom:12px}
+.chipgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chipgroup .gl{font-size:12px;color:var(--ink3);min-width:120px;text-transform:uppercase;letter-spacing:.04em}
+.chips button{font-size:13px;padding:4px 10px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@container (min-width:980px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.card{background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:14px;min-width:0;overflow-x:auto}
+.card h2{font-family:var(--serif);font-weight:400;font-size:20px;margin:0 0 2px;text-wrap:balance}
+.card h3{font-size:14px;margin:16px 0 6px}
+.sub{color:var(--ink2);font-size:13px;margin:0 0 8px;max-width:72ch}
+#map svg{width:100%;height:auto;display:block}
+#map path.t{stroke:var(--bg);stroke-width:.5;cursor:pointer}
+#map path.t:hover{stroke:var(--ink);stroke-width:1.5}
+#map path.sel{stroke:var(--ink);stroke-width:3}
+#map path.out{fill:var(--outside);stroke:var(--bg);stroke-width:.5}
+#map path.co{fill:none;stroke:var(--ink2);stroke-width:1.2;pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink2);margin:8px 0}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
+.rank{font-size:13px;columns:2;column-gap:16px;margin-top:6px}
+@container (max-width:600px){.rank{columns:1}.tiles{grid-template-columns:minmax(0,1fr)}.chipgroup .gl{min-width:0;width:100%}}
+.rank div{display:flex;justify-content:space-between;gap:6px;padding:1px 0;cursor:pointer;break-inside:avoid}
+.rank div:hover{background:var(--tile)}
+.rank b{font-weight:400;color:var(--ink3);width:26px;display:inline-block;flex:none}
+.rank .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.tile{background:var(--tile);border-radius:6px;padding:8px 10px;cursor:pointer;border:1px solid transparent}
+.tile:hover{background:var(--tile-hover)}
+.tile.on{border-color:var(--ink)}
+.tile .lab{font-size:12px;color:var(--ink2);min-height:2.6em}
+.tile .val{font-size:22px;font-family:var(--serif);font-variant-numeric:tabular-nums}
+.tile .moe{font-family:var(--sans);font-size:12px;color:var(--ink3)}
+.tile .cmp{font-size:12px;color:var(--ink2)}
+.tile .weak{font-size:11px;color:var(--warnink)}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:2px;font-family:var(--sans)}
+.b-worse{background:var(--worsebg);color:var(--bad3)}.b-better{background:var(--betterbg);color:var(--good3)}.b-near{background:var(--mid);color:var(--ink2)}
+.callout{border-left:3px solid var(--ink);background:var(--tile);padding:8px 12px;margin:8px 0;font-size:14px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--ink2);white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.grp td{background:var(--tile);font-weight:600;color:var(--ink2);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+tr.click{cursor:pointer}tr.click:hover{background:var(--tile)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--onink);font-size:12px;padding:6px 8px;border-radius:4px;max-width:280px;display:none;z-index:9}
+footer{margin-top:16px;font-size:12px;color:var(--ink3);border-top:1px solid var(--rule);padding-top:8px}
+footer p{max-width:110ch}
+.muted{color:var(--ink3)}
+.linkbtn{font:inherit;font-size:12px;border:1px solid var(--rule);background:var(--tile);color:var(--ink);border-radius:14px;padding:3px 10px;cursor:pointer;margin-top:6px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Ohio's 10th Congressional District</h1>
+  <p id="intro"></p>
+  <span class="draft">Working draft, November 9, 2026. These figures have not yet been through an independent tie-out.</span>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<main id="main"></main>
+<footer id="foot"></footer>
+</div>
+<div id="tip"></div>
+<script>
+const DATA = __DATA__;
+const GEO = __GEO__;
+const M = DATA.metrics;
+const IN = Object.keys(GEO.tracts).filter(t => GEO.tracts[t].in_district).sort();
+const THEMES = [["income","Income and poverty"],["housing","Housing costs"],["work","Work and education"],["health","Health and coverage"],["people","Who lives here"]];
+const DIV = ["#104281","#2a78d6","#9ec5f4","#e6e5e1","#f4b4ac","#e34948","#9e1f22"];
+const SEQ = ["#e3ecf7","#b5cdea","#7aa6d8","#3f78bd","#174a8c"];
+const st = {tab:"district", metric:"below_200_share", tract:null, all:false};
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function fmt(v, id){
+  if (v === null || v === undefined || Number.isNaN(v)) return "n/a";
+  const m = M[id] || DATA.county_table[id] || {}, d = m.decimals ?? 1;
+  if (m.unit === "usd") return "$" + Math.round(v).toLocaleString("en-US");
+  if (m.unit === "count") return Math.round(v).toLocaleString("en-US");
+  if (m.unit === "pct") return v.toFixed(d) + "%";
+  if (m.unit === "per100k") return v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d}) + " per 100,000";
+  return v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+const moeTxt = (c, id) => c && c.moe ? ` <span class="moe">±${M[id].unit === "usd" ? "$" + Math.round(c.moe).toLocaleString("en-US") : M[id].unit === "count" ? Math.round(c.moe).toLocaleString("en-US") : c.moe.toFixed(1) + (M[id].unit === "pct" ? " pts" : "")}</span>` : "";
+const tv = (t, id) => { const c = DATA.tracts[t][id]; return c ? c.v : null; };
+
+// compare a value with a reference: worse / better / near; near = within 3% of the reference or 0.3 points for percentages
+function vs(v, ref, id){
+  const b = M[id].better; if (v === null || ref === null || ref === undefined || b === "none") return null;
+  const band = Math.max(Math.abs(ref) * 0.03, M[id].unit === "pct" ? 0.3 : 0);
+  if (Math.abs(v - ref) <= band) return "near";
+  return (v > ref) === (b === "higher") ? "better" : "worse";
+}
+const BADGE = {worse:["b-worse","worse than"], better:["b-better","better than"], near:["b-near","near"]};
+const badge = (k, what) => k ? `<span class="badge ${BADGE[k][0]}">${BADGE[k][1]} ${what}</span>` : "";
+
+function scale(id){
+  const d = DATA.district[id].v, b = M[id].better;
+  if (b === "none"){
+    const vals = IN.map(t => tv(t, id)).filter(v => v !== null).sort((a, c) => a - c);
+    const q = [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(p * (vals.length - 1))]);
+    return {kind:"seq", q, color:v => v === null ? null : SEQ[q.filter(x => v > x).length],
+      legend:SEQ.map((c, i) => [c, i === 0 ? `under ${fmt(q[0], id)}` : i === 4 ? `${fmt(q[3], id)} or more` : `${fmt(q[i-1], id)} to ${fmt(q[i], id)}`])};
+  }
+  const cls = v => {
+    if (v === null) return null;
+    const k = vs(v, d, id); if (k === "near") return 3;
+    const rel = Math.abs(v - d) / Math.abs(d), lvl = rel >= 0.25 ? 3 : rel >= 0.10 ? 2 : 1;
+    return k === "better" ? 3 - lvl : 3 + lvl;
+  };
+  return {kind:"div", color:v => { const c = cls(v); return c === null ? null : DIV[c]; },
+    legend:[[DIV[0],"25%+ better"],[DIV[1],"10% to 25% better"],[DIV[2],"3% to 10% better"],[DIV[3],"near the district"],[DIV[4],"3% to 10% worse"],[DIV[5],"10% to 25% worse"],[DIV[6],"25%+ worse"]]};
+}
+
+function ranks(id){
+  const b = M[id].better, vals = IN.filter(t => tv(t, id) !== null);
+  vals.sort((a, c) => b === "lower" ? tv(a, id) - tv(c, id) : tv(c, id) - tv(a, id));
+  const r = {}; vals.forEach((t, i) => r[t] = i + 1); r._n = vals.length; return r;
+}
+
+// tracts in the worst fourth of the district's tracts on the most judged measures, counting only reliable estimates
+function hotspots(){
+  const ids = Object.keys(M).filter(id => M[id].better !== "none");
+  const out = {}; IN.forEach(t => out[t] = {n:0, of:0, which:[]});
+  ids.forEach(id => {
+    const ok = IN.filter(t => { const c = DATA.tracts[t][id]; return c && c.v !== null && !c.weak; });
+    const vals = ok.map(t => tv(t, id)).sort((a, c) => a - c);
+    if (vals.length < 20) return;
+    const cut = M[id].better === "lower" ? vals[Math.floor(0.75 * (vals.length - 1))] : vals[Math.ceil(0.25 * (vals.length - 1))];
+    ok.forEach(t => { out[t].of++; const v = tv(t, id); if (M[id].better === "lower" ? v >= cut : v <= cut){ out[t].n++; out[t].which.push(id); } });
+  });
+  return out;
+}
+const HOT = hotspots();
+
+function drawTabs(){
+  const tabs = [["district","District"],["tracts","Neighborhoods (census tracts)"],["counties","Counties"]];
+  $("tabs").innerHTML = tabs.map(([k, l]) => `<button aria-pressed="${st.tab === k}" data-k="${k}">${l}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { st.tab = b.dataset.k; try { history.replaceState(null, "", "#" + st.tab); } catch (e) {} render(); });
+}
+
+function districtView(){
+  const ids = id => Object.keys(M).filter(k => M[k].theme === id && k !== "population");
+  let h = `<div class="card"><h2>How the district compares with Ohio and the U.S.</h2>
+    <p class="sub">The table below shows each measure for the district as a whole, for Ohio and for the U.S. Census figures are 2020-2024 five-year survey estimates (American Community Survey), added up across the district's 220 tracts. Health figures are CDC model estimates for adults, ${M.places_diabetes.period}, which are not published for Ohio or the U.S. in the same form. Click a row to map it by tract.</p>
+    <table><tr><th>Measure</th><th class="n">OH-10</th><th class="n">Ohio</th><th class="n">U.S.</th><th>District vs. Ohio</th></tr>`;
+  THEMES.forEach(([k, lab]) => {
+    h += `<tr class="grp"><td colspan="5">${lab}</td></tr>`;
+    ids(k).forEach(id => {
+      const d = DATA.district[id], o = DATA.ohio[id], u = DATA.us[id];
+      h += `<tr class="click" tabindex="0" data-m="${id}"><td>${M[id].label}</td><td class="n">${fmt(d.v, id)}${d.moe && M[id].unit === "pct" ? ` <span class="muted">±${d.moe.toFixed(1)}</span>` : ""}</td><td class="n">${o ? fmt(o.v, id) : "n/a"}</td><td class="n">${u ? fmt(u.v, id) : "n/a"}</td><td>${o ? badge(vs(d.v, o.v, id), "Ohio") : ""}</td></tr>`;
+    });
+  });
+  h += `</table><p class="sub" style="margin-top:8px">± is the 90% margin of error. "Near" means within 3% of Ohio's value or 0.3 percentage points. The district's median household income is estimated from its income brackets, since medians cannot be added up; the same method gives Ohio's published median within 0.2%.</p></div>`;
+  return h;
+}
+
+function tractsView(){
+  let h = `<div class="chipgroups">`;
+  THEMES.forEach(([k, lab]) => {
+    const ids = Object.keys(M).filter(id => M[id].theme === k && id !== "population");
+    h += `<div class="chipgroup chips"><span class="gl">${lab}</span>${ids.map(id => `<button aria-pressed="${id === st.metric}" data-m="${id}">${M[id].label}</button>`).join("")}</div>`;
+  });
+  h += `</div><div class="grid"><div class="card" id="mapcard"></div><div class="card" id="panel"></div></div>`;
+  return h;
+}
+
+function drawMap(){
+  const id = st.metric, sc = scale(id), d = DATA.district[id];
+  const dtext = `The district as a whole: ${fmt(d.v, id)}.`;
+  let svg = `<svg viewBox="${GEO.viewBox}" role="img" aria-label="Map of census tracts in Ohio's 10th District: ${esc(M[id].label)}"><defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern><pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern></defs>`;
+  Object.entries(GEO.tracts).forEach(([t, g]) => { if (!g.in_district) svg += `<path class="out" d="${g.d}"/>`; });
+  IN.forEach(t => {
+    const c = DATA.tracts[t][id], col = sc.color(c ? c.v : null);
+    svg += `<path class="t${t === st.tract ? " sel" : ""}" data-t="${t}" d="${GEO.tracts[t].d}" fill="${col || "url(#nodata)"}"/>`;
+    if (c && c.weak && c.v !== null) svg += `<path d="${GEO.tracts[t].d}" fill="url(#weak)" pointer-events="none"/>`;
+  });
+  Object.values(GEO.counties).forEach(c => svg += `<path class="co" d="${c.d}"/>`);
+  if (st.tract) svg += `<path d="${GEO.tracts[st.tract].d}" fill="none" stroke="#121212" stroke-width="3" pointer-events="none"/>`;
+  Object.values(GEO.counties).forEach(c => {
+    const pts = (c.d.match(/-?\d+(\.\d+)?,-?\d+(\.\d+)?/g) || []).map(p => p.split(",").map(Number));
+    if (!pts.length) return;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x = c.name === "Butler" ? Math.min(...xs) + 40 : (Math.min(...xs) + Math.max(...xs)) / 2, y = c.name === "Butler" ? Math.max(...ys) - 8 : Math.min(...ys) + 14;
+    svg += `<text x="${x}" y="${y}" font-size="12" fill="#55534e" text-anchor="middle" pointer-events="none" style="paint-order:stroke" stroke="#ffffff" stroke-width="3">${c.name} County</text>`;
+  });
+  svg += `</svg>`;
+  const r = ranks(id), list = Object.keys(r).filter(k => k !== "_n").sort((a, b) => r[a] - r[b]);
+  const show = st.all ? list : list.slice(0, 10);
+  const weakN = IN.filter(t => DATA.tracts[t][id] && DATA.tracts[t][id].weak && DATA.tracts[t][id].v !== null).length;
+  $("mapcard").innerHTML = `<h2>${M[id].label}</h2>
+    <p class="sub">${M[id].period}, by census tract. ${sc.kind === "div" ? "Colors compare each tract with the district as a whole." : "Colors split the district's tracts into fifths, low to high."} ${dtext}</p>
+    <div id="map">${svg}</div>
+    <div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}
+      <span><i style="background:url(#);background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN} of ${IN.length} tracts)</span>
+      <span><i style="background:var(--outside);border:1px solid var(--rule)"></i>Butler County outside the district</span></div>
+    <p class="sub">${M[id].note} Source: ${M[id].source}.</p>
+    <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
+    <div class="rank">${show.map(t => `<div tabindex="0" data-t="${t}"><b>${r[t]}</b><span class="nm">${GEO.tracts[t].label}${DATA.tracts[t][id].weak ? " *" : ""}</span><span class="v">${fmt(tv(t, id), id)}</span></div>`).join("")}</div>
+    <button class="linkbtn" id="all">${st.all ? "Show top 10" : `Show all ${list.length} tracts`}</button>
+    <p class="sub" style="margin-top:6px">* uncertain estimate: the margin of error is large compared with the value (coefficient of variation above ${DATA.cv_max}%). Rank 1 is ${M[id].better === "none" ? "the highest value" : "the best value"}.</p>`;
+  if (M[id].better !== "none") {
+    $("mapcard").querySelector("h3").textContent = "Worst first";
+    const bad = list.slice().reverse(); const s2 = st.all ? bad : bad.slice(0, 10);
+    $("mapcard").querySelector(".rank").innerHTML = s2.map(t => `<div tabindex="0" data-t="${t}"><b>${r[t]}</b><span class="nm">${GEO.tracts[t].label}${DATA.tracts[t][id].weak ? " *" : ""}</span><span class="v">${fmt(tv(t, id), id)}</span></div>`).join("");
+  }
+  const tip = $("tip");
+  $("mapcard").querySelectorAll("path.t").forEach(p => {
+    const t = p.dataset.t, c = DATA.tracts[t][id];
+    p.onmousemove = e => { tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 12, innerWidth - 290) + "px"; tip.style.top = (e.clientY + 12) + "px";
+      tip.innerHTML = `<b>${GEO.tracts[t].label}</b><br>${fmt(c ? c.v : null, id)}${c && c.moe ? " ±" + (M[id].unit === "usd" ? "$" + Math.round(c.moe).toLocaleString("en-US") : c.moe.toFixed(1)) : ""}${c && c.weak && c.v !== null ? "<br>Uncertain estimate" : ""}`; };
+    p.onmouseleave = () => tip.style.display = "none";
+    p.onclick = () => { st.tract = t; drawMap(); drawPanel(); };
+  });
+  $("mapcard").querySelectorAll(".rank div").forEach(d => { d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; st.tract = d.dataset.t; drawMap(); drawPanel(); }; });
+  $("all").onclick = () => { st.all = !st.all; drawMap(); };
+}
+
+function drawPanel(){
+  const P = $("panel");
+  if (!st.tract){
+    const list = IN.slice().sort((a, b) => HOT[b].n - HOT[a].n || a.localeCompare(b)).slice(0, 15);
+    P.innerHTML = `<h2>Tracts in the worst fourth on the most measures</h2>
+      <p class="sub">For each measure that has a better and worse direction, this counts the tracts in the district's worst fourth. Uncertain estimates are not counted. The list below shows the 15 tracts with the highest counts. Click one, or any tract on the map, for its scorecard.</p>
+      <table><tr><th>Tract</th><th>County</th><th class="n">Worst fourth on</th></tr>${list.map(t => `<tr class="click" tabindex="0" data-t="${t}"><td>${GEO.tracts[t].label}</td><td>${GEO.tracts[t].county}</td><td class="n">${HOT[t].n} of ${HOT[t].of}</td></tr>`).join("")}</table>
+      <p class="sub" style="margin-top:8px">A high count means a tract trails most of the district on many measures at once. It does not show why.</p>`;
+    P.querySelectorAll("tr.click").forEach(r => r.onclick = () => { st.tract = r.dataset.t; drawMap(); drawPanel(); });
+    return;
+  }
+  const t = st.tract, g = GEO.tracts[t], pop = DATA.tracts[t].population;
+  let h = `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h2>${g.label}</h2>
+    <p class="sub">${g.county} County · census tract ${t} · about ${fmt(pop.v, "population")} residents (2020-2024)${g.pop2020_in_district < g.pop2020 ? ` · ${Math.round(g.pop2020_in_district / g.pop2020 * 100)}% of its 2020 residents are inside the district` : ""}</p></div>
+    <button class="linkbtn" id="back">Back to the list</button></div>
+    <div class="callout">This tract is in the district's worst fourth on <b>${HOT[t].n} of ${HOT[t].of}</b> measures with a reliable estimate.</div>`;
+  THEMES.forEach(([k, lab]) => {
+    const ids = Object.keys(M).filter(id => M[id].theme === k && id !== "population");
+    h += `<h3>${lab}</h3><div class="tiles">`;
+    ids.forEach(id => {
+      const c = DATA.tracts[t][id], r = ranks(id);
+      h += `<div class="tile${id === st.metric ? " on" : ""}" tabindex="0" data-m="${id}"><div class="lab">${M[id].label}</div>
+        <div class="val">${fmt(c.v, id)}${moeTxt(c, id)}${badge(vs(c.v, DATA.district[id].v, id), "district")}</div>
+        <div class="cmp">District ${fmt(DATA.district[id].v, id)}${DATA.ohio[id] ? " · Ohio " + fmt(DATA.ohio[id].v, id) : ""}${r[t] ? ` · rank ${r[t]} of ${r._n}` : ""}</div>
+        ${c.weak && c.v !== null ? `<div class="weak">Uncertain estimate</div>` : ""}</div>`;
+    });
+    h += `</div>`;
+  });
+  h += `<p class="sub" style="margin-top:8px">Rank 1 is the best value for measures with a better and worse direction, and the highest value for the rest. Click a tile to map that measure.</p>`;
+  P.innerHTML = h;
+  $("back").onclick = () => { st.tract = null; drawMap(); drawPanel(); };
+  P.querySelectorAll(".tile").forEach(x => x.onclick = () => { st.metric = x.dataset.m; render(); });
+}
+
+function countiesView(){
+  const T = DATA.county_table, cols = ["Montgomery","Greene","Butler","Ohio","U.S."];
+  let h = `<div class="card"><h2>Measures published only for whole counties</h2>
+    <p class="sub">These sources do not report by tract, so this table shows the three counties in the district. Montgomery and Greene are entirely in the district. Butler County figures cover the whole county, and only about ${Math.round(GEO.tracts && 81354 / 390357 * 100)}% of Butler County residents live in the district. Values are the same ones the statewide county dashboard shows.</p>
+    <table><tr><th>Measure</th>${cols.map(c => `<th class="n">${c}</th>`).join("")}<th>Period</th></tr>`;
+  Object.entries(T).forEach(([id, r]) => {
+    h += `<tr><td>${r.label}</td>${cols.map(c => { const x = r[c] || {}; return `<td class="n">${fmt(x.v, id)}${x.flag && x.v !== null ? ` <span class="muted" title="${esc(x.flag)}">*</span>` : ""}</td>`; }).join("")}<td class="muted">${esc(r.period_label || "")}</td></tr>`;
+  });
+  h += `</table><p class="sub" style="margin-top:8px">n/a means the publisher withheld the figure or does not publish it for that place. For crime, it means agencies covering at least 80% of the county's residents did not report a full year; Greene County fell below that in 2025. * marks a figure the source flags; hover for the reason. Sources: ${[...new Set(Object.values(T).map(r => r.source))].map(esc).join("; ")}.</p></div>`;
+  return h;
+}
+
+function render(){
+  drawTabs();
+  if (st.tab === "district") $("main").innerHTML = districtView();
+  if (st.tab === "counties") $("main").innerHTML = countiesView();
+  if (st.tab === "tracts"){ $("main").innerHTML = tractsView(); drawMap(); drawPanel();
+    $("main").querySelectorAll(".chipgroup button").forEach(b => b.onclick = () => { st.metric = b.dataset.m; st.all = false; render(); }); }
+  $("main").querySelectorAll("tr.click[data-m]").forEach(r => r.onclick = () => { st.metric = r.dataset.m; st.tab = "tracts"; render(); window.scrollTo(0, 0); });
+}
+
+$("intro").textContent = `All of Montgomery and Greene counties and part of Butler County, under the congressional map the Ohio Redistricting Commission adopted on October 31, 2025. ${GEO.district_pop2020.toLocaleString("en-US")} residents in the 2020 census, in ${IN.length} census tracts. Tracts are neighborhoods of about 4,000 people that the Census Bureau draws to stay fixed for a decade.`;
+$("foot").innerHTML = `<p>District: Ohio Redistricting Commission block assignment file for the plan adopted October 31, 2025, with 2020 census block population. A tract is counted in the district when most of its 2020 residents are; four tracts are split by the line, and the two counted in have 51% and 98% of their residents inside. Tract outlines: Census Bureau TIGERweb (2020 tracts). Tract names: the city, village or Census-designated place holding at least half of the tract's residents, or else the township containing its center.</p>
+<p>Census figures: American Community Survey 5-year estimates, 2020-2024, tables B01001, B03002, B05012, B15003, B18101, B19001, B19013, B22003, B23001, B25070, B25091, B27010, C17002, C27007. Health: CDC PLACES, census tract data, 2025 release. County table: BLS, CDC, FBI, USDA FNS, Ohio Department of Education and Workforce, Ohio Department of Children and Youth, Census Bureau, as listed on the statewide dashboard. Built by Data 4 The People.</p>`;
+const fromHash = () => { const h = location.hash.slice(1); if (["district","tracts","counties"].includes(h)) st.tab = h; };
+fromHash(); addEventListener("hashchange", () => { fromHash(); render(); });
+render();
+</script>
+</body>
+</html>
