@@ -56,3 +56,8 @@ now "People below 200% of the poverty line" (values unchanged).
   DCY), `scripts/43_crime.py` (violent and property crime, FBI Return A, 80% coverage rule),
   `scripts/50_national.py` (Ohio against all states; every Ohio value matched the page's).
 - Priorities tab logic in `scripts/template.html` (issue gaps, "behind" rule, weights, county groups, change window).
+- `scripts/24_demographics.py`: race and ethnicity (six groups, Census estimates), female share, and
+  foreign-born share (ACS B05012). Claude's checks: the six groups add exactly to total population in every
+  county and year; Franklin 56.0% White not Hispanic, 24.0% Black not Hispanic, 8.9% Hispanic, 13.0% foreign-born.
+- Labels: the three population-change rates now say "since 2020" (values unchanged; they were already sums
+  from April 2020, as their notes said).

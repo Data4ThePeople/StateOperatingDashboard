@@ -106,7 +106,7 @@ footer{margin-top:16px;font-size:12px;color:var(--ink3);border-top:1px solid var
 <header>
   <h1>Ohio County Dashboard</h1>
   <p>How each of Ohio's 88 counties is doing on jobs, income, health and population, from public federal data. Pick an issue, then click a county for its scorecard.</p>
-  <span class="draft">Working draft, November 9, 2026. The first set of measures was recomputed from the publishers by an independent check. Measures added since (age, reading, SNAP, childcare, crime, national comparisons and the Priorities tab) are still being checked.</span>
+  <span class="draft">Working draft, November 9, 2026. The first set of measures was recomputed from the publishers by an independent check. Measures added since (age, race and ethnicity, sex, place of birth, reading, SNAP, childcare, crime, national comparisons and the Priorities tab) are still being checked.</span>
 </header>
 <nav class="tabs" id="tabs"></nav>
 <div class="spanbar" id="spanbar"></div>
@@ -168,7 +168,8 @@ function fmt(v, id, signed){
 }
 function fmtChange(c, id){
   if (c === null) return "n/a";
-  return c.kind === "pts" ? (c.v > 0 ? "+" : "") + c.v.toFixed(1) + " pts" : (c.v > 0 ? "+" : "") + c.v.toFixed(1) + "%";
+  const r = Math.abs(c.v) < 0.05 ? 0 : c.v;   // no "-0.0"
+  return (r > 0 ? "+" : "") + r.toFixed(1) + (c.kind === "pts" ? " pts" : "%");
 }
 const get = (f, id) => (f === "ohio" ? DATA.ohio : DATA.counties[f] || {})[id];
 const val = (f, id) => { const o = get(f, id); return o && o.latest !== null && o.latest !== undefined ? o.latest : null; };
@@ -701,6 +702,23 @@ function incomeBlock(f){
   return h;
 }
 
+function whoBlock(f){
+  const ids = ((DATA.extras || {}).race_groups || []).filter(id => M[id]);
+  if (!ids.length || val(f, ids[0]) === null) return "";
+  const row = (id, lab) => `<tr class="click" data-m="${id}"><td>${lab || M[id].label}</td><td class="n">${fmt(val(f, id), id)}${get(f, id).moe ? ` <span class="muted">±${get(f, id).moe.toFixed(1)}</span>` : ""}</td>${f !== "ohio" ? `<td class="n">${fmt(val("ohio", id), id)}</td>` : ""}</tr>`;
+  const hd = `<tr><th></th><th class="n">${NAME(f)}</th>${f !== "ohio" ? '<th class="n">Ohio</th>' : ""}</tr>`;
+  let h = `<h3>Who lives here: race and ethnicity, July 1, 2025</h3><p class="sub">Census Bureau population estimates. Hispanic or Latino residents can be of any race; the other groups are people who reported one race and are not Hispanic, plus people of two or more races. The six groups add to 100%. Click a row to map it.</p><table>${hd}`;
+  ids.forEach(id => h += row(id));
+  h += `</table>`;
+  const more = [["foreign_born_share", "Born outside the U.S. (" + ((get(f, "foreign_born_share") || {}).period || "") + " ACS)"], ["female_share", "Female (July 1, 2025)"]].filter(([id]) => M[id] && val(f, id) !== null);
+  if (more.length){
+    h += `<h3>Place of birth and sex</h3><table>${hd}`;
+    more.forEach(([id, lab]) => h += row(id, lab));
+    h += `</table><p class="sub">Born outside the U.S. includes naturalized citizens and noncitizens; everyone else is native-born. The Census Bureau counts sex, not gender identity, by county.</p>`;
+  }
+  return h;
+}
+
 function componentsBlock(f){
   const C = ((DATA.extras || {}).components || {})[f];
   if (!C || !C.natural_change) return "";
@@ -742,7 +760,7 @@ function drawPanel(){
     h += `<p class="sub" style="margin-top:6px">± is the publisher's 90% margin of error, where one exists. Solid line: ${NAME(f)}. ${f !== "ohio" ? "Dashed gray line: Ohio (left off for counts, where the scales differ). " : ""}Click a tile to map that measure.</p>`;
     if (st.theme === "jobs") h += industryBlock(f);
     if (st.theme === "income") h += incomeBlock(f);
-    if (st.theme === "people") h += componentsBlock(f);
+    if (st.theme === "people") h += whoBlock(f) + componentsBlock(f);
   }
   $("panel").innerHTML = h;
   wirePrio();

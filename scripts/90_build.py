@@ -9,7 +9,7 @@ import json
 
 from common import DIST, PROC, ROOT
 
-LAYERS = ["jobs", "income", "people", "popest", "age", "reading", "enrollment", "childcare", "crime", "health", "prices"]
+LAYERS = ["jobs", "income", "people", "popest", "age", "demographics", "reading", "enrollment", "childcare", "crime", "health", "prices"]
 ORDER = {
     "jobs": ["unemployment_rate", "labor_force_change_pct", "labor_force", "private_jobs", "avg_weekly_wage",
              "top_industry_share", "concentration_hhi", "manufacturing_share", "health_care_share"],
@@ -20,7 +20,8 @@ ORDER = {
     "childcare": ["childcare_need_per_slot", "slots_per_100_under6"],
     "safety": ["violent_crime_rate", "property_crime_rate"],
     "people": ["population_estimate", "population", "pop_change_pct", "prime_age_share", "prime_age_epop", "age65_share",
-               "general_fertility_rate", "net_domestic_migration_rate", "net_intl_migration_rate", "natural_change_rate",
+               "general_fertility_rate", "nh_white_share", "nh_black_share", "hispanic_share", "nh_asian_share",
+               "nh_multi_share", "nh_native_share", "foreign_born_share", "female_share", "net_domestic_migration_rate", "net_international_migration_rate", "natural_change_rate",
                "median_age", "bachelors_or_higher", "hs_or_higher"],
 }
 # housing cost burden is a cost-of-living measure, shown with income
@@ -56,6 +57,9 @@ LABELS = {
     "near_poverty_share": "Near poverty: people at 100% to 199% of the poverty line",
     "health_care_share": "Health care and social assistance share of private jobs",
     "below_200_share": "People below 200% of the poverty line",
+    "natural_change_rate": "Births minus deaths since 2020, per 1,000 people",
+    "net_domestic_migration_rate": "Net moves from other U.S. counties since 2020, per 1,000 people",
+    "net_international_migration_rate": "Net international migration since 2020, per 1,000 people",
 }
 # CDC flags every 2026 month of the statewide file "Underreported due to incomplete data"
 OHIO_FLAGS = {"overdose_deaths_12mo": "CDC marks this statewide figure as underreported due to incomplete data",

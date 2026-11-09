@@ -792,6 +792,35 @@ We match a district on `state_leaid` = "OH-" plus its ODEW IRN, and a community 
 
 **License and attribution.** Public domain. Credit: U.S. Department of Education, National Center for Education Statistics, Common Core of Data, via the Urban Institute Education Data Portal.
 
+## Race and ethnicity, sex, and place of birth
+
+**Race, Hispanic origin and sex.** U.S. Census Bureau, Population Estimates Program, Vintage 2025, county
+characteristics by age, sex, race and Hispanic origin (`cc-est2025-alldata-39.csv`), all ages, July 1 of 2020
+through 2025. Script: `scripts/24_demographics.py`. Ohio is the sum of its 88 counties, since the file has no
+state row.
+
+Six groups that do not overlap and add to 100% of residents:
+- Hispanic or Latino, of any race (`H`).
+- Not Hispanic, by race alone: White (`NHWA`), Black (`NHBA`), Asian (`NHAA`), and American Indian, Alaska
+  Native, Native Hawaiian or Pacific Islander (`NHIA` plus `NHNA`, combined because each is under 0.3% in Ohio).
+- Not Hispanic, two or more races (`NHTOM`).
+
+The script checks that the six groups add exactly to the total population in every county and year. The
+estimates program has no "some other race" group; it assigns those responses to a listed race.
+
+Female share is `TOT_FEMALE` over `TOT_POP`. The Census Bureau counts sex (male or female) and does not publish
+gender identity by county.
+
+These are modeled estimates, and each new vintage revises every year back to 2020. All are descriptive: the
+page compares them with Ohio but does not call a value better or worse, and none is in the overview or the
+Priorities tab.
+
+**Place of birth.** ACS 5-year table B05012 (Nativity in the United States), foreign-born (`B05012_003`) over
+total (`B05012_001`), for 2010-2014, 2015-2019 and 2020-2024. Foreign-born means not a U.S. citizen at birth. It
+includes naturalized citizens and noncitizens. People born in Puerto Rico or other U.S. territories, or abroad
+to U.S.-citizen parents, are native-born. The 90% margin of error uses the Census approximation for proportions.
+Negative margin codes are counted as 0.
+
 ## Priorities tab: how the page combines measures (derived, not a dataset)
 
 **Gap.** For each judged measure, a county's gap is its distance from Ohio's value, signed so that positive means
