@@ -9,7 +9,7 @@ import json
 
 from common import DIST, PROC, ROOT
 
-LAYERS = ["jobs", "income", "people", "popest", "health", "prices"]
+LAYERS = ["jobs", "income", "people", "popest", "age", "health", "prices"]
 ORDER = {
     "jobs": ["unemployment_rate", "labor_force_change_pct", "labor_force", "private_jobs", "avg_weekly_wage",
              "top_industry_share", "concentration_hhi", "manufacturing_share", "health_care_share"],
@@ -17,7 +17,8 @@ ORDER = {
                "median_household_income", "saipe_median_income", "snap_households_share", "rent_burden", "owner_cost_burden", "gini"],
     "health": ["uninsured_under65", "uninsured_under65_low_income", "overdose_rate_per100k", "overdose_deaths_12mo", "medicaid_share",
                "uninsured_acs", "disability_share"],
-    "people": ["population", "pop_change_pct", "net_domestic_migration_rate", "net_intl_migration_rate", "natural_change_rate",
+    "people": ["population_estimate", "population", "pop_change_pct", "prime_age_share", "prime_age_epop", "age65_share",
+               "general_fertility_rate", "net_domestic_migration_rate", "net_intl_migration_rate", "natural_change_rate",
                "median_age", "bachelors_or_higher", "hs_or_higher"],
 }
 # housing cost burden is a cost-of-living measure, shown with income

@@ -40,3 +40,10 @@ reach-table population totals (inputs match; outputs not recomputed).
 **Added after the tie-out, not yet re-checked by it.** Inflation adjustment of the income-distribution chart
 (R-CPI-U-RS, see DATASETS.md), with a switch back to as-published dollars. Label change: `below_200_share` is
 now "People below 200% of the poverty line" (values unchanged).
+
+## Added after the independent tie-out, not yet re-checked by it (November 9, 2026)
+
+- `scripts/23_age.py`: residents 25 to 54, residents 65 and older, prime-age workers (ACS B23001), fertility rate
+  (births per 1,000 women 15 to 44), and the group-quarters flag on prime-age workers (ACS B26001, 5% threshold).
+  Claude's own checks: county births sum to Ohio's births; B23001 found 8 total, 8 employed and 8 armed-forces
+  lines in each of 2014, 2019 and 2024. These need the independent tie-out before Step 1 closes.

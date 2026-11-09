@@ -287,6 +287,42 @@ Estimates Program, Vintage 2025."
 Built by `scripts/30_health.py` into `data/processed/health.json`. Raw pulls are cached under
 `data/raw/census/`, `data/raw/cdc/` and `data/raw/census_pep/`. Pulled 2026-11-09.
 
+## Age structure and fertility (U.S. Census Bureau: Population Estimates Program and ACS table B23001)
+
+**What it is.** Four measures built in `scripts/23_age.py`:
+- Residents 25 to 54 and residents 65 and older, as shares of all residents, July 1 of 2020 to 2025.
+- Prime-age workers: people 25 to 54 with a job (civilian employed plus armed forces) as a share of all
+  people 25 to 54, from ACS 5-year table B23001, for 2010-2014, 2015-2019 and 2020-2024.
+- Fertility rate: births per 1,000 women ages 15 to 44 (the general fertility rate), for years ending June 30,
+  2021 to 2025.
+
+**Where it comes from.** County characteristics by age and sex, Vintage 2025,
+https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/asrh/cc-est2025-agesex-39.csv
+(YEAR 1 is the April 1, 2020 base and is dropped; YEAR 2 to 7 are July 1, 2020 to 2025). Births are
+BIRTHS2021 to BIRTHS2025 from co-est2025-alldata.csv (the same file as the population estimates section).
+B23001 comes from the Census Data API with `group(B23001)`.
+
+**Method.** Prime-age share sums the six five-year groups from 25-29 through 50-54. The fertility rate divides
+births in the year ending June 30 by the average of the July 1 counts of women 15 to 44 at the start and end
+of that year. The age file has no state row; Ohio is the sum of its 88 counties, which in the estimates
+program equals the state total (the script checks that county births sum to the state's births). B23001 lines
+are found by label; the 2014 table labels the armed forces line "In Armed Forces", later years "Armed Forces".
+
+**Changes over time.** The B23001 universe is people 16 and older, including people in group quarters (prisons,
+nursing homes, college dorms), so a county with a large prison or college reads lower on prime-age work than
+its household population would. The page flags every county where 5% or more of residents live in group
+quarters (ACS 2020-2024 B26001 over B01003).
+
+**Uncertainty.** Estimates-program figures carry no margin of error and are revised back to 2020 with each new
+vintage. Births for the latest year are partly estimated by the Census Bureau and revised the next year. B23001
+shares carry a 90% margin of error by the Census approximation for proportions (Pike County, 2020-2024: 70.8%
+±4.1 points).
+
+**Why not births per woman.** The total fertility rate (births per woman over a lifetime) is not published by
+CDC for counties under 100,000 people, so it cannot cover all 88 counties. The general fertility rate can.
+
+**License and attribution.** U.S. government work, public domain. Credit the U.S. Census Bureau.
+
 ## Small Area Health Insurance Estimates, SAHIE (U.S. Census Bureau)
 
 **What it is.** Model-based estimates of the share of people without health insurance, by county and state, for each year. We use people under 65, both sexes, all races, at two income levels: all incomes (`uninsured_under65`) and at or below 200% of the poverty line (`uninsured_under65_low_income`).

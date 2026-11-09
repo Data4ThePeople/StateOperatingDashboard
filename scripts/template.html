@@ -157,6 +157,7 @@ function baseIdx(series){
   return i;
 }
 function change(f, id){
+  if (M[id] && M[id].no_change) return null;   // the measure is already a change or running total
   const o = get(f, id); if (!o || !o.series) return null;
   const s = o.series.filter(p => p[1] !== null); const i = baseIdx(s); if (i < 0) return null;
   const a = s[i][1], b = s[s.length-1][1];
