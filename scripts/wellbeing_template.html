@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Ohio Community Well-Being</title>
+<meta name="description" content="__DESC__">
+<style>
+/* Light only by design: the map colors are tuned for a white page. */
+:root{
+  --bg:#ffffff; --tile:#f5f5f3; --tile-hover:#ebebe7; --ink:#121212; --ink2:#55534e; --ink3:#8a8780; --rule:#e3e2dd;
+  --serif:Georgia,"Times New Roman",Times,serif; --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --good3:#104281; --good2:#2a78d6; --mid:#e6e5e1; --bad2:#e34948; --bad3:#9e1f22;
+  --lake:#e4edf6; --onink:#ffffff; --warnink:#9e1f22; --worsebg:#fde4e1; --betterbg:#dceafb; --money:#5b4a1f; --moneybg:#f6efdc;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45}
+.wrap{max-width:1360px;margin:0 auto;padding-block:16px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));container-type:inline-size}
+header h1{font-family:var(--serif);font-weight:400;font-size:32px;margin:4px 0 2px;text-wrap:balance}
+header p{margin:0 0 6px;color:var(--ink2);max-width:880px}
+.draft{display:inline-block;font-size:12px;border:1px solid var(--bad2);color:var(--warnink);padding:2px 8px;border-radius:10px;margin:4px 0 10px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:6px 0 10px}
+.bar .lbl{font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-right:4px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+.seg button,.tabs button{font:inherit;border:1px solid var(--rule);background:var(--tile);color:var(--ink);padding:5px 12px;border-radius:18px;cursor:pointer}
+.seg button[aria-pressed=true],.tabs button[aria-pressed=true]{background:var(--ink);color:var(--onink);border-color:var(--ink)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.search{display:flex;gap:6px;align-items:center;flex:1;min-width:220px;max-width:420px}
+.search input{font:inherit;flex:1;min-width:0;border:1px solid var(--rule);border-radius:18px;padding:5px 12px;background:var(--bg);color:var(--ink)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:8px}
+.tabs button{font-weight:600;font-size:14px}
+.question{font-family:var(--serif);font-size:19px;margin:6px 0 12px;color:var(--ink2)}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--good2);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@container (min-width:1000px){.grid{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+.card{background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:14px;min-width:0}
+.card h2{font-family:var(--serif);font-weight:400;font-size:21px;margin:0 0 2px;text-wrap:balance}
+.card h3{font-size:12px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+.sub{color:var(--ink2);font-size:13px;margin:0 0 8px;max-width:76ch}
+#map{position:relative;margin-top:6px}
+#map svg{width:100%;height:auto;display:block;touch-action:pan-y pinch-zoom;user-select:none;background:var(--bg)}
+#map svg.zoomed{touch-action:none;cursor:grab}
+#map svg.dragging{cursor:grabbing}
+#map path{vector-effect:non-scaling-stroke}
+#map path.u{stroke:#ffffff;stroke-width:.6;cursor:pointer}
+#map svg.lv-tract path.u{stroke-width:.25}
+#map svg.lv-tract.z3 path.u{stroke-width:.5}
+#map path.u:hover{stroke:var(--ink);stroke-width:1.6}
+#map svg.hasSel path.u:not(.sel),#map svg.hasSel path.wk{opacity:.3;transition:opacity .15s}
+#map svg.hasSel path.u:not(.sel):hover{opacity:.7}
+#map path.co{fill:none;stroke:#55534e;stroke-width:.9;pointer-events:none}
+#map svg.lv-county path.co{display:none}
+#map svg.lv-district path.u{stroke:#55534e;stroke-width:1.5}
+#map svg.lv-district path.co{stroke:#ffffff;stroke-width:.7}
+#map path.lake{fill:var(--lake);stroke:none;pointer-events:none}
+#map text{pointer-events:none;paint-order:stroke;stroke:#ffffff;stroke-linejoin:round}
+#map text.cl{display:none}
+#map svg.z2 text.cl{display:inline}
+#map svg.lv-tract text.cl{display:none}
+#map svg.lv-tract.z4 text.cl{display:inline}
+.zoomctl{position:absolute;top:6px;right:6px;display:flex;flex-direction:column;gap:4px;z-index:2}
+.zoomctl button{font:inherit;font-size:16px;line-height:1;width:32px;height:32px;border:1px solid var(--rule);background:var(--bg);color:var(--ink);border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.zoomctl button.rs{width:auto;height:28px;font-size:12px;padding:0 8px}
+.zoomctl button:disabled{color:var(--ink3);cursor:default}
+.nolevel{position:absolute;inset:20% 10% auto 10%;background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.08);font-size:14px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12px;color:var(--ink2);margin:8px 0}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px}
+.rank{font-size:13px;columns:2;column-gap:16px;margin-top:6px}
+@container (max-width:620px){.rank{columns:1}}
+.rank div{display:flex;justify-content:space-between;gap:6px;padding:1px 0;cursor:pointer;break-inside:avoid}
+.rank div:hover{background:var(--tile)}
+.rank b{font-weight:400;color:var(--ink3);width:34px;flex:none}
+.rank .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .v{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mlist{display:grid;gap:4px}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:7px 10px;border-radius:6px;background:var(--tile);cursor:pointer;border:1px solid transparent}
+.mrow:hover{background:var(--tile-hover)}
+.mrow.on{border-color:var(--ink)}
+.mrow.off .ml{color:var(--ink3)}
+.mrow .ml{font-size:14px}
+.mrow .mv{font-family:var(--serif);font-size:18px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.mrow .mc{grid-column:1 / -1;font-size:12px;color:var(--ink2)}
+.mrow.money{background:var(--moneybg)}
+.lv{display:inline-block;font-size:10px;letter-spacing:.04em;border:1px solid var(--rule);border-radius:6px;padding:0 4px;margin-left:3px;color:var(--ink3);background:var(--bg)}
+.lv.y{color:var(--ink);border-color:var(--ink3)}
+.moe{font-family:var(--sans);font-size:12px;color:var(--ink3)}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:2px;font-family:var(--sans)}
+.b-worse{background:var(--worsebg);color:var(--bad3)}.b-better{background:var(--betterbg);color:var(--good3)}.b-near{background:var(--mid);color:var(--ink2)}
+.b-std{background:var(--bg);border:1px solid var(--ink3);color:var(--ink2)}
+.weak{font-size:11px;color:var(--warnink)}
+.detail{margin-top:16px}
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@container (min-width:900px){.dgrid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px}
+.kv dt{color:var(--ink3)}.kv dd{margin:0}
+.trend svg{width:100%;height:auto;display:block}
+.callout{border-left:3px solid var(--ink);background:var(--tile);padding:8px 12px;margin:8px 0;font-size:14px}
+.linkbtn{font:inherit;font-size:12px;border:1px solid var(--rule);background:var(--tile);color:var(--ink);border-radius:14px;padding:3px 10px;cursor:pointer}
+.ctx{font-size:13px;color:var(--ink2)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer}tr.click:hover{background:var(--tile)}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--onink);font-size:12px;padding:6px 8px;border-radius:4px;max-width:300px;display:none;z-index:9}
+footer{margin-top:18px;font-size:12px;color:var(--ink3);border-top:1px solid var(--rule);padding-top:8px}
+footer p{max-width:112ch}
+#map circle.pulse{fill:none;stroke:#121212;stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none;transform-box:fill-box;transform-origin:center;animation:pulse 1.1s ease-out 3 forwards}
+@keyframes pulse{0%{transform:scale(.6);stroke-opacity:.95}70%{stroke-opacity:.5}100%{transform:scale(1.5);stroke-opacity:0}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}#map circle.pulse{animation:none;stroke-opacity:.8}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Ohio Community Well-Being</h1>
+  <p>Conditions in every Ohio county, congressional district and census tract, in nine areas of daily life. Each measure is shown in its own units next to Ohio, the U.S. and, where one exists, a published standard. Nothing here is combined into a single score.</p>
+  <span class="draft">Working draft, __DATE__. These figures have not yet been through an independent tie-out.</span>
+</header>
+<div class="bar">
+  <div><span class="lbl">Show</span><span class="seg" id="levels"></span></div>
+  <div class="search"><input id="q" list="places" placeholder="Find a county, district or tract" aria-label="Find a place"><datalist id="places"></datalist></div>
+</div>
+<nav class="tabs" id="tabs" aria-label="Areas of daily life"></nav>
+<p class="question" id="question"></p>
+<div class="grid"><div class="card" id="mapcard"></div><div class="card" id="panel"></div></div>
+<div class="card detail" id="detail"></div>
+<footer id="foot"></footer>
+</div>
+<div id="tip"></div>
+<script>
+const DATA = __DATA__;
+const GEO = __GEO__;
+const FOOT = __FOOT__;
+const M = DATA.measures, TID = DATA.tract_ids, TIX = Object.fromEntries(TID.map((t, i) => [t, i]));
+const WEAK = Object.fromEntries(Object.entries(DATA.tract_weak).map(([k, a]) => [k, new Set(a)]));
+const DIMS = DATA.dims, DIM = Object.fromEntries(DIMS.map(d => [d.id, d]));
+const LEVELS = [["county","Counties"],["district","Congressional districts"],["tract","Census tracts"]];
+const LVNAME = {county:"county", district:"district", tract:"tract"};
+const PL = {county:"counties", district:"districts", tract:"tracts"};
+const ROLES = [["lives","What residents experience"],["access","Services and access"],["money","Public money"]];
+const DIV = ["#104281","#2a78d6","#9ec5f4","#e6e5e1","#f4b4ac","#e34948","#9e1f22"];
+const SEQ = ["#ece9f5","#c3bce0","#958bc6","#6a5aa8","#3f2d80"];
+const SEQ_MONEY = ["#f3ecd8","#e2cf98","#c9a95a","#9c7a2c","#5b4a1f"];
+const BASE = GEO.viewBox.split(" ").map(Number);
+const MAXZ = {county:8, district:8, tract:40};
+// Census county and district shapes reach into Lake Erie; everything is clipped to the land tracts
+const LAND = TID.map(t => GEO.tracts[t].d).join("");
+const st = {level:"county", dim:"economic", m:"below_200_share", place:null, hl:false, pulse:false, vb:null, all:false};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function fmt(v, id){
+  if (v === null || v === undefined || Number.isNaN(v)) return "n/a";
+  const m = M[id], d = m.decimals ?? 1, n = x => x.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+  switch (m.unit){
+    case "usd": return "$" + v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+    case "count": return Math.round(v).toLocaleString("en-US");
+    case "pct": return v.toFixed(d) + "%";
+    case "per100k": return n(v) + " per 100,000";
+    case "per10k": return n(v) + " per 10,000";
+    case "rate": case "per1000": return n(v) + " per 1,000";
+    case "minutes": return n(v) + " min";
+    case "per_capita": return n(v) + " per person";
+    default: return n(v);
+  }
+}
+function fmtMoe(moe, id){
+  if (!moe) return "";
+  const u = M[id].unit;
+  return ` <span class="moe">±${u === "usd" ? "$" + Math.round(moe).toLocaleString("en-US") : u === "count" ? Math.round(moe).toLocaleString("en-US") : moe.toFixed(1) + (u === "pct" ? " pts" : "")}</span>`;
+}
+
+// value of a measure for a place: {v, moe, weak, flag}
+function val(id, level, key){
+  if (level === "county"){ const c = (DATA.county[id] || {})[key]; return c ? {v:c[0], moe:c[1], flag:c[2], weak:false} : {v:null}; }
+  if (level === "district"){ const c = (DATA.district[id] || {})[key]; return c ? {v:c[0], moe:c[1], weak:false} : {v:null}; }
+  const a = DATA.tract[id]; if (!a) return {v:null};
+  const i = TIX[key]; return {v:a[i], moe:(DATA.tract_moe[id] || [])[i], weak:WEAK[id] ? WEAK[id].has(i) : false};
+}
+const has = (id, level) => M[id].levels.includes(level);
+function places(level){
+  if (level === "county") return Object.keys(GEO.counties);
+  if (level === "district") return Object.keys(GEO.districts);
+  return TID.filter(t => GEO.tracts[t]);
+}
+function pname(level, key){
+  if (level === "county") return GEO.counties[key].name + " County";
+  if (level === "district") return "Congressional District " + Number(key);
+  return GEO.tracts[key].label;
+}
+const shape = (level, key) => level === "county" ? GEO.counties[key] : level === "district" ? GEO.districts[key] : GEO.tracts[key];
+
+// near = within 3% of Ohio or 0.3 points for percentages
+function vs(v, ref, id){
+  const b = M[id].better; if (v === null || v === undefined || ref === null || ref === undefined || b === "none") return null;
+  const band = Math.max(Math.abs(ref) * 0.03, M[id].unit === "pct" ? 0.3 : 0);
+  if (Math.abs(v - ref) <= band) return "near";
+  return (v > ref) === (b === "higher") ? "better" : "worse";
+}
+const BADGE = {worse:["b-worse","worse than Ohio"], better:["b-better","better than Ohio"], near:["b-near","near Ohio"]};
+const badge = k => k ? `<span class="badge ${BADGE[k][0]}">${BADGE[k][1]}</span>` : "";
+function stdBadge(v, id){
+  const s = M[id].standard; if (!s || v === null || v === undefined) return "";
+  const ok = M[id].better === "lower" ? v <= s.v : v >= s.v;
+  return `<span class="badge b-std" title="${esc(s.src)}">${ok ? "meets" : "misses"} U.S. target</span>`;
+}
+
+function scale(id){
+  const lv = st.level, keys = places(lv), o = DATA.ohio[id], b = M[id].better;
+  if (b === "none" || o === null || o === undefined){
+    const vals = keys.map(k => val(id, lv, k).v).filter(v => v !== null && v !== undefined).sort((a, c) => a - c);
+    const q = [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(p * (vals.length - 1))]);
+    const pal = M[id].role === "money" ? SEQ_MONEY : SEQ;
+    return {color:v => v === null || v === undefined ? null : pal[q.filter(x => v > x).length],
+      legend:pal.map((c, i) => [c, i === 0 ? `under ${fmt(q[0], id)}` : i === 4 ? `${fmt(q[3], id)} or more` : `${fmt(q[i-1], id)} to ${fmt(q[i], id)}`]),
+      how:`Colors split the ${PL[lv]} into fifths, low to high.`};
+  }
+  // diverging around Ohio; the breaks are shown in the measure's own units
+  const cut = r => o * (1 + r), up = b === "higher";
+  const cls = v => {
+    if (v === null || v === undefined) return null;
+    const k = vs(v, o, id); if (k === "near") return 3;
+    const rel = Math.abs(v - o) / Math.abs(o), lvl = rel >= 0.25 ? 3 : rel >= 0.10 ? 2 : 1;
+    return k === "better" ? 3 - lvl : 3 + lvl;
+  };
+  const lo = (a, c) => `${fmt(Math.min(a, c), id)} to ${fmt(Math.max(a, c), id)}`;
+  const gb = up ? [cut(.25), cut(.10), cut(.03)] : [cut(-.25), cut(-.10), cut(-.03)];
+  const bb = up ? [cut(-.03), cut(-.10), cut(-.25)] : [cut(.03), cut(.10), cut(.25)];
+  return {color:v => { const c = cls(v); return c === null ? null : DIV[c]; },
+    legend:[[DIV[0], `better, ${up ? "above" : "below"} ${fmt(gb[0], id)}`], [DIV[1], lo(gb[0], gb[1])], [DIV[2], lo(gb[1], gb[2])],
+            [DIV[3], `near Ohio (${fmt(o, id)})`], [DIV[4], lo(bb[0], bb[1])], [DIV[5], lo(bb[1], bb[2])], [DIV[6], `worse, ${up ? "below" : "above"} ${fmt(bb[2], id)}`]],
+    how:`Blue is better than Ohio and red is worse, by 3%, 10% and 25% of Ohio's value.`};
+}
+
+function drawLevels(){
+  const id = st.m;
+  $("levels").innerHTML = LEVELS.map(([k, l]) => `<button aria-pressed="${st.level === k}" data-k="${k}" title="${has(id, k) ? "" : esc(M[id].label) + " is not available for " + l.toLowerCase()}">${l}</button>`).join("");
+  $("levels").querySelectorAll("button").forEach(b => b.onclick = () => setLevel(b.dataset.k));
+}
+function setLevel(k){
+  if (k === st.level) return;
+  // keep the selected place when a tract or district sits in a county the user switches to, and so on
+  let keep = null;
+  if (st.place){
+    if (k === "county") keep = st.level === "tract" ? st.place.slice(0, 5) : null;
+    if (k === "district" && st.level === "tract"){ const c = GEO.tracts[st.place].cd; keep = Object.keys(c).sort((a, b) => c[b] - c[a])[0]; }
+  }
+  st.level = k; st.place = keep; st.hl = !!keep; st.pulse = !!keep; st.all = false;
+  render();
+}
+function drawTabs(){
+  $("tabs").innerHTML = DIMS.map(d => `<button aria-pressed="${st.dim === d.id}" data-d="${d.id}">${esc(d.label)}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => {
+    st.dim = b.dataset.d;
+    const ids = Object.keys(M).filter(i => M[i].dim === st.dim);
+    st.m = ids.find(i => M[i].headline) || ids[0]; st.all = false; render();
+  });
+  $("question").textContent = DIM[st.dim].question;
+}
+
+// ---------------------------------------------------------------- map
+function drawMap(){
+  const id = st.m, lv = st.level, sc = scale(id), ok = has(id, lv);
+  const vb = st.vb || BASE, k0 = BASE[2] / vb[2], hl = st.hl ? st.place : null;
+  let svg = `<svg viewBox="${vb.join(" ")}" class="lv-${lv}${hl ? " hasSel" : ""}" role="img" aria-label="Map of Ohio ${PL[lv]}: ${esc(M[id].label)}">
+    <defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern>
+    <pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern>
+    <clipPath id="land"><path d="${LAND}"/></clipPath></defs><g clip-path="url(#land)">`;
+  const parts = [], weak = [];
+  places(lv).forEach(key => {
+    const c = ok ? val(id, lv, key) : {v:null};
+    const col = ok ? (sc.color(c.v) || "url(#nodata)") : "#efeeea";
+    parts.push(`<path class="u${key === hl ? " sel" : ""}" data-k="${key}" d="${shape(lv, key).d}" fill="${col}"/>`);
+    if (c.weak && c.v !== null) weak.push(`<path class="wk" d="${shape(lv, key).d}" fill="url(#weak)" pointer-events="none"/>`);
+  });
+  svg += parts.join("") + weak.join("");
+  if (lv !== "county") svg += `<path class="co" d="${Object.values(GEO.counties).map(c => c.d).join("")}"/>`;
+  svg += `</g>`;
+  if (hl) svg += `<path d="${shape(lv, hl).d}" fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round" pointer-events="none"/><path d="${shape(lv, hl).d}" fill="none" stroke="#121212" stroke-width="2.5" stroke-linejoin="round" pointer-events="none"/>`;
+  if (hl && st.pulse){
+    const b = box(lv, hl), r0 = Math.hypot(b[2] - b[0], b[3] - b[1]) / 2;
+    svg += `<circle class="pulse" data-r0="${r0}" cx="${(b[0] + b[2]) / 2}" cy="${(b[1] + b[3]) / 2}" r="${Math.max(r0 * 1.3, 30 * BASE[2] / 800 / k0)}"/>`;
+    st.pulse = false;
+  }
+  const fs = 11 * BASE[2] / 800;     // label size in map units at full view (about 11px on an 800px map)
+  if (lv === "district") Object.entries(GEO.districts).forEach(([k, d]) => svg += `<text data-fs="15" x="${d.p[0]}" y="${d.p[1]}" font-size="${fs * 15 / 11 / k0}" stroke-width="${fs * 0.3 / k0}" font-weight="700" fill="#121212" text-anchor="middle" dominant-baseline="middle">${Number(k)}</text>`);
+  Object.values(GEO.counties).forEach(c => svg += `<text class="cl" data-fs="11" x="${c.p[0]}" y="${c.p[1]}" font-size="${fs / k0}" stroke-width="${fs * 0.3 / k0}" fill="#55534e" text-anchor="middle" dominant-baseline="middle">${esc(c.name)}</text>`);
+  svg += `</svg>`;
+  const ohio = DATA.ohio[id];
+  const note = ok ? "" : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].unit === "rate" && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
+  // worst first for judged measures (rank 1 = best), highest first for the rest
+  const keys = ok ? places(lv).filter(k => val(id, lv, k).v !== null && val(id, lv, k).v !== undefined) : [];
+  const b = M[id].better;
+  keys.sort((x, y) => b === "higher" ? val(id, lv, x).v - val(id, lv, y).v : val(id, lv, y).v - val(id, lv, x).v);
+  const rankOf = n => b === "none" ? n + 1 : keys.length - n;
+  const nShow = st.all ? (lv === "tract" ? 100 : keys.length) : 10;
+  const weakN = lv === "tract" && WEAK[id] ? WEAK[id].size : 0;
+  $("mapcard").innerHTML = `<h2>${esc(M[id].label)}</h2>
+    <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. Ohio: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
+    <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of Ohio">Reset</button></div>${note}</div>
+    ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} tracts)</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
+    <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight.</p>
+    <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
+    <div class="rank">${keys.slice(0, nShow).map((k, n) => `<div tabindex="0" data-k="${k}"><b>${rankOf(n)}</b><span class="nm">${esc(pname(lv, k))}${val(id, lv, k).weak ? " *" : ""}</span><span class="v">${fmt(val(id, lv, k).v, id)}</span></div>`).join("")}</div>
+    ${lv === "tract" ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate. Tracts with a college, prison or nursing home can show extreme values.</p>` : ""}
+    <button class="linkbtn" id="all" style="margin-top:6px">${st.all ? "Show 10" : lv === "tract" ? "Show 100" : `Show all ${keys.length}`}</button>` : ""}`;
+  wireMap();
+}
+
+function box(lv, key){
+  const s = shape(lv, key);
+  if (!s._b){
+    let x = 0, y = 0, x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const m of s.d.matchAll(/([Ml])(-?\d+),(-?\d+)/g)){
+      if (m[1] === "M"){ x = +m[2]; y = +m[3]; } else { x += +m[2]; y += +m[3]; }
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    s._b = [x0, y0, x1, y1];
+  }
+  return s._b;
+}
+function wireMap(){
+  const svg = $("map").querySelector("svg"), tip = $("tip"), id = st.m, lv = st.level;
+  svg.addEventListener("mousemove", e => {
+    const p = e.target.closest("path.u"); if (!p){ tip.style.display = "none"; return; }
+    const k = p.dataset.k, c = has(id, lv) ? val(id, lv, k) : {v:null};
+    tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 12, innerWidth - 310) + "px"; tip.style.top = (e.clientY + 12) + "px";
+    tip.innerHTML = `<b>${esc(pname(lv, k))}</b>${lv === "tract" ? `<br>${esc(GEO.counties[k.slice(0, 5)].name)} County` : ""}<br>${has(id, lv) ? fmt(c.v, id) + (c.moe ? " ±" + (M[id].unit === "usd" ? "$" + Math.round(c.moe).toLocaleString("en-US") : (+c.moe).toFixed(1)) : "") : "Not available at this level"}${c.weak && c.v !== null ? "<br>Uncertain estimate" : ""}`;
+  });
+  svg.addEventListener("mouseleave", () => tip.style.display = "none");
+  svg.addEventListener("click", e => {
+    const p = e.target.closest("path.u"); if (!p) return;
+    const k = p.dataset.k;
+    if (k === st.place && st.hl){ st.hl = false; drawMap(); return; }
+    const same = k === st.place;
+    st.place = k; st.hl = true; st.pulse = true; drawMap(); if (!same){ drawPanel(); drawDetail(); }
+  });
+  $("mapcard").querySelectorAll(".rank div").forEach(d => d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; pick(d.dataset.k); });
+  if ($("all")) $("all").onclick = () => { st.all = !st.all; drawMap(); };
+  if ($("golv")) $("golv").onclick = () => setLevel(M[id].levels[0]);
+  wireZoom(svg);
+}
+function pick(k, zoom){
+  st.place = k; st.hl = true; st.pulse = true;
+  drawMap(); drawPanel(); drawDetail();
+  if (zoom || st.vb) zoomTo(k);
+}
+function setView(vb){
+  const svg = $("map").querySelector("svg"), mz = MAXZ[st.level];
+  let [x, y, w, h] = vb;
+  w = Math.min(BASE[2], Math.max(BASE[2] / mz, w)); h = w * BASE[3] / BASE[2];
+  x = Math.min(BASE[0] + BASE[2] - w, Math.max(BASE[0], x)); y = Math.min(BASE[1] + BASE[3] - h, Math.max(BASE[1], y));
+  const full = w >= BASE[2] - 1e-6;
+  st.vb = full ? null : [x, y, w, h];
+  const v = st.vb || BASE, k = BASE[2] / v[2], fs = BASE[2] / 800;
+  svg.setAttribute("viewBox", v.join(" "));
+  svg.classList.toggle("zoomed", !full);
+  svg.querySelectorAll("text[data-fs]").forEach(t => { t.setAttribute("font-size", t.dataset.fs * fs / k); t.setAttribute("stroke-width", 3.3 * fs / k); });
+  svg.classList.toggle("z2", k >= 1.6); svg.classList.toggle("z3", k >= 3); svg.classList.toggle("z4", k >= 4);
+  svg.querySelectorAll("pattern").forEach(p => p.setAttribute("patternTransform", `rotate(45) scale(${8 / k})`));
+  svg.querySelectorAll("circle.pulse").forEach(c => c.setAttribute("r", Math.max(c.dataset.r0 * 1.3, 30 * fs / k)));
+  $("zin").disabled = k >= mz - 1e-6; $("zout").disabled = full; $("zreset").disabled = full && !st.place;
+}
+function zoomTo(key){
+  const [x0, y0, x1, y1] = box(st.level, key), r = BASE[3] / BASE[2];
+  const w = Math.max((x1 - x0) * 3, (y1 - y0) * 3 / r, BASE[2] / MAXZ[st.level] * 1.5);
+  setView([(x0 + x1) / 2 - w / 2, (y0 + y1) / 2 - w * r / 2, w, w * r]);
+}
+function zoomBy(f, cx, cy){
+  const v = st.vb || BASE;
+  if (cx === undefined){ cx = v[0] + v[2] / 2; cy = v[1] + v[3] / 2; }
+  setView([cx - (cx - v[0]) / f, cy - (cy - v[1]) / f, v[2] / f, v[3] / f]);
+}
+function wireZoom(svg){
+  $("zin").onclick = () => zoomBy(1.8);
+  $("zout").onclick = () => zoomBy(1 / 1.8);
+  $("zreset").onclick = () => { if (st.place){ st.place = null; st.hl = false; st.vb = null; drawMap(); drawPanel(); drawDetail(); } else setView(BASE); };
+  setView(st.vb || BASE);
+  const toSvg = (px, py) => { const r = svg.getBoundingClientRect(), v = st.vb || BASE; return [v[0] + (px - r.left) / r.width * v[2], v[1] + (py - r.top) / r.height * v[3]]; };
+  svg.addEventListener("wheel", e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); const [cx, cy] = toSvg(e.clientX, e.clientY); zoomBy(Math.exp(-e.deltaY * 0.01), cx, cy); }, {passive:false});
+  let drag = null, moved = false;
+  svg.addEventListener("pointerdown", e => { if (!st.vb || e.button !== 0) return; drag = {x:e.clientX, y:e.clientY, vb:st.vb.slice(), id:e.pointerId}; moved = false; });
+  svg.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!moved && Math.hypot(dx, dy) < 4) return;
+    if (!moved){ moved = true; svg.setPointerCapture(drag.id); svg.classList.add("dragging"); $("tip").style.display = "none"; }
+    const r = svg.getBoundingClientRect(), s = drag.vb[2] / r.width;
+    setView([drag.vb[0] - dx * s, drag.vb[1] - dy * s, drag.vb[2], drag.vb[3]]);
+  });
+  const end = () => { drag = null; svg.classList.remove("dragging"); };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+  svg.addEventListener("click", e => { if (moved){ e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+}
+
+// ---------------------------------------------------------------- right panel
+function lvTags(id){ return LEVELS.map(([k]) => `<span class="lv${has(id, k) ? " y" : ""}" title="${has(id, k) ? "Available" : "Not available"} for ${PL[k]}">${k === "county" ? "C" : k === "district" ? "D" : "T"}</span>`).join(""); }
+function measureRows(ids, placeVals){
+  return ids.map(id => {
+    const ok = has(id, st.level), m = M[id];
+    let main, cmp;
+    if (placeVals){
+      const c = ok ? val(id, st.level, st.place) : null;
+      main = ok ? fmt(c.v, id) + fmtMoe(c.moe, id) : `<span class="moe">not for ${PL[st.level]}</span>`;
+      cmp = ok ? `Ohio ${fmt(DATA.ohio[id], id)}${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${badge(vs(c.v, DATA.ohio[id], id))}${stdBadge(c.v, id)}${c.weak && c.v !== null ? ` <span class="weak">uncertain estimate</span>` : ""}${c.flag ? ` <span class="weak">${esc(c.flag)}</span>` : ""}`
+               : `Ohio ${fmt(DATA.ohio[id], id)}`;
+    } else {
+      main = fmt(DATA.ohio[id], id);
+      cmp = `Ohio${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${m.standard ? ` · U.S. target ${fmt(m.standard.v, id)}` : ""} · ${esc(m.period_label || "")}`;
+    }
+    return `<div class="mrow${id === st.m ? " on" : ""}${ok ? "" : " off"}${m.role === "money" ? " money" : ""}" tabindex="0" data-m="${id}"><div class="ml">${esc(m.label)} ${lvTags(id)}</div><div class="mv">${main}</div><div class="mc">${cmp}</div></div>`;
+  }).join("");
+}
+function drawPanel(){
+  const P = $("panel"), dimIds = Object.keys(M).filter(i => M[i].dim === st.dim);
+  let h;
+  if (!st.place){
+    h = `<h2>${esc(DIM[st.dim].label)}: the measures</h2><p class="sub">Ohio's value for each measure. Click one to map it. C, D and T show whether it is available for counties, districts and tracts. Click a place on the map, or search for one, to see its own values.</p>`;
+    ROLES.forEach(([r, lab]) => { const ids = dimIds.filter(i => M[i].role === r); if (ids.length) h += `<h3>${lab}</h3><div class="mlist">${measureRows(ids, false)}</div>`; });
+    if (!dimIds.some(i => M[i].role === "money")) h += `<h3>Public money</h3><p class="sub">Not added yet for this area.</p>`;
+  } else {
+    const lv = st.level, k = st.place, pop = val("population", lv, k);
+    h = `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h2>${esc(pname(lv, k))}</h2>
+      <p class="sub">${lv === "tract" ? `${esc(GEO.counties[k.slice(0, 5)].name)} County · tract ${k} · ` : ""}${lv === "district" ? `2025 map, first used in 2026 · built from ${DATA.district_note[k].tracts} tracts (${DATA.district_note[k].split} split by the district line) · ` : ""}about ${fmt(pop.v, "population")} residents (2020-2024)</p></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start"><button class="linkbtn" id="zplace">Zoom to this place</button><button class="linkbtn" id="back">Back to the measures</button></div></div>`;
+    ROLES.forEach(([r, lab]) => { const ids = dimIds.filter(i => M[i].role === r); if (ids.length) h += `<h3>${esc(DIM[st.dim].label)}: ${lab.toLowerCase()}</h3><div class="mlist">${measureRows(ids, true)}</div>`; });
+    // other areas: the headline measure of each, for this place
+    h += `<h3>Other areas, headline measure</h3><table>${DIMS.filter(d => d.id !== st.dim).map(d => {
+      const id = Object.keys(M).find(i => M[i].dim === d.id && M[i].headline), ok = has(id, lv), c = ok ? val(id, lv, k) : {v:null};
+      return `<tr class="click" data-d="${d.id}" data-m="${id}"><td>${esc(d.label)}<br><span class="moe">${esc(M[id].label)}</span></td><td class="n">${ok ? fmt(c.v, id) : `<span class="moe">not for ${PL[lv]}</span>`}</td><td>${ok ? badge(vs(c.v, DATA.ohio[id], id)) : ""}</td></tr>`; }).join("")}</table>`;
+    h += `<h3>Who lives here</h3><p class="ctx">${["age65_share","nh_white_share","nh_black_share","hispanic_share","foreign_born_share","disability_share"].map(i => `${esc(M[i].label)}: ${fmt(val(i, lv, k).v, i)}`).join(" · ")}</p>`;
+  }
+  P.innerHTML = h;
+  P.querySelectorAll(".mrow").forEach(x => x.onclick = x.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; st.m = x.dataset.m; st.all = false; drawLevels(); drawMap(); drawPanel(); drawDetail(); });
+  P.querySelectorAll("tr.click").forEach(r => r.onclick = () => { st.dim = r.dataset.d; st.m = r.dataset.m; render(); });
+  if ($("back")) $("back").onclick = () => { st.place = null; st.hl = false; drawMap(); drawPanel(); drawDetail(); };
+  if ($("zplace")) $("zplace").onclick = () => { if (!st.hl){ st.hl = true; drawMap(); } zoomTo(st.place); $("map").scrollIntoView({block:"nearest", behavior:"smooth"}); };
+}
+
+// ---------------------------------------------------------------- measure detail
+function trendSvg(id, lines){
+  const all = lines.flatMap(l => l.s.map(p => p[1])).filter(v => v !== null);
+  const periods = [...new Set(lines.flatMap(l => l.s.map(p => p[0])))].sort();
+  if (periods.length < 2 || !all.length) return "";
+  const W = 520, H = 190, L = 64, R = 110, T = 12, B = 26;
+  let lo = Math.min(...all), hi = Math.max(...all); if (M[id].unit === "pct" || lo >= 0) lo = Math.min(lo, 0); const pad = (hi - lo) * 0.08 || 1; hi += pad;
+  const x = p => L + (periods.indexOf(p) / (periods.length - 1)) * (W - L - R), y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trend: ${esc(M[id].label)}">`;
+  [lo, (lo + hi) / 2, hi].forEach(v => g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e2dd"/><text x="${L - 6}" y="${y(v) + 4}" font-size="11" fill="#8a8780" text-anchor="end">${fmt(v, id).replace(" per 100,000", "").replace(" per 10,000", "").replace(" per 1,000", "").replace(" per person", "").replace(" per person", "")}</text>`);
+  const step = Math.ceil(periods.length / 6);
+  periods.forEach((p, i) => { if (i % step === 0 || i === periods.length - 1) g += `<text x="${x(p)}" y="${H - 6}" font-size="11" fill="#8a8780" text-anchor="middle">${esc(p.length > 7 ? p.slice(0, 4) + "-" + p.slice(-2) : p)}</text>`; });
+  // end labels: keep them at least 14 units apart
+  const ends = lines.map(l => { const p = l.s.filter(q => q[1] !== null).pop(); return p ? {l, y:y(p[1])} : null; }).filter(Boolean).sort((a, b) => a.y - b.y);
+  ends.forEach((e, i) => { if (i && e.y - ends[i - 1].y < 14) e.y = ends[i - 1].y + 14; e.l._ly = e.y; });
+  lines.forEach(l => {
+    const pts = l.s.filter(p => p[1] !== null);
+    // a gap in the years (no data) breaks the line instead of drawing straight across it
+    let d = "", prev = -2;
+    pts.forEach(p => { const i = periods.indexOf(p[0]); d += (i === prev + 1 ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1); prev = i; });
+    g += `<path d="${d}" fill="none" stroke="${l.c}" stroke-width="2"/>`;
+    pts.forEach(p => g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="3" fill="${l.c}"/>`);
+    const last = pts[pts.length - 1];
+    if (last) g += `<text x="${x(last[0]) + 8}" y="${(l._ly ?? y(last[1])) + 4}" font-size="11" fill="#121212">${esc(l.n)} ${fmt(last[1], id)}</text>`;
+  });
+  return g + `</svg>`;
+}
+function drawDetail(){
+  const id = st.m, m = M[id], d = DIM[m.dim] || {}, lv = st.level, k = st.place;
+  const ser = DATA.series[id] || {};
+  const cty = k ? (lv === "county" ? k : lv === "tract" ? k.slice(0, 5) : null) : null;
+  const lines = [];
+  if (cty && ser[cty]) lines.push({n:GEO.counties[cty].name, s:ser[cty], c:"#2a78d6"});
+  if (ser.ohio) lines.push({n:"Ohio", s:ser.ohio, c:"#121212"});
+  const tnote = !Object.keys(ser).length ? "No history in this form yet." :
+    lv === "tract" && k ? "Trend for the county: tract lines changed in 2020, so tract history is not comparable yet." :
+    lv === "district" && k ? "Trend for Ohio only: the 2025 district lines are new." : k ? "" : "Click a county to add its line.";
+  const money = Object.keys(M).filter(i => M[i].dim === m.dim && M[i].role === "money");
+  $("detail").innerHTML = `<div class="dgrid"><div>
+    <h2>About this measure: ${esc(m.label)}</h2>
+    <p class="sub">${esc(m.note || "")}</p>
+    <dl class="kv"><dt>Source</dt><dd>${esc(m.source || "")}</dd><dt>Period</dt><dd>${esc(m.period_label || "")}</dd>
+      <dt>Levels</dt><dd>${m.levels.map(l => PL[l]).join(", ")}</dd>
+      <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; tract estimates with a large margin are hatched on the map." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
+      ${m.standard ? `<dt>Standard</dt><dd>${fmt(m.standard.v, id)}: ${esc(m.standard.src)}. ${esc(m.standard.note || "")}</dd>` : ""}
+      <dt>Who runs services</dt><dd>${esc(d.agencies || "")}</dd><dt>Main public programs</dt><dd>${esc(d.programs || "")}</dd>
+      ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.ohio[i], i)}${k && has(i, lv) ? "" : " (Ohio)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}
+    </dl></div>
+    <div class="trend"><h3 style="margin-top:0">Over time</h3>${trendSvg(id, lines)}<p class="sub">${tnote}</p></div></div>`;
+}
+
+// ---------------------------------------------------------------- search
+function buildSearch(){
+  const opts = [];
+  Object.entries(GEO.counties).forEach(([k, c]) => opts.push([`${c.name} County`, "county", k]));
+  Object.keys(GEO.districts).forEach(k => opts.push([`Congressional District ${Number(k)}`, "district", k]));
+  TID.forEach(t => opts.push([`${GEO.tracts[t].label} (${GEO.counties[t.slice(0, 5)].name} County)`, "tract", t]));
+  const idx = new Map(opts.map(o => [o[0].toLowerCase(), o]));
+  $("places").innerHTML = opts.slice(0, 103).map(o => `<option value="${esc(o[0])}">`).join("");
+  const q = $("q");
+  q.oninput = () => {   // tracts are many: list them only once the user has typed a few letters
+    const s = q.value.toLowerCase();
+    const hit = s.length < 3 ? opts.slice(0, 103) : opts.filter(o => o[0].toLowerCase().includes(s)).slice(0, 60);
+    $("places").innerHTML = hit.map(o => `<option value="${esc(o[0])}">`).join("");
+    const o = idx.get(s);
+    if (o){
+      st.level = o[1]; if (!has(st.m, st.level)){ const ids = Object.keys(M).filter(i => M[i].dim === st.dim && has(i, st.level)); if (ids.length) st.m = ids[0]; }
+      st.place = null; st.hl = false; st.vb = null; render(); pick(o[2], true); q.blur();
+    }
+  };
+}
+
+function render(){ drawLevels(); drawTabs(); drawMap(); drawPanel(); drawDetail(); }
+$("foot").innerHTML = FOOT;
+buildSearch();
+render();
+</script>
+</body>
+</html>

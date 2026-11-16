@@ -5,6 +5,11 @@ Interactive pages built from public federal and state data by Data 4 The People.
 - **Ohio County Dashboard:** https://data4thepeople.github.io/StateOperatingDashboard/
   All 88 Ohio counties on one map: jobs and wages, income and poverty, health, housing, schools, child care,
   crime and population. Each county has a scorecard that compares it with Ohio and the U.S.
+- **Ohio Community Well-Being:** https://data4thepeople.github.io/StateOperatingDashboard/wellbeing/
+  Every Ohio county, congressional district and census tract in nine areas of daily life: child care, education,
+  economic security, jobs, housing, physical health, mental health, public safety and social well-being. Each
+  measure is shown in its own units next to Ohio, the U.S. and, where one exists, a national target, with no
+  combined score. Public spending is shown beside conditions. The measure list is in `docs/MEASURES.md`.
 - **Ohio's 10th Congressional District:** https://data4thepeople.github.io/StateOperatingDashboard/oh10/
   Census tracts under the congressional map the Ohio Redistricting Commission adopted on October 31, 2025.
 - **Illinois's 6th Congressional District:** https://data4thepeople.github.io/StateOperatingDashboard/il06/
@@ -23,10 +28,14 @@ Interactive pages built from public federal and state data by Data 4 The People.
 
 ## Data sources
 
+- U.S. Bureau of Economic Analysis: county transfer receipts (CAINC35). HUD: Picture of Subsidized Households.
+  NHTSA: Fatality Analysis Reporting System. IMLS: Public Libraries Survey. County Health Rankings & Roadmaps
+  (provider counts and suicide rates, from HRSA, CMS and CDC). MIT Election Data + Science Lab (2024 results).
 - U.S. Bureau of Labor Statistics: Local Area Unemployment Statistics, Quarterly Census of Employment and Wages,
   and the R-CPI-U-RS price index.
 - U.S. Census Bureau: American Community Survey 5-year estimates, population estimates (Vintage 2025), Small Area
-  Health Insurance Estimates, Small Area Income and Poverty Estimates, the 2020 census, and TIGERweb boundaries.
+  Health Insurance Estimates, Small Area Income and Poverty Estimates, Annual Survey of School System Finances,
+  County Business Patterns, the 2020 census, and TIGERweb boundaries.
 - CDC: provisional county drug overdose death counts (NCHS VSRR) and PLACES.
 - USDA Food and Nutrition Service: SNAP participation.
 - FBI Uniform Crime Reporting Program: Return A files and state estimates.
@@ -47,6 +56,11 @@ The scripts need Python 3 with `pandas` and `openpyxl`. Census and BLS API keys 
 python scripts/05_geo.py
 python scripts/10_jobs_industry.py   # then each numbered script through 50_national.py
 python scripts/90_build.py           # writes dist/index.html
+
+# Ohio Community Well-Being (after the county layers, including 44_schools, 45_access and 46_public_money)
+python scripts/70_wb_geo.py
+python scripts/71_wb_data.py
+python scripts/72_wb_build.py         # writes dist/wellbeing/index.html and docs/MEASURES.md
 
 # District pages (key: oh10 or il06)
 python scripts/60_district_geo.py il06

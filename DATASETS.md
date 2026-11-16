@@ -880,3 +880,494 @@ crime) are not on the IL-6 page.
 
 **Base map.** TIGERweb primary and secondary roads, area water and 2020 place names (see the script docstring). For
 IL-6, place names that would overlap a larger name at the zoom where they appear, or run past the map edge, are dropped.
+
+<!-- from docs/datasets/schools.md (scripts/44_*.py) -->
+## School report card achievement files and District Details file (Ohio Department of Education and Workforce)
+
+**What it is.** One row per traditional public school district (`*_Achievement_District.xlsx`) or per community school building (`*_Achievement_CS.xlsx`). We use two fields:
+- The percent of third graders who scored proficient or above on the Ohio State Test in math.
+- The chronic absenteeism rate, which is the percent of students who missed 10% or more of the school year, excused or not.
+
+The 2025-26 chronic absenteeism rate comes from `2026_District_Details.xlsx`. It has one row per district and student group. We use the "All Students" row and its enrollment count.
+
+**Where it comes from.** ODEW report card "Download Data" page, https://reportcard.education.ohio.gov/download, categories "District Data" and "School Building Data". Files:
+- `18-19`, `21-22`, `22-23`, `23-24`, `24-25` and `25-26_Achievement_District.xlsx`
+- the same years of `_Achievement_CS.xlsx`
+- `2026_District_Details.xlsx` (school year 2025-26)
+
+The math column is "3rd Grade Math 2018-19 % at or above Proficient - District" in 2018-19 and "3rd Grade Math 2025-2026 Percent Proficient or above - District" from 2021-22 on. Each file also has the value for the year before, and that is where 2017-18 and 2020-21 come from. Chronic absence for 2017-18 and 2018-19 is in the 2018-19 district file, on the `Performance_Indicators` sheet. The later achievement files do not carry it. The download links on the site need an access token that the page adds, so these files were saved by hand.
+
+**Version and vintage.** The files were created between October 2019 (2018-19) and September 2026 (2025-26). Each prior-year math column matches the earlier year's own file for every district. For 31 community schools, one file says "NC" and the next says "NA". Both mean no value. We keep the value from each year's own file.
+
+**Coverage.**
+- Math: school years 2017-18, 2018-19, and 2020-21 through 2025-26. There was no state testing in 2019-20. Districts: 607 (608 in 2017-18 and 2018-19). Community schools: 246 to 269.
+- Chronic absence: school years 2017-18, 2018-19 and 2025-26 only, for traditional districts only. The series lists 2019-20 through 2024-25 as empty, because those files are not on disk. We did not check whether ODEW published district rates for 2019-20.
+- Each row carries ODEW's county, and we use it to place districts and schools. A district that spans counties counts in the one county ODEW lists.
+
+**How a county value is built.**
+- Math, same as the reading layer: an average of district and in-person community school percents, weighted by grade 3 fall enrollment from CCD (next section). Online (virtual) community schools are left out, because their students live all over the state. Seven schools are left out.
+- Chronic absence: an average of district percents, weighted by total enrollment. The weight is CCD total enrollment for 2017-18 and 2018-19, and ODEW's own enrollment from the same District Details file for 2025-26. Community schools are left out in every year. Their 2025-26 rates are in a file we do not have, and leaving them out in all years keeps the years comparable.
+- The Ohio figure for both measures is built the same way, from every district and school the counties use.
+
+**Changes over time.** Ohio rewrote its report card law in July 2021. From 2021-22 on, third grade math is a "report only" figure, and the level names changed ("Accelerated" became "Accomplished"). The measure itself, proficient or above on the grade 3 math test, has the same name in every file. We did not confirm the math cut score for each year against ODEW's technical documents. In 2018-19 chronic absence was one of the graded "indicators met" (the file's `Chronic Absenteeism Indicator` column). We read the column names and ODEW's "missed 10% or more" wording, but we could not extract the text of ODEW's attendance technical document (`Student-Attendance.pdf`), so the fine print on which students are counted is not confirmed here.
+
+**Suppressed, censored or masked values.** ODEW prints "NC" (not calculated) when a district or school has too few students, "<10" for small enrollment counts, and "NA" for community schools whose grades do not include grade 3 (2024-25 and 2025-26 files).
+- No masked value is ever treated as 0. Any cell that is not a number is stored as null with its ODEW code as the flag.
+- A masked district or school drops out of its county's average. We count its CCD grade 3 enrollment as "masked weight" in `extras.schools_rollup_detail`.
+- Math, statewide, masked weight is 0.1% to 0.7% of grade 3 enrollment each year. In 2025-26 it is 366 of about 123,000.
+- Masked math districts: Put-In-Bay Local (every year), Vanlue Local (2021-22 through 2024-25), Bellaire Local, Berne Union Local and Bloomfield-Mespo Local (2020-21), and Vandalia-Butler City, Westfall Local and Wheelersburg Local (2023-24). The rest are small community schools.
+- We flag a county when 5% or more of its weight is in masked cells. No county reaches that in 2025-26. The highest is Harrison at 4.3%. In an earlier year, Pickaway reached 13.5% (2023-24, when Westfall Local was not reported). That flag is not in the series, because the flag field covers only the latest year.
+- Chronic absence: every district's "All Students" rate is a number in all three years. Rates for smaller student groups are often "NC", but we do not use them.
+
+**Missing data.** All 88 counties have a value for both measures in every year listed. Two community schools in 2025-26 (IRNs 021547 and 022050) have a math value but no CCD grade 3 enrollment, so they are left out.
+
+**Revisions.** ODEW does not reissue these files once the report card is final. We keep each year's own file.
+
+**Units and rounding.** Percent, published to one decimal place, as text, sometimes padded with spaces (2025-26).
+
+**Known quirks.**
+- ODEW does not publish the number of students tested. We weight math by CCD grade 3 fall enrollment, which is a close stand-in but not the same count.
+- Ohio math figure: ODEW prints its own state number in the same files (2018-19 and 2021-22 through 2025-26). Our statewide sum runs 1.1 to 1.5 points higher in every year we can compare (63.6% vs. 62.1% in 2025-26). This is the same pattern the reading layer shows. We think the cause is students ODEW counts at the state level but not in any one district's or school's result. We did not confirm this. Both numbers are in `extras.schools_rollup_detail.ohio`.
+- Ohio chronic absence figure: the files we have do not include ODEW's state rate. News coverage of the 2025-26 report cards gives 23.9% (September 2026) or 23.7% (October 2026, citing ODEW). Our district-only sum is 22.4%, about 1.3 to 1.5 points lower. That fits with leaving out community schools, which have higher rates. We did not confirm the state figure in an ODEW file.
+- Two Stark County districts report much lower chronic absence in 2018-19 than in 2017-18: Northwest Local (9.7% to 0.0%) and Tuslaw Local (9.8% to 0.5%). We keep ODEW's values as published. They pull Stark County's 2018-19 figure down a little.
+- 2020-21 math was tested during the pandemic, and fewer students took the test than usual.
+- The county chronic absence figure leaves out community school students. In CCD fall 2024 they were 7.4% of Ohio public school students. In-person community schools enroll the largest shares in Cuyahoga (12.7%), Franklin (12.4%), Lucas (10.3%) and Montgomery (10.1%) counties, so the gap may be largest there.
+
+**Uncertainty.** These are counts of all students, not a sample, so there is no margin of error. In small counties one district sets the figure, and math can swing 10 points or more from year to year.
+
+**License and attribution.** Public data. Credit: Ohio Department of Education and Workforce, Ohio School Report Cards.
+
+## Common Core of Data, enrollment and school directory (NCES, via the Urban Institute Education Data Portal)
+
+**What it is.** The number of students enrolled on or near October 1, for each district (local education agency, or LEA) and each school. We use grade 3 counts as the math weight and the district total as the chronic absence weight for 2017-18 and 2018-19. We also use the school directory's `virtual` flag.
+
+**Where it comes from.** Urban Institute Education Data Portal API, no key. These are the reading layer's cached pulls, read only:
+- `https://educationdata.urban.org/api/v1/school-districts/ccd/enrollment/{year}/grade-3/?fips=39`
+- `.../school-districts/ccd/directory/{year}/?fips=39` (its `enrollment` field is the district total)
+- `.../schools/ccd/enrollment/{year}/grade-3/?fips=39`
+- `.../schools/ccd/directory/{year}/?fips=39`
+
+We match a district on `state_leaid` = "OH-" plus its ODEW IRN, and a community school on the building IRN at the end of `seasch`.
+
+**Version and vintage.** CCD years 2017, 2018 and 2020 to 2024, where "2024" means fall of the 2024-25 school year. CCD for fall 2025 was not in the API at pull time, so 2025-26 math uses 2024-25 grade 3 enrollment. Any district or school with no enrollment in a given year uses its nearest available year.
+
+**Coverage.** All Ohio public districts and schools that report to NCES. We keep the all-students row only (race 99, sex 99). Codes below 0 (missing or not applicable) are treated as no data.
+
+**Changes over time.** None that affect these counts.
+
+**Suppressed, censored or masked values.** None for grade 3 or district totals.
+
+**Missing data.** Two 2025-26 community schools are not matched (see above).
+
+**Revisions.** NCES finalizes each year once.
+
+**Units and rounding.** Students, whole numbers.
+
+**Known quirks.** The CCD district total includes preschool and every grade. ODEW's chronic absence rate covers enrolled students as ODEW defines them. The weights are close but not the same group. This changes the weights a little. It does not change any district's percentage.
+
+**Uncertainty.** Not applicable.
+
+**License and attribution.** Public domain. Credit: U.S. Department of Education, National Center for Education Statistics, Common Core of Data, via the Urban Institute Education Data Portal.
+
+<!-- from docs/datasets/access.md (scripts/45_*.py) -->
+## County Health Rankings & Roadmaps national data (University of Wisconsin Population Health Institute)
+
+**What it is.** One row per county, state and the nation, with a value, numerator and denominator for each measure. We use four measures: Primary Care Physicians (measure 4), Dentists (88), Mental Health Providers (62) and Suicides (161). CHR&R does not collect these data. It recomputes them from the original publishers: the HRSA Area Health Resources Files (doctor counts from the American Medical Association Physician Masterfile; dentist counts from the CMS National Provider Identifier file), the CMS NPPES file (mental health providers), and NCHS death records (suicides). We do not use CHR&R ranks, z-scores or health groups.
+
+**Where it comes from.** countyhealthrankings.org, Health Data, Data & Documentation page. Files:
+- `analytic_supplement_20260325.csv` (Supplemental Data Release, March 25, 2026; 10.8 MB) and its codebook `Analytic_Dataset_Codebook_Supplemental_Release_20260325.pdf`. This is the newest release; the data page lists no 2026 annual release.
+- `chr_trends_csv_2025.csv` (60 MB) and `Trends documentation 2025.pdf`, for earlier years of doctors and dentists.
+- `analytic_data2025_v3.csv` (2025 annual release), used only for the 2020 voter turnout comparison in `extras.turnout_counts`.
+- `DataDictionary_2025.xlsx` and the 2025 technical document.
+No login.
+
+**Version and vintage.** Supplemental release of March 25, 2026. Years of data: doctors 2022, dentists 2023, mental health providers 2025, suicides 2019-2023 combined. Each CHR&R release can revise earlier values. The trends file marks some values as differing from the release they first appeared in.
+
+**Coverage.** All 88 Ohio counties and Ohio.
+- Doctors: practicing non-federal M.D.s and D.O.s under age 75 in general practice, family medicine, general internal medicine and general pediatrics. Subspecialists are left out. Nurse practitioners and physician assistants are not counted. Counted in the county of the practice address. The series runs 2010-2022 (2010-2021 from the trends file). CHR&R says trends should start with 2010 data (its 2013 release) because D.O.s were added then.
+- Dentists: dentists with an NPI. Series 2010-2023 (2010-2022 from the trends file).
+- Mental health providers: psychiatrists, psychologists, licensed clinical social workers, counselors, marriage and family therapists, providers who treat alcohol and drug use, and advanced practice nurses in mental health, with an NPI. Latest year only.
+- Suicides: deaths coded ICD-10 X60-X84, by county of residence, 2019-2023 combined. Age-adjusted, so counties with older or younger populations can be compared. The denominator is the five-year sum of Census population estimates. We store the age-adjusted rate. The crude rate and the death count are in `extras.suicide_deaths`. Latest period only.
+
+**Changes over time.** Mental health providers: marriage and family therapists and addiction providers were added in the 2015 release. In September 2025 CHR&R began placing providers in counties with mapping tools instead of ZIP codes alone; CHR&R warns this can shift values, most in small counties. This is why we keep only the latest year. Suicides: since the 2024 release, the denominator uses Census population estimates instead of NCHS bridged-race estimates.
+
+**Suppressed, censored or masked values.** CHR&R leaves suicides blank with fewer than 10 deaths in five years (Holmes and Noble). We also leave blank any county with fewer than 20 deaths, because NCHS calls rates on fewer than 20 deaths unreliable. That blanks 11 more counties: Fayette, Harrison, Henry, Meigs, Mercer, Monroe, Morgan, Putnam, Van Wert, Vinton and Wyandot. In all, 75 of 88 counties have a suicide rate. The CHR&R value and death count for every county stay in `extras.suicide_deaths`. Provider rates: CHR&R leaves the rate blank for a county with more than 2,000 people and zero doctors (more than 4,000 for dentists; 1,000 for mental health providers). The file still gives the count. Morgan County has a count of 0 primary care doctors in 2022, so we store 0 with the flag "none counted in the county."
+
+**Missing data.** None for Ohio counties besides the cases above.
+
+**Revisions.** We pin the March 2026 supplement. A new release can change values.
+
+**Units and rounding.** The file stores provider values as providers per person; we multiply by 100,000. Suicide rates are per 100,000.
+
+**Known quirks.** Pike County shows 1,541 mental health providers per 100,000 people (417 providers for about 27,000 people), four times the Ohio figure. The 2025 annual release also showed a high count (364). Providers are counted at the address they list, which can be an office that serves people outside the county. Holmes County has the lowest value (18 per 100,000). The annual CSV has two header rows (long names, then variable names).
+
+**Uncertainty.** CHR&R gives confidence intervals for suicides but not for provider counts. Provider files can include people who have stopped practicing.
+
+**License and attribution.** Free to use with credit. Credit: University of Wisconsin Population Health Institute, County Health Rankings & Roadmaps 2025 (Supplemental Data Release, March 2026), with the original sources named above (HRSA Area Health Resources Files; CMS NPPES; CDC NCHS).
+
+## Fatality Analysis Reporting System, FARS (NHTSA)
+
+**What it is.** A census of every motor vehicle crash on a public road in the U.S. in which someone died within 30 days. The `accident.csv` file has one row per crash, with the state, county and number of deaths (`FATALS`).
+
+**Where it comes from.** `https://static.nhtsa.gov/nhtsa/downloads/FARS/<year>/National/FARS<year>NationalCSV.zip`, about 25-35 MB each. No login. We read only `accident.csv` (named `accident.CSV` at the zip root in 2019).
+
+**Version and vintage.** Release notes (`FARS<year> Release Notes.txt`) show 2023 as the latest final file (first released 2026-04-01). The 2024 file is an annual report file, released 2026-04-01; NHTSA updates it into a final file about 12 to 15 months later, so we do not use it yet. The 2021 zip was reposted 2026-06-24 and the 2022 and 2023 zips 2026-04-01.
+
+**Coverage.** Ohio crashes, 2015-2023. Deaths are counted in the county where the crash happened, not where the person lived. That differs from CDC death records, which CHR&R uses for its own crash death measure. Counties with major highways or that border other states can look quite different on the two counts. For 2017-2023, FARS counts 8,500 deaths in Ohio crashes and the CDC-based CHR&R figure counts 9,139 Ohio residents.
+
+How we build the rate: deaths in the five final years combined, divided by the sum of the five July 1 populations, times 100,000. This is a yearly rate. Not age-adjusted. The `series` holds five-year windows from 2015-2019 to 2019-2023. The Ohio figure is all Ohio crashes, built the same way. `extras.traffic_deaths` has deaths by year and person-years.
+
+**Changes over time.** FARS county codes for Ohio match Census FIPS codes. No crash in 2015-2023 had an unknown county.
+
+**Suppressed, censored or masked values.** None in the source. We leave a county blank when it had fewer than 20 deaths in the five years, following the NCHS rule for unreliable rates. Six counties are blank for 2019-2023: Jefferson (18 deaths), Monroe (17), Morgan (16), Putnam (14), Vinton (14) and Paulding (12).
+
+**Missing data.** None for Ohio.
+
+**Revisions.** Final files are not expected to change, but NHTSA does repost them. Delete the cached zip to pull a new copy.
+
+**Units and rounding.** Whole deaths. Rates are ours, stored at full precision.
+
+**Known quirks.** Some older zips have a byte order mark at the start of `accident.csv`; the script strips it. Noble County has the highest rate (32 per 100,000, on 23 deaths in 2019-2023). Because FARS counts deaths where the crash happened, deaths of people passing through count in the county.
+
+**Uncertainty.** None published. Small counts swing from year to year.
+
+**License and attribution.** Public domain. Credit: National Highway Traffic Safety Administration, Fatality Analysis Reporting System.
+
+## Public Libraries Survey (Institute of Museum and Library Services)
+
+**What it is.** A yearly survey of every public library system. The administrative entity (AE) file has one row per library system, with total operating spending (`TOTOPEXP`) and visits (`VISITS`). The outlet file has one row per building or bookmobile.
+
+**Where it comes from.** imls.gov, Public Libraries Survey page. CSV zips: `pls_fy2024_csv.zip` (posted 2026-06; zip contents dated up to 2026-11-04) back to `pls_fy2019_csv.zip`, plus the FY 2024 Data Documentation and User's Guide. We use the imputed files (`PLS_FY24_AE_pud24i.csv` and the outlet file). No login.
+
+**Version and vintage.** FY 2024 is the latest year. Ohio library fiscal years are calendar years (January 1 to December 31) in every year we use.
+
+**Coverage.** 251 Ohio library systems each year. Ohio's systems are set up by county, school district, city or township. `TOTOPEXP` is staff, collection and other operating costs; it leaves out capital (building) spending. `VISITS` is people entering the library for any reason. In FY 2024, 250 of 251 Ohio systems estimated visits from a typical week (counted in October and multiplied by 52) instead of a full-year count.
+
+How we build the rates: each system is assigned to the county named in its `CNTY` field (the county of the main office). We add up spending and visits for each county and divide by the county's July 1 population for that year. The Ohio figure is all 251 systems divided by Ohio's population. The Ohio totals match IMLS's own state totals (checked for FY 2020: $718,064,020 and 44,225,213 visits). IMLS's own per-person figures divide by the population of library service areas instead, so they differ a little from ours. The 2024 list of systems in each county is in `extras.library_systems`.
+
+**Systems that serve more than one county.** IMLS lists every Ohio central and branch library in the same county as its system's main office, so no system has a building recorded in another county (`extras.library_multi_county` is empty for every year). Service areas are different. Many Ohio library systems serve a school district, and some school districts reach into a neighboring county. The survey does not say how much of a service area falls in each county, so we cannot split a system's spending or visits by county. Counties whose residents rely on a library based next door will look lower than their real use.
+
+**Changes over time.** COVID-19 closures cut visits sharply in 2020 and 2021 (Ohio: 5.8 visits per person in 2019, 2.6 in 2021, 4.1 in 2024). Spending is in dollars of each year, not adjusted for inflation.
+
+**Suppressed, censored or masked values.** For systems with 2 or fewer paid staff, IMLS hides salary detail, but not total operating spending. No Ohio values we use are suppressed.
+
+**Missing data.** IMLS fills in missing values. In FY 2024, one Ohio system's spending was filled in (flag `IT24`) and all visits were reported. In FY 2020, visits for 183 of 251 Ohio systems were filled in from earlier years (flag `IG19`: the prior year's value times a growth rate), so 2020 visits are mostly estimates.
+
+**Revisions.** Each year's file is a snapshot. We pin the files listed above.
+
+**Units and rounding.** Dollars and visits as whole numbers. Per-person values are ours.
+
+**Known quirks.** Pike County's only system reported 175,864 visits in FY 2019, then 7,800 to 8,320 a year in FY 2020-2022, 28,444 in FY 2023 and 21,892 in FY 2024. The survey does not say why. Pike has the lowest visit rate in FY 2024 (0.8 per person). The FY 2019-2021 outlet files spell one Fairfield County outlet's county "FARIFIELD."
+
+**Uncertainty.** None published. Visits based on a typical week are estimates.
+
+**License and attribution.** Public domain. Credit: Institute of Museum and Library Services, Public Libraries Survey, FY 2019-FY 2024.
+
+## County Business Patterns (Census Bureau)
+
+**What it is.** Counts of business establishments with paid employees, by industry (NAICS) and county, as of mid-March. We count the ten industries that CHR&R calls "membership associations": religious organizations (813110), civic and social organizations (813410), business associations (813910), professional organizations (813920), labor unions (813930), political organizations (813940), sports teams and clubs (711211), golf courses and country clubs (713910), fitness and recreational sports centers (713940) and bowling centers (713950). This list is broader than NAICS 813 alone; we follow CHR&R so the values match theirs.
+
+**Where it comes from.** Census Data API, `https://api.census.gov/data/<year>/cbp`, variables `ESTAB`, `EMPSZES`, `LFO`, one call per industry, county and state level. We keep rows for all employment sizes (`EMPSZES=001`) and all legal forms (`LFO=001`). Needs the Census API key.
+
+**Version and vintage.** 2023 is the latest year (2024 is not yet in the API or on the Census site). Years used: 2019-2023.
+
+**Coverage.** All 88 counties and Ohio. Only places with paid employees are counted, so volunteer-run churches and clubs are missed. A business is coded by its main activity. Our 2023 counts match CHR&R's exactly (Ohio 12,736; Allen County 164). Rate = establishments / July 1 population x 10,000. The Ohio figure uses the Census state-level count.
+
+**Changes over time.** The ten codes are the same in the 2017 and 2022 NAICS. Since 2017, CBP does not publish a cell with fewer than 3 establishments.
+
+**Suppressed, censored or masked values.** A county-industry cell with 1 or 2 establishments is dropped, not shown as a number. We cannot tell a dropped cell from a true zero, so we count it as zero. This undercounts small counties. The 88 counties add up to 12,442 in 2023, 294 fewer than the state count of 12,736.
+
+**Missing data.** See above.
+
+**Revisions.** None after release.
+
+**Units and rounding.** Whole establishments.
+
+**Known quirks.** The 2023 API still uses the variable name `NAICS2017`. Asking for more than one industry in one call returns only the first, so we make one call per industry.
+
+**Uncertainty.** The Census Bureau does not publish error ranges for establishment counts.
+
+**License and attribution.** Public domain. Credit: U.S. Census Bureau, County Business Patterns; measure definition from County Health Rankings & Roadmaps.
+
+## 2024 election returns (MIT Election Data + Science Lab, from the Ohio Secretary of State)
+
+**What it is.** Official November 5, 2024 general election results for Ohio, one row per precinct, office and candidate. We add up votes for president in each county.
+
+**Where it comes from.** GitHub repository `MEDSL/2024-elections-official`: `individual_states/oh24.zip` (16.5 MB; the CSV inside is dated 2026-04-28) and `2024-president-state.csv` for the statewide total. MEDSL lists the Ohio Secretary of State's official results page as its source. We tried the Secretary of State's site first; during this pull the whole site showed a maintenance page. MEDSL's county-level file on Harvard Dataverse needs a guestbook form, so we used the precinct file.
+
+**Version and vintage.** Results certified by Ohio's Secretary of State on December 2, 2024. MEDSL's Ohio file was added 2025-10-31.
+
+**Coverage.** All 88 counties, 8,878 precincts, all modes combined (`mode = TOTAL`).
+
+How we build the rate: votes cast for president divided by U.S. citizens age 18 and older (ACS, next section), times 100. This is CHR&R's voter turnout method. Ballots with no vote for president are not counted, so this runs a little lower than ballots cast: the Secretary of State reported 5,851,387 ballots cast statewide, and the presidential total is 5,767,788.
+
+**Changes over time.** CHR&R's 2020 turnout figure for each county is in `extras.turnout_counts` for comparison. It used the same method (2020 votes for president and ACS 2016-2020 citizens).
+
+**Suppressed, censored or masked values.** None.
+
+**Missing data.** The precinct file has no write-in votes. Write-ins total 2,771 statewide, 0.05% of the presidential vote. County values leave them out; the Ohio value uses the official statewide total, which includes them.
+
+**Revisions.** None expected.
+
+**Units and rounding.** Whole votes.
+
+**Known quirks.** The precinct file has zero-vote rows for write-in candidates in every precinct. Holmes County has the lowest turnout (39.9%) and Delaware County the highest (83.0%).
+
+**Uncertainty.** Vote counts are exact. The uncertainty comes from the denominator.
+
+**License and attribution.** MEDSL asks users to cite its data. Credit: MIT Election Data and Science Lab, 2024 precinct-level election returns, from the Ohio Secretary of State.
+
+## American Community Survey 5-year, citizen voting-age population (Census Bureau)
+
+**What it is.** Table B29001, estimated U.S. citizens age 18 and older, 2020-2024 5-year estimates, by county and for Ohio.
+
+**Where it comes from.** Census Data API, `2024/acs/acs5`, variables `B29001_001E` and `B29001_001M`. Needs the Census API key.
+
+**Version and vintage.** ACS 2020-2024 5-year release. CHR&R used the CVAP special tabulation from the same ACS survey; its county totals come from the same estimates.
+
+**Coverage.** All counties and Ohio. Includes citizens who cannot vote (for example, people serving a felony prison term), so turnout is understated where many such people live.
+
+**Changes over time.** Each 5-year release is a new estimate; we use the one that ends in the election year.
+
+**Suppressed, censored or masked values.** None at the county level.
+
+**Missing data.** None.
+
+**Revisions.** None after release.
+
+**Units and rounding.** People. Margins of error at the 90% level. We turn the margin of error of the denominator into a margin of error for turnout (votes x MOE / citizens squared x 100) and store it in `moe`. It is at most 0.8 points (in small counties).
+
+**Known quirks.** None found.
+
+**Uncertainty.** Survey estimate; see margins of error.
+
+**License and attribution.** Public domain. Credit: U.S. Census Bureau, American Community Survey 2020-2024 5-year estimates, table B29001.
+
+## Population estimates used as denominators (Census Bureau)
+
+**What it is.** July 1 resident population by county.
+
+**Where it comes from.** For 2020-2025, `data/processed/popest.json` (Vintage 2025, built by `scripts/21_popest.py`; see `docs/datasets/popest.md`). For 2015-2019, the 2010-2020 intercensal estimates, `cc-est2020int-agesex-39.csv` from `www2.census.gov/programs-surveys/popest/datasets/2010-2020/intercensal/county/asrh/` (released September 2025), field `POPESTIMATE`. In that file, `YEAR` codes 2 to 11 are July 1, 2010 to July 1, 2019. Ohio for 2015-2019 is the sum of its counties.
+
+**Version and vintage.** Vintage 2025 and the 2010-2020 intercensal series. Both are tied to the 2020 Census, so the switch at 2020 does not create a jump.
+
+**Coverage.** All 88 counties and Ohio, 2015-2025.
+
+**Changes over time.** Each new vintage revises 2020 and later years.
+
+**Suppressed, censored or masked values.** None.
+
+**Missing data.** None.
+
+**Revisions.** A new vintage will change the 2020-on denominators when `popest.json` is rebuilt.
+
+**Units and rounding.** People.
+
+**Known quirks.** CHR&R used its own (earlier) population vintages, so our 2023 association rate for Ohio (10.79 per 10,000) differs slightly from CHR&R's (10.81) even though the counts match.
+
+**Uncertainty.** The Census Bureau does not publish error ranges for these estimates.
+
+**License and attribution.** Public domain. Credit: U.S. Census Bureau, Population Estimates Program.
+
+<!-- from docs/datasets/public_money.md (scripts/46_*.py) -->
+## Personal current transfer receipts, table CAINC35 (U.S. Bureau of Economic Analysis)
+
+**What it is.** BEA's estimate of benefits received by the residents of each county, in thousands of dollars per year. We use six lines and divide each by the Census July 1 population of the same year:
+
+| Metric | BEA line | What BEA counts |
+|---|---|---|
+| `bea_medicaid_per_resident` | 2220 Public assistance medical care benefits | Medicaid, the Medicaid part of CHIP, the rest of CHIP and state and local medical aid, paid to providers for residents' care |
+| `bea_snap_per_resident` | 2330 Supplemental Nutrition Assistance Program | SNAP benefits |
+| `bea_ssi_per_resident` | 2310 Supplemental Security Income benefits | Federal SSI plus state supplements |
+| `bea_eitc_per_resident` | 2320 Earned Income Tax Credit | The full federal EITC: the part that lowers taxes owed and the part paid as a refund (CAINC35 footnote 8) |
+| `bea_unemployment_per_resident` | 2400 Unemployment insurance compensation | State UI, UI for federal workers, railroad workers and former service members, and trade adjustment aid |
+| `bea_veterans_per_resident` | 2500 Veterans' benefits | VA pension and disability, readjustment (education), life insurance and other aid to veterans |
+
+Dollar totals are in `extras.bea_*_dollars`.
+
+**Where it comes from.** `https://apps.bea.gov/regional/zip/CAINC35.zip` (22.6 MB zip of CSV files, no login, no key). We read `CAINC35_OH_1969_2022.csv`. Line names and definitions are in `CAINC35__definition.xml` and `CAINC35__Footnotes.html` inside the zip. Method: BEA, "County Personal Income: Concepts and Methods," Part V, `https://www.bea.gov/system/files/methodologies/BEA-County-Personal-Income-Concepts-and-Methods.pdf`.
+
+**Version and vintage.** The file says "Last updated: November 16, 2023-- new statistics for 2022; revised statistics for 2013-2021." BEA's "Discontinued or Delayed Statistics" page (`https://bea.gov/data/discontinued-or-delayed-statistics`) lists CAINC35 as discontinued on Nov. 1, 2024 and moved to its Regional Account Archive. So 2022 is the last year BEA published by program and county, and no later release will revise it.
+
+**Coverage.** 2010-2022, all 88 counties and Ohio. Ohio is BEA's own state row (GeoFIPS 39000). The 88 counties add exactly to the state row for every line and year we use. BEA builds state totals from program records, then splits them among counties. How directly each county figure is measured differs by line, per BEA's method paper:
+- SSI: county figures are based on Social Security Administration payment data.
+- Veterans: state and county figures come from the VA's Geographic Distribution of VA Expenditures report (since 2009). State and local aid to veterans is split by veteran population.
+- EITC: state totals from IRS Statistics of Income are split among counties using IRS tabulations; from 2016 on, from IRS individual return files.
+- SNAP: USDA state totals are split among counties using state social services payment data. Where those are missing, BEA uses Census SNAP recipient estimates (SAIPE) to fill in years.
+- Medicaid: state totals come from CMS. Only "a smaller portion of states" give BEA county payment data. For other states, BEA splits the state total in proportion to its own county estimates of family assistance (TANF). CHIP is split by state enrollment data or by Census estimates of children in poverty. The method paper does not say which group Ohio is in, so we cannot say how directly Ohio's county Medicaid figures are measured.
+- Unemployment: state totals come from the Department of Labor. Through 2021, about one third of states gave BEA county payment data and the rest were split by BLS counts of unemployed people. Starting with 2022, all county estimates use BLS unemployment counts in the split. The paper does not say which group Ohio was in before 2022.
+
+The method paper we read is the current edition (it describes 2024 estimates). The 2023 release used for this layer may differ in small details.
+
+**Changes over time.** Line 2400 includes the federal pandemic unemployment programs, so 2020 ($15.7 billion in Ohio, $1,334 per resident) and 2021 are far above other years. Lost Wages Assistance is in a different line (2700) and is not counted here.
+
+**Suppressed, censored or masked values.** BEA uses (D) for values withheld to avoid disclosing a single source, (NA) not available and (NM) not meaningful. None of these appear in the six lines for Ohio counties in 2010-2022. The script keeps any such code as `null` with the code in `flag`.
+
+**Missing data.** None for 2010-2022.
+
+**Revisions.** BEA revised 2013-2021 in the 2023 release. Since the table is discontinued, the values are now fixed.
+
+**Units and rounding.** Thousands of current dollars as published; we multiply by 1,000. BEA notes that "statistics presented in thousands of dollars do not indicate more precision than statistics presented in millions of dollars."
+
+**Known quirks.**
+- These are benefits received by people who live in the county, by BEA's place-of-residence concept, not money spent by offices in the county.
+- Medicaid counts payments to providers for residents' care, so it reflects care used, not only enrollment.
+- Ohio dollar totals for 2022: Medicaid line $30.74 billion, SNAP $4.61 billion, SSI $2.22 billion, EITC $2.51 billion, unemployment $0.56 billion, veterans $4.88 billion.
+
+**Uncertainty.** BEA publishes no error ranges. Lines that BEA splits by an indicator (see Coverage) are less exact at the county level than lines built from county payment data.
+
+**License and attribution.** Public domain. Credit: U.S. Bureau of Economic Analysis.
+
+## Picture of Subsidized Households (U.S. Department of Housing and Urban Development)
+
+**What it is.** HUD's yearly snapshot of the homes in its rental aid programs, as of Dec. 31. We use the "Summary of All HUD Programs" row (program 1), which covers public housing, Housing Choice Vouchers (tenant- and project-based), Moderate Rehabilitation, project-based Section 8, Section 236/BMIR, Section 202 and 811 Project Rental Assistance Contracts and Section 811 Project Rental Assistance. Two measures:
+- `hud_households_per_1000`: occupied homes (one household each) per 1,000 households in the ACS.
+- `hud_spending_per_resident`: occupied homes x HUD's average spending per occupied home per month (`spending_per_month`) x 12, divided by population.
+
+Counts and dollar totals are in `extras.hud_counts`.
+
+**Where it comes from.** `https://www.huduser.gov/portal/datasets/assthsg.html`. Files under `https://www.huduser.gov/portal/datasets/pictures/files/`: `COUNTY_2015.xlsx` to `COUNTY_2021.xlsx`, `COUNTY_2022_2020census.xlsx` to `COUNTY_2025_2020census.xlsx`, the matching `STATE_*` files, and `TRACT_MO_WY_2025_2020census.xlsx` (70 MB; Ohio is in the Missouri-to-Wyoming tract file). Data dictionary: `https://www.huduser.gov/portal/datasets/pictures/dictionary_2025.pdf`. No login. HUD sometimes answers with HTTP 202 and an empty body; the script refuses to save a file that is not a spreadsheet.
+
+**Version and vintage.** One file per year, each a Dec. 31 snapshot (the `Quarter` field reads `31DEC2025` for 2025). We use 2015-2025. From 2022 on we use the files in 2020 census geography (HUD also posts 2022 in 2010 geography). Ohio county boundaries did not change.
+
+**Coverage.** All 88 counties in every year, plus HUD's Ohio state row for the Ohio figure. Housing Choice Vouchers are counted where the voucher holder lives. A row coded `39XXX` holds homes HUD could not place in a county (444 homes in 2015, 1,565 in 2023, 640 in 2025). They are in the Ohio figure but in no county (`extras.hud_units_not_placed_in_a_county`).
+
+Census tracts: 2025 only, 2020 census tract GEOIDs. HUD lists all 3,168 Ohio tracts; all match ACS 2020-2024 tracts. The file also has 72 rows we skip: one "999999" row per county for homes HUD could place in a county but not a tract, and one `39XXX999999` row. Tract results are in the top-level `tracts` key.
+
+**Changes over time.** Before 2025 the files have no count of occupied homes, only the number of homes under contract (`total_units`) and a whole-number occupancy rate (`pct_occupied`). For 2015-2024 we estimate occupied homes as `total_units x pct_occupied / 100`. The 2025 files add `total_occupied`, which we use. Because the rate is rounded, earlier years can be off by up to half a percentage point of occupancy. Example: Ohio 2025 has 198,038 occupied homes as published; the estimate from the rounded 87% would be 197,239 (0.4% lower). `extras.hud_counts` marks which years are published counts (`occupied_is_published`).
+
+**Suppressed, censored or masked values.** HUD codes: -1 missing, -4 suppressed (fewer than 11 households reported), -5 non-reporting (under 50% of households reported). No county was suppressed in 2015-2025. In the 2025 tract file:
+- 1,822 tracts have values.
+- 939 are suppressed (-4). HUD still shows the number of homes under contract for these, but not occupied homes or spending. We do not fill them in.
+- 405 are coded -1 in every field. HUD calls these missing. They appear to be tracts with no HUD-aided homes: all other rows add to 226,655 homes, 57 short of HUD's Ohio total of 226,712. HUD does not say so, so we leave them `null`.
+- 2 are non-reporting (-5).
+The `flag` field holds HUD's code and meaning.
+
+**Missing data.** See above. A tract with no ACS households or residents would get a flag; none occurred.
+
+**Revisions.** HUD does not revise past snapshots as far as we know; each year is a new file.
+
+**Units and rounding.** `spending_per_month` is in whole dollars. HUD defines it as "average federal spending per unit-month": for public housing, the monthly operating subsidy plus capital cost divided by occupied homes; for vouchers, Moderate Rehabilitation and multifamily programs, the monthly housing assistance payment divided by occupied homes, plus an amount for administrative cost for vouchers and Moderate Rehabilitation. The summary row's average is the average of the programs weighted by occupied homes (Ohio 2025: 818.9 computed, 819 published). Ohio 2025 annual estimate: 198,038 x $819 x 12 = $1.95 billion.
+
+**Known quirks.**
+- The yearly dollar figure is our estimate built from one December snapshot, not HUD's reported outlays for the year. It assumes the December count and average held all year.
+- Section 811 Project Rental Assistance shows 396 households reported in Ohio in 2025 but its occupied count is coded -5, so HUD's summary row leaves it out.
+- Moderate Rehabilitation in Ohio shows 154 occupied homes against 85 under contract in 2025 (181% occupied). We use the summary row as published.
+- Very small counties can swing from year to year. Paulding County had 12 occupied homes in 2025.
+
+**Uncertainty.** HUD gives no error ranges for counts. The households denominator is an ACS survey estimate with its own margin of error, which is wide for small tracts.
+
+**License and attribution.** Public domain. Credit: U.S. Department of Housing and Urban Development, Picture of Subsidized Households.
+
+## Annual Survey of School System Finances (U.S. Census Bureau)
+
+**What it is.** Revenue, spending and fall enrollment for every public school system, by fiscal year (July to June in Ohio). Measures:
+- `school_spending_per_pupil`: current spending for elementary and secondary programs (`TCURELSC`, thousands of dollars) divided by fall membership (`V33`), summed over the traditional school districts in the county. Summing first is the same as weighting each district's per-pupil figure by its enrollment.
+- `school_revenue_federal_share`, `_state_share`, `_local_share`: federal (`TFEDREV`), state (`TSTREV`) and local revenue as a percent of total revenue. Revenue from other school systems (`D11`) is taken out of both local revenue and the total, as the Census Bureau does for its state totals, so a dollar passed between districts is counted once.
+
+Current spending covers salaries, benefits (including state payments for teacher retirement made on a district's behalf), supplies, transportation and other day-to-day costs. It leaves out buildings and equipment, debt interest, payments to other school systems, and adult education and community services.
+
+**Where it comes from.** `https://www.census.gov/programs-surveys/school-finances/data/tables.html`. Files: `https://www2.census.gov/programs-surveys/school-finances/tables/{2022,2023,2024}/secondary-education-finance/elsec{22,23,24}.xlsx` (one row per school system, about 13 MB each) and `elsec{22,23,24}_sumtables.xlsx`. Field definitions: `school24doc.docx` in the 2024 folder. No login. The comma-delimited `elsec22.txt` on the server stops after 1,730 lines, so the script reads the Excel files.
+
+**Version and vintage.** Fiscal 2024 (school year 2023-24) was released May 7, 2026. We use fiscal 2022-2024, shown as school years 2021-2022 to 2023-2024. Earlier years exist, but their summary tables are only in the old `.xls` format, which this project cannot read without adding a package.
+
+**Coverage.** In fiscal 2024 the file has 711 Ohio school systems (710 in fiscal 2022): 609 traditional districts, 49 joint vocational districts, 51 educational service centers and 2 nonoperating districts (Middle Bass and North Bass). County figures use the traditional districts only (609 in each year). Joint vocational districts and service centers serve students from several counties, and service centers report no enrollment, so they are left out of counties. Community (charter) schools run by nongovernmental bodies are outside the survey. Ohio's figures are the Census Bureau's own state figures (Table 8 for per pupil, Table 1 for revenue), which include all school systems. For a like-for-like comparison, `extras.school_ohio_traditional_districts_only` has the statewide traditional-district figures (fiscal 2024: $16,217 per pupil against $17,257 in Table 8).
+
+**County assignment.** As in `scripts/40_reading.py`, a district goes to the county named in Ohio's own files: the Census NCES ID is matched to Ohio's district number (IRN) through the NCES Common Core of Data directory (Urban Institute Education Data Portal, cached in `data/raw/urban_ccd/`), and the IRN to the county in ODEW's `2026_District_Details.xlsx`. For 9 districts that cross county lines, ODEW and the Census county code differ: Delphos City, Fostoria City, Bradford, Conotton Valley Union, Black River, Plymouth, Woodmore, Sandy Valley and Mogadore (`extras.school_district_county_differences`). We use ODEW's county. Two districts not in the ODEW file (College Corner Local and Kelleys Island Local) use the Census county code (`CONUM`). Each district counts in one county only.
+
+**Changes over time.** Fiscal 2022 and 2023 include large federal pandemic relief (ESSER) funds; Ohio's federal share falls from 14.0% in 2021-2022 to 11.8% in 2023-2024. Column order differs between years (the 2022 file has an extra `IDCENSUS` column), so the script reads columns by name.
+
+**Suppressed, censored or masked values.** None. In the fiscal 2024 flag file (`elsec24f.xlsx`), Ohio revenue items are marked "R" (as reported by the state). One district's instructional staff support spending, a part of current spending, is marked "I" (imputed); other imputed items are debt, interest and salary detail, which we do not use. Enrollment is flagged "S" (from another source, the NCES Common Core of Data) for 702 systems and "N" (not applicable) for 9.
+
+**Missing data.** None for traditional districts in the fields we use. The Census Bureau says it fills missing items by carrying forward the prior year. We checked flags for fiscal 2024 only.
+
+**Revisions.** The Census Bureau posts errata notes but does not reissue past years as a rule. We use each year's file as posted.
+
+**Units and rounding.** Thousands of dollars; enrollment in students. Shares are percents (0-100).
+
+**Known quirks.**
+- The Census Bureau warns that per-pupil spending can mislead because districts classify costs differently, and that revenue shares reflect how each state funds schools, not how committed it is.
+- The Table 8 footnote says per-pupil enrollment is fall 2022 membership, but the technical document says fall 2023. The district file's `V33` is the fall membership the Census Bureau used. Ohio's fiscal 2024 per pupil from the district file ($17,268 for all systems) is within 0.1% of Table 8 ($17,257).
+- Ohio's revenue shares: our method applied to all 711 systems reproduces Table 1 exactly (federal $3,709,527 thousand; total $31,534,772 thousand after removing $720,493 thousand of revenue from other school systems).
+- Small districts with large local tax bases have high per-pupil spending (Monroe County, home of Switzerland of Ohio Local, is highest at $29,135 in 2023-2024).
+
+**Uncertainty.** These are reported accounts, not samples, so there are no sampling errors. The Census Bureau notes nonsampling error from reporting differences.
+
+**License and attribution.** Public domain. Credit: U.S. Census Bureau, Annual Survey of School System Finances.
+
+## Denominators: population and households (U.S. Census Bureau)
+
+**Population for county and Ohio per-resident figures.** Census July 1 estimates of the same year as the spending. 2020-2025 come from `data/processed/popest.json` (vintage 2025; see `docs/datasets/popest.md`). 2010-2019 come from the 2010-2020 intercensal estimates, `https://www2.census.gov/programs-surveys/popest/tables/2010-2020/intercensal/county/co-est2020int-pop-39.xlsx` (released November 2024), which revise the earlier estimates to agree with the 2020 Census. Ohio uses the file's state row. BEA's own per-capita figures use older estimates, so our per-resident values will not match BEA's exactly.
+
+**Households for the HUD measure.** ACS 5-year table B11001 (total households), county and state, from the Census Data API. Each HUD year uses the 5-year period ending that year (2015 uses 2011-2015); 2025 uses 2020-2024, the latest available. ACS figures are survey estimates with margins of error.
+
+**Tract denominators.** ACS 2020-2024 5-year B11001 (households) and B01003 (total population) for every Ohio tract, 2020 geography. The Census Bureau does not publish July 1 estimates for tracts, so tract spending per resident uses the ACS count. Tract values are not directly comparable with county values, which use July 1 estimates.
+
+## Ohio Community Well-Being page (derived from the sources above)
+
+**What it is.** One page, `dist/wellbeing/index.html`, that shows every measure in its own units for Ohio's 88
+counties, its 15 congressional districts and its 3,162 land 2020 census tracts, in nine areas of daily life
+(child care, education, economic security, jobs and workforce, housing, physical health, mental health, public safety
+and social well-being). Built by `scripts/70_wb_geo.py`, `71_wb_data.py` and `72_wb_build.py`. The measure list,
+each measure's area and role, and the published standards are in `scripts/wellbeing_measures.py`;
+`docs/MEASURES.md` is written from it. There is no combined score.
+
+**Roles.** Each measure is "what residents experience" (conditions), "services and access" (what is available and
+whether people use it) or "public money" (what public programs spend or pay out). Public money is shown beside
+conditions; the page says it does not show what the money caused.
+
+**Map shapes.** Census TIGERweb 2020 tracts and counties, simplified by the server (about 40 meters). Congressional
+districts: the Ohio Redistricting Commission's block assignment file for the map adopted October 31, 2025, joined to
+2020 census block population; every district's 2020 population is 786,629 or 786,630 and the blocks sum to Ohio's
+11,799,448. District outlines are TIGERweb Current layer 54 (120th Congressional Districts); every tract wholly in a
+district by block population falls inside that outline except one (39035138105, District 7). TIGER county and
+district shapes reach into Lake Erie, so the page clips the map to the land tracts. Tract names follow the district
+pages (place with at least half the tract's 2020 residents, else township).
+
+**Counties.** A measure already in a county layer is read from it, with its history. New American Community Survey
+(ACS) measures (uninsured under 65, average commute, crowding, homeownership, vacancy, homes built before 1950,
+broadband, households without a vehicle, children 3 and 4 enrolled in school) are pulled for counties, Ohio and the
+U.S. for 2010-2014, 2015-2019 and 2020-2024 where the table exists (the internet table, B28002, has no 2010-2014
+five-year release) and computed with the county layers' code (`20_acs.py`). The age and race shares on place profiles
+use ACS at every level, so they differ slightly from the Census population estimates on the county dashboard.
+Uninsured under 65 uses B27010's under-19, 19-34 and 35-64 groups (under-18 and 18-34 in 2010-2014).
+
+**Tracts.** ACS 2020-2024 for every Ohio tract (one API call per table with `for=tract:*&in=state:39`), computed with
+the same code. An estimate whose coefficient of variation is above 30% is marked uncertain and hatched. CDC PLACES
+2025 release, tract crude prevalence, with ± as half of CDC's 95% interval; 4 populated tracts have no PLACES value.
+HUD Picture of Subsidized Households 2025 tract values come from `public_money.json`.
+
+**Congressional districts.** No published estimates exist for the 2025 lines. Each ACS table line is summed over
+the tracts with district residents, weighted by the share of each tract's 2020 residents inside the district;
+margins of error are weighted the same way and combined as the square root of the sum of squares. Median household
+income is interpolated from the district's income brackets (B19001); the same method gives 71,503 for Ohio against
+the published 71,389. District 10's values match the OH-10 page exactly. PLACES: tract values weighted by adults 18
+and older times the same share. 112 tracts are split between districts. Measures published only for whole counties
+are not shown for districts.
+
+**CDC PLACES at all three levels.** Crude prevalence (not age-adjusted) everywhere, so levels compare. County values
+are CDC's county estimates (dataset swc5-untb, 2025 release); the county dashboard shows the age-adjusted ones, so the
+two pages differ slightly. Ohio is the tract values weighted by adults 18 and older, since CDC publishes no state
+value in this form. CDC says estimates from different PLACES releases should not be compared over time, so PLACES
+measures have no trend line.
+
+**Child care.** Licensed centers, family child care homes and preschools open on the pull date (the 41_childcare.py
+snapshot of the DCY list; school-age-only programs left out), placed in tracts by their geocoded address: 7,706
+programs, 39 not placed. Programs per 1,000 children under 5 (ACS B01001) and the share rated Silver or Gold in Step
+Up To Quality (unrated programs count as not Silver or Gold). Shown for counties and districts only: a tract is too
+small an area, since families often use care outside it.
+
+**Standards.** Healthy People 2030 national targets, used only where the measure is close: uninsured under 65 (7.6%,
+from AHS-01's 92.4% insured), adult smoking (6.1%, TU-02), drug overdose deaths (20.7 per 100,000, SU-03), suicide
+(12.8, MHMD-01) and traffic deaths (10.1, IVP-06). Most targets are age-adjusted and come from national surveys; the
+local figures for smoking, overdose and traffic deaths are not age-adjusted, and each note says so. Obesity and
+dental visits have targets but are left without one, because the target's measure differs too much (measured weight
+for adults 20+; dental visits for ages 2+).
+
+**Comparisons and colors.** "Near Ohio" means within 3% of Ohio's value, or 0.3 points for percentages. For measures
+with a better and worse direction, map colors step at 3%, 10% and 25% of Ohio's value and the legend gives the breaks
+in the measure's units. Measures without a direction, and public money, use fifths of the places at the current level.
+
+**Trends.** County history where the county layer has it (and the three ACS periods for new ACS measures). Tract
+lines changed in 2020 and the district lines are new, so a tract shows its county's trend and a district shows
+Ohio's.

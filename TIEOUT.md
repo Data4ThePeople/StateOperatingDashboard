@@ -68,3 +68,9 @@ now "People below 200% of the poverty line" (values unchanged).
   agrees with block assignment for every whole-inside and zero-resident tract; IL-6 figures built from tracts agree with
   the Census Bureau's published district estimates on 23 of 24 measures (Black, not Hispanic: 5.3% built, 5.0%
   published); OH-10's bracket-interpolated median is within 0.2% of Ohio's published median when applied to Ohio.
+- Ohio Community Well-Being page (DATASETS.md "Ohio Community Well-Being page") and the three new county layers
+  (`44_schools.py`, `45_access.py`, `46_public_money.py`): not yet through any independent tie-out. Claude's checks:
+  district block populations sum to Ohio's official 2020 count; District 10 values match the OH-10 page exactly;
+  ACS Ohio values equal the county layers' Ohio values for every measure both build from the ACS; BEA counties add to BEA's Ohio row for
+  every line and year; school revenue shares match Census Table 1; the page renders every measure at every level
+  without a script error.
