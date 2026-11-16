@@ -38,3 +38,4 @@ None.
 
 - 2026-11-09 Step 1 opened. Scope set from Eric's voice memo; demo due within two hours.
 - 2026-11-13 Repo published as Data4ThePeople/StateOperatingDashboard with GitHub Pages serving dist/ (Ohio page, OH-10, IL-6).
+- 2026-11-16 Built the Ohio Community Well-Being page (dist/wellbeing/) from Nina's notes: nine areas, county / 2025 district / tract switch, experience vs access vs public money, Healthy People 2030 targets, no combined score. Paused here. Next: Eric saves ODEW grad-rate and District Details files by hand (list in docs/datasets/schools.md); review with Nina via docs/MEASURES.md; independent tie-out of the new page and layers.
