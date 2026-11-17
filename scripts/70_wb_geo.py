@@ -7,8 +7,8 @@ Run: .venv/bin/python scripts/70_wb_geo.py
   2025, joined to 2020 census block population (P.L. 94-171, P1_001N). Each tract records how many of its 2020
   residents live in each district. District outlines are TIGERweb Current layer 54 (120th Congressional Districts);
   the script checks that every tract wholly inside a district by block population falls inside that outline.
-- Lake Erie: TIGER counties and districts reach into the lake. The lake's water-only tracts are kept as a water
-  layer that the page draws on top, so county and district shapes stop at the shore.
+- Lake Erie: TIGER counties and districts reach into the lake. The Well-Being page clips the map to the land tracts
+  merged into one outline (built in 72_wb_build.py), so county and district shapes stop at the shore.
 - Tract names: the city, village or Census-designated place holding at least half of the tract's 2020 residents
   (Census 2020 block assignment file for places), or else the township holding the tract's internal point.
 - Coordinates: an equirectangular projection scaled by the cosine of Ohio's middle latitude, in whole units of a

@@ -177,3 +177,16 @@ has no margin of error.
 
 **Not checked.** The claim that the simplified map shapes missed 39 programs (not rebuilt). Map shapes and tract
 names. ODEW files were read from saved copies (the site needs a sign-in token).
+
+## Page split for speed, November 17, 2026
+
+The Well-Being page now loads the tract layer from a second file (`dist/wellbeing/tracts.json`), writes county,
+Ohio, U.S. and trend values with 8 significant digits (a value keeps full precision when shortening could change
+how it shows at 0 to 4 decimals), and clips Lake Erie with one merged land outline instead of all 3,161 tract
+shapes. No data changed: `data.json` is untouched. Claude rendered the old and new pages in Chrome and compared
+every value, margin, hatching and map color for every measure at every county, district and tract; every map
+card, ranking and legend; every place's profile on every tab; and every trend chart. All match except one trend
+chart axis label: Morgan County rent burden's top gridline reads 56.2% instead of 56.3% (a computed axis value
+near 56.25, not a data point). The new land outline matches the old clip on 29.19 million of 29.19 million land
+pixels at full map scale; 217 pixels along the shore differ by 2 units or less, and 6,963 hairline gaps between
+tracts are now filled.

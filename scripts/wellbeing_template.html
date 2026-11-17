@@ -134,8 +134,12 @@ footer p{max-width:112ch}
 const DATA = __DATA__;
 const GEO = __GEO__;
 const FOOT = __FOOT__;
-const M = DATA.measures, TID = DATA.tract_ids, TIX = Object.fromEntries(TID.map((t, i) => [t, i]));
-const WEAK = Object.fromEntries(Object.entries(DATA.tract_weak).map(([k, a]) => [k, new Set(a)]));
+const M = DATA.measures;
+// the trend series are written with their periods once per measure; expand them to [period, value] pairs
+for (const [id, s] of Object.entries(DATA.series)) DATA.series[id] = Object.fromEntries(Object.entries(s.d).map(([k, a]) => [k, a.map((v, i) => [s.p[i], v])]));
+// tract values and shapes come from tracts.json (see loadTracts); until then the tract level shows a loading note
+let TID = [], TIX = {}, WEAK = {}, TREADY = false, TFAIL = false;
+GEO.tracts = {}; DATA.tract = {}; DATA.tract_moe = {};
 const DIMS = DATA.dims, DIM = Object.fromEntries(DIMS.map(d => [d.id, d]));
 const LEVELS = [["county","Counties"],["district","Congressional districts"],["tract","Census tracts"]];
 const LVNAME = {county:"county", district:"district", tract:"tract"};
@@ -146,8 +150,8 @@ const SEQ = ["#ece9f5","#c3bce0","#958bc6","#6a5aa8","#3f2d80"];
 const SEQ_MONEY = ["#f3ecd8","#e2cf98","#c9a95a","#9c7a2c","#5b4a1f"];
 const BASE = GEO.viewBox.split(" ").map(Number);
 const MAXZ = {county:8, district:8, tract:40};
-// Census county and district shapes reach into Lake Erie; everything is clipped to the land tracts
-const LAND = TID.map(t => GEO.tracts[t].d).join("");
+// Census county and district shapes reach into Lake Erie; everything is clipped to Ohio's land (the land tracts merged)
+const LAND = GEO.land;
 const st = {level:"county", dim:"economic", m:"below_200_share", place:null, hl:false, pulse:false, vb:null, all:false};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -263,12 +267,12 @@ function drawTabs(){
 
 // ---------------------------------------------------------------- map
 function drawMap(){
-  const id = st.m, lv = st.level, sc = scale(id), ok = has(id, lv);
+  const id = st.m, lv = st.level, sc = scale(id), ok = has(id, lv) && (lv !== "tract" || TREADY);
   const vb = st.vb || BASE, k0 = BASE[2] / vb[2], hl = st.hl ? st.place : null;
   let svg = `<svg viewBox="${vb.join(" ")}" class="lv-${lv}${hl ? " hasSel" : ""}" role="img" aria-label="Map of Ohio ${PL[lv]}: ${esc(M[id].label)}">
     <defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern>
     <pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern>
-    <clipPath id="land"><path d="${LAND}"/></clipPath></defs><g class="land" clip-path="url(#land)">`;
+    <clipPath id="land"><path clip-rule="evenodd" d="${LAND}"/></clipPath></defs><g class="land" clip-path="url(#land)">`;
   const parts = [], weak = [];
   places(lv).forEach(key => {
     const c = ok ? val(id, lv, key) : {v:null};
@@ -295,7 +299,7 @@ function drawMap(){
   Object.values(GEO.counties).forEach(c => svg += `<text class="cl" data-fs="11" x="${c.p[0]}" y="${c.p[1]}" font-size="${fs / k0}" stroke-width="${fs * 0.3 / k0}" fill="#55534e" text-anchor="middle" dominant-baseline="middle">${esc(c.name)}</text>`);
   svg += `</svg>`;
   const ohio = DATA.ohio[id];
-  const note = ok ? "" : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].dim === "childcare" && M[id].role === "access" && !M[id].levels.includes("tract") && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
+  const note = ok ? "" : lv === "tract" && has(id, lv) ? `<div class="nolevel">${TFAIL ? "Census tracts could not be loaded. Reload the page to try again." : "Loading census tracts&hellip;"}</div>` : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].dim === "childcare" && M[id].role === "access" && !M[id].levels.includes("tract") && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
   // worst first for judged measures (rank 1 = best), highest first for the rest
   const keys = ok ? places(lv).filter(k => val(id, lv, k).v !== null && val(id, lv, k).v !== undefined) : [];
   const b = M[id].better;
@@ -518,9 +522,18 @@ function buildSearch(){
 }
 
 function render(){ drawLevels(); drawTabs(); drawMap(); drawPanel(); drawDetail(); }
+function loadTracts(){
+  fetch("__TRACTS__").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => {
+    TID = j.ids; TIX = Object.fromEntries(TID.map((t, i) => [t, i]));
+    WEAK = Object.fromEntries(Object.entries(j.tract_weak).map(([k, a]) => [k, new Set(a)]));
+    GEO.tracts = j.shapes; DATA.tract = j.tract; DATA.tract_moe = j.tract_moe; TREADY = true;
+    buildSearch(); if (st.level === "tract") drawMap();
+  }).catch(() => { TFAIL = true; if (st.level === "tract") drawMap(); });
+}
 $("foot").innerHTML = FOOT;
 buildSearch();
 render();
+loadTracts();
 </script>
 </body>
 </html>

@@ -19,7 +19,7 @@ Interactive pages built from public federal and state data by Data 4 The People.
 
 | Path | What it holds |
 |---|---|
-| `dist/` | The built pages. Each is one self-contained HTML file. GitHub Pages serves this folder. |
+| `dist/` | The built pages. GitHub Pages serves this folder. Each page is one self-contained HTML file, except the Well-Being page, which loads its census tract layer from `dist/wellbeing/tracts.json` after the first map is drawn. |
 | `scripts/` | Python that pulls each source and writes one layer file, plus the page builders and HTML templates. |
 | `data/processed/` | The layer files the pages are built from (JSON). Raw downloads are not kept in the repo. |
 | `DATASETS.md` | Every source: what it is, where it comes from, vintage, coverage, quirks and how we use it. |
@@ -48,7 +48,7 @@ Interactive pages built from public federal and state data by Data 4 The People.
 
 ## How to rebuild
 
-The scripts need Python 3 with `pandas` and `openpyxl`. Census and BLS API keys come from the environment
+The scripts need Python 3 with `pandas`, `openpyxl` and `shapely`. Census and BLS API keys come from the environment
 (`CENSUS_API_KEY`, `BLS_API_KEY`), along with `D4TP_CONTACT_EMAIL` for the request header.
 
 ```
