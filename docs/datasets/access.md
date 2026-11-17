@@ -127,7 +127,7 @@ How we build the rates: each system is assigned to the county named in its `CNTY
 
 **Changes over time.** The ten codes are the same in the 2017 and 2022 NAICS. Since 2017, CBP does not publish a cell with fewer than 3 establishments.
 
-**Suppressed, censored or masked values.** A county-industry cell with 1 or 2 establishments is dropped, not shown as a number. We cannot tell a dropped cell from a true zero, so we count it as zero. This undercounts small counties. The 88 counties add up to 12,442 in 2023, 294 fewer than the state count of 12,736.
+**Suppressed, censored or masked values.** A county-industry cell with 1 or 2 establishments is dropped, not shown as a number. We cannot tell a dropped cell from a true zero, so we count it as zero. This undercounts small counties. The 88 counties add up to 12,442 in 2023, 294 fewer than the state count of 12,736. Ohio's rate on the page is built the same way as the counties, from the county sum (10.54 per 10,000 in 2023), so counties are not compared with places their own counts leave out; the state count (10.79) is in `extras.association_counts_ohio_published` and named in the note.
 
 **Missing data.** See above.
 

@@ -212,8 +212,10 @@ is the square root of the sum of squared line MOEs, and MOE of a share p = X/Y i
 sqrt(MOE_X^2 - p^2 x MOE_Y^2) / Y, using a plus sign when the term under the root is negative. These are
 approximations; for sums of many lines (high school or higher adds nine lines) they tend to run larger than
 the published subject-table MOE. A latest value is flagged "high_moe" when its coefficient of variation
-(MOE / 1.645 / estimate) is above 30%. In 2020-2024 only Noble County's rent burden (23.1%, plus or minus
-12.4 points) crosses that line. Housing-cost measures in small counties are the least precise: the median
+(MOE / 1.645 / estimate) is above 30%. Among this layer's measures, only Noble County's rent burden in
+2020-2024 (23.1%, plus or minus 12.4 points) crosses that line. Measures added later with small counts (the
+foreign-born share, and on the Well-Being page overcrowding, preschool enrollment and the race groups) cross it in
+more counties; the same rule flags them. Housing-cost measures in small counties are the least precise: the median
 county's rent burden MOE is about 5.6 points. Historic `series` values carry no MOE.
 
 **License and attribution.** Public domain U.S. government data. Credit: "U.S. Census Bureau, American
@@ -923,7 +925,7 @@ The math column is "3rd Grade Math 2018-19 % at or above Proficient - District" 
 - Each row carries ODEW's county, and we use it to place districts and schools. A district that spans counties counts in the one county ODEW lists.
 
 **How a county value is built.**
-- Math, same as the reading layer: an average of district and in-person community school percents, weighted by grade 3 fall enrollment from CCD (next section). Online (virtual) community schools are left out, because their students live all over the state. Seven schools are left out.
+- Math, same as the reading layer: an average of district and in-person community school percents, weighted by grade 3 fall enrollment from CCD (next section). Online (virtual) community schools are left out, because their students live all over the state. The same seven schools are flagged as online; six of them have a math value to leave out.
 - Chronic absence: an average of district percents, weighted by total enrollment. The weight is CCD total enrollment for 2017-18 and 2018-19, and ODEW's own enrollment from the same District Details file for 2025-26. Community schools are left out in every year. Their 2025-26 rates are in a file we do not have, and leaving them out in all years keeps the years comparable.
 - The Ohio figure for both measures is built the same way, from every district and school the counties use.
 
@@ -1093,7 +1095,7 @@ How we build the rates: each system is assigned to the county named in its `CNTY
 
 **Changes over time.** The ten codes are the same in the 2017 and 2022 NAICS. Since 2017, CBP does not publish a cell with fewer than 3 establishments.
 
-**Suppressed, censored or masked values.** A county-industry cell with 1 or 2 establishments is dropped, not shown as a number. We cannot tell a dropped cell from a true zero, so we count it as zero. This undercounts small counties. The 88 counties add up to 12,442 in 2023, 294 fewer than the state count of 12,736.
+**Suppressed, censored or masked values.** A county-industry cell with 1 or 2 establishments is dropped, not shown as a number. We cannot tell a dropped cell from a true zero, so we count it as zero. This undercounts small counties. The 88 counties add up to 12,442 in 2023, 294 fewer than the state count of 12,736. Ohio's rate on the page is built the same way as the counties, from the county sum (10.54 per 10,000 in 2023), so counties are not compared with places their own counts leave out; the state count (10.79) is in `extras.association_counts_ohio_published` and named in the note.
 
 **Missing data.** See above.
 
@@ -1289,11 +1291,11 @@ Current spending covers salaries, benefits (including state payments for teacher
 
 **Version and vintage.** Fiscal 2024 (school year 2023-24) was released May 7, 2026. We use fiscal 2022-2024, shown as school years 2021-2022 to 2023-2024. Earlier years exist, but their summary tables are only in the old `.xls` format, which this project cannot read without adding a package.
 
-**Coverage.** In fiscal 2024 the file has 711 Ohio school systems (710 in fiscal 2022): 609 traditional districts, 49 joint vocational districts, 51 educational service centers and 2 nonoperating districts (Middle Bass and North Bass). County figures use the traditional districts only (609 in each year). Joint vocational districts and service centers serve students from several counties, and service centers report no enrollment, so they are left out of counties. Community (charter) schools run by nongovernmental bodies are outside the survey. Ohio's figures are the Census Bureau's own state figures (Table 8 for per pupil, Table 1 for revenue), which include all school systems. For a like-for-like comparison, `extras.school_ohio_traditional_districts_only` has the statewide traditional-district figures (fiscal 2024: $16,217 per pupil against $17,257 in Table 8).
+**Coverage.** In fiscal 2024 the file has 711 Ohio school systems (710 in fiscal 2022): 609 traditional districts, 49 joint vocational districts, 51 educational service centers and 2 nonoperating districts (Middle Bass and North Bass). County figures use the traditional districts only (609 in each year). Joint vocational districts and service centers serve students from several counties, and service centers report no enrollment, so they are left out of counties. Community (charter) schools run by nongovernmental bodies are outside the survey. Ohio's figure is built the same way as the counties, from all 609 traditional districts (the script checks that it equals the sum of the 88 county totals), so counties compare on equal terms: fiscal 2024, $16,217 per pupil and a 34.9% state revenue share. The Census Bureau's own state figures (Table 8 for per pupil, Table 1 for revenue) include all school systems ($17,257 and 34.6%); they are in `extras.school_ohio_published_all_systems` and named in the notes.
 
 **County assignment.** As in `scripts/40_reading.py`, a district goes to the county named in Ohio's own files: the Census NCES ID is matched to Ohio's district number (IRN) through the NCES Common Core of Data directory (Urban Institute Education Data Portal, cached in `data/raw/urban_ccd/`), and the IRN to the county in ODEW's `2026_District_Details.xlsx`. For 9 districts that cross county lines, ODEW and the Census county code differ: Delphos City, Fostoria City, Bradford, Conotton Valley Union, Black River, Plymouth, Woodmore, Sandy Valley and Mogadore (`extras.school_district_county_differences`). We use ODEW's county. Two districts not in the ODEW file (College Corner Local and Kelleys Island Local) use the Census county code (`CONUM`). Each district counts in one county only.
 
-**Changes over time.** Fiscal 2022 and 2023 include large federal pandemic relief (ESSER) funds; Ohio's federal share falls from 14.0% in 2021-2022 to 11.8% in 2023-2024. Column order differs between years (the 2022 file has an extra `IDCENSUS` column), so the script reads columns by name.
+**Changes over time.** Fiscal 2022 and 2023 include large federal pandemic relief (ESSER) funds; Ohio's federal share (Table 1, all systems) falls from 14.0% in 2021-2022 to 11.8% in 2023-2024. Column order differs between years (the 2022 file has an extra `IDCENSUS` column), so the script reads columns by name.
 
 **Suppressed, censored or masked values.** None. In the fiscal 2024 flag file (`elsec24f.xlsx`), Ohio revenue items are marked "R" (as reported by the state). One district's instructional staff support spending, a part of current spending, is marked "I" (imputed); other imputed items are debt, interest and salary detail, which we do not use. Enrollment is flagged "S" (from another source, the NCES Common Core of Data) for 702 systems and "N" (not applicable) for 9.
 
@@ -1353,13 +1355,17 @@ Uninsured under 65 uses B27010's under-19, 19-34 and 35-64 groups (under-18 and 
 **Tracts.** ACS 2020-2024 for every Ohio tract (one API call per table with `for=tract:*&in=state:39`), computed with
 the same code. An estimate whose coefficient of variation is above 30% is marked uncertain and hatched. CDC PLACES
 2025 release, tract crude prevalence, with ± as half of CDC's 95% interval; 4 populated tracts have no PLACES value.
-HUD Picture of Subsidized Households 2025 tract values come from `public_money.json`.
+An estimate of zero is never marked, because its coefficient of variation cannot be computed; its margin of
+error is shown instead. HUD Picture of Subsidized Households 2025 tract values come from `public_money.json`.
 
 **Congressional districts.** No published estimates exist for the 2025 lines. Each ACS table line is summed over
 the tracts with district residents, weighted by the share of each tract's 2020 residents inside the district;
-margins of error are weighted the same way and combined as the square root of the sum of squares. Median household
+margins of error are weighted the same way and combined as the square root of the sum of squares. The same 30%
+coefficient-of-variation rule marks uncertain county and district values. The Census Bureau withholds aggregate
+travel time (B08013) for 10 tracts with almost no commuters (0 to 5 workers); a district's average commute uses its
+other tracts in both the numerator and the denominator. Median household
 income is interpolated from the district's income brackets (B19001); the same method gives 71,503 for Ohio against
-the published 71,389. District 10's values match the OH-10 page exactly. PLACES: tract values weighted by adults 18
+the published 71,389; districts are compared with the published Ohio median, and the footer says so. District 10's values match the OH-10 page exactly. PLACES: tract values weighted by adults 18
 and older times the same share. 112 tracts are split between districts. Measures published only for whole counties
 are not shown for districts.
 
@@ -1371,7 +1377,9 @@ measures have no trend line.
 
 **Child care.** Licensed centers, family child care homes and preschools open on the pull date (the 41_childcare.py
 snapshot of the DCY list; school-age-only programs left out), placed in tracts by their geocoded address: 7,706
-programs, 39 not placed. Programs per 1,000 children under 5 (ACS B01001) and the share rated Silver or Gold in Step
+programs. Placement uses full-resolution 2020 TIGER tract shapes (the map's simplified shapes missed 39 points near
+tract edges and the lake shore). For districts, a split tract's programs count by the share of its 2020 residents
+in each district, the same weight used for survey lines. Programs per 1,000 children under 5 (ACS B01001) and the share rated Silver or Gold in Step
 Up To Quality (unrated programs count as not Silver or Gold). Shown for counties and districts only: a tract is too
 small an area, since families often use care outside it.
 

@@ -304,8 +304,8 @@ metrics = {MID: {
              "The latest year is weighted by the prior fall's enrollment, the newest federal count. A district that "
              "spans counties counts in the one county ODEW lists for it. "
              f"The Ohio figure is built the same way from the same districts and schools so counties compare on equal "
-             f"terms; ODEW's published state figure is lower ({odew_latest:.1f}% in {latest}), most likely because it also counts "
-             f"students who are not in any one district's or school's result."),
+             f"terms; ODEW's published state figure is lower ({odew_latest:.1f}% in {latest}). The difference may come from students ODEW counts "
+             f"at the state level but not in any one district's or school's result; this is not confirmed."),
 }}
 write_json("reading.json", {"metrics": metrics, "counties": counties, "ohio": ohio,
                             "extras": {"reading_rollup_detail": extras_detail}})

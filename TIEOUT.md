@@ -108,9 +108,46 @@ shown). The child care count is a raw count, so it tracks county size.
   agrees with block assignment for every whole-inside and zero-resident tract; IL-6 figures built from tracts agree with
   the Census Bureau's published district estimates on 23 of 24 measures (Black, not Hispanic: 5.3% built, 5.0%
   published); OH-10's bracket-interpolated median is within 0.2% of Ohio's published median when applied to Ohio.
-- Ohio Community Well-Being page (DATASETS.md "Ohio Community Well-Being page") and the three new county layers
-  (`44_schools.py`, `45_access.py`, `46_public_money.py`): not yet through any independent tie-out. Claude's checks:
-  district block populations sum to Ohio's official 2020 count; District 10 values match the OH-10 page exactly;
-  ACS Ohio values equal the county layers' Ohio values for every measure both build from the ACS; BEA counties add to BEA's Ohio row for
-  every line and year; school revenue shares match Census Table 1; the page renders every measure at every level
-  without a script error.
+
+## Independent tie-out of the Ohio Community Well-Being page, November 17, 2026
+
+Two fresh agents, with no access to the build code, the processed data or Claude's numbers, re-pulled the sources
+and recomputed the page (`dist/wellbeing/index.html`) and the three new county layers (`44_schools.py`,
+`45_access.py`, `46_public_money.py`).
+
+**Numbers that matched.**
+- ACS 2020-2024: 27 measures for 88 counties (2,376 values and 2,376 margins), Ohio and the U.S.; 26 measures for all
+  3,162 tracts (82,212 values and every margin); the 30% uncertainty marking on every tract.
+- Districts: the block file joins to 276,428 census blocks with none left over; blocks sum to 11,799,448; every
+  district has 786,629 or 786,630 people; tract residents by district match for all 3,162 tracts; 25 of 26 ACS
+  measures and median income match in all 15 districts; all 14 PLACES measures match in all 15.
+- CDC PLACES: 44,268 tract values and their ±, 1,232 county values and their ±, and all 14 Ohio values.
+- Schools: 801 math values and 356 chronic absence values. Access: every doctor, dentist, mental health provider,
+  suicide, traffic death, library, membership group and turnout value, with the suppression rules as written.
+- Public money: every BEA line 2010-2022, every HUD county and tract value, every school finance value. All five
+  Healthy People 2030 targets and objective codes match health.gov.
+- No em dashes; no claim that spending caused or did not cause an outcome.
+
+**Fixed after the tie-out (November 17, 2026).**
+
+| Finding | Fix |
+|---|---|
+| Average commute was blank for 8 of 15 districts, because the Census Bureau withholds aggregate travel time for 10 tracts with 0 to 5 commuters. | Those tracts are left out of both parts of the ratio. All 8 districts now match the checker's values (for example District 1, 23.8 minutes ±0.6). |
+| 39 child care programs were dropped because the map's simplified tract shapes missed points near edges and the lake shore. | Programs are placed with full-resolution tract shapes; all 7,706 are placed. Ohio is now 11.51 per 1,000 children under 5 (was 11.45); Monroe 14.54 (was 12.92). |
+| The 200%-of-poverty note gave $62,400, which is from HHS poverty guidelines, not the Census thresholds the measure uses. | "For two adults and two children in 2024, 200% of the Census Bureau's poverty threshold was about $63,600" (thresh24: $31,812). Same fix on the district pages. |
+| County and district values were not marked uncertain by the 30% rule; 70 county values qualified. Noble County showed the raw code "high_moe". | The rule now applies at every level; uncertain values are hatched and the legend counts them. No raw codes show. |
+| Ohio figures built differently from the counties: school spending per pupil and revenue shares (all school systems), and membership groups (the state count, which includes places withheld in county cells). For membership groups this changed the comparison for 4 counties. | Ohio is built the same way as the counties: $16,217 per pupil (published $17,257), 34.9% state share (34.6%), 10.54 membership groups per 10,000 (10.79). Published figures are named in each note. |
+| School spending note said community schools are in Ohio's figure; they are not in the Census survey. | Corrected. |
+| Footer said Ohio always uses the same method; district median income is from brackets while Ohio's is published. | Footer names the exception ($71,503 by brackets, $71,389 published). |
+| HUD measures shown for tracts but not districts, with no reason given. | Footer explains: too many tract values are withheld for a complete district total. |
+| Wording: "rarely hold jobs" and "which pulls this rate down" (prime-age work); "some households choose not to own one" (no source); reading note's "most likely because"; doctors note missing "general"; the uninsured target's "same age group" (not confirmed); the traffic target counts deaths where people lived. | All reworded or removed; the traffic target note now names the place-of-residence difference. |
+| Footer listed "Census Bureau population estimates" five times; the tract note for child care showed for only one of the two measures; zero estimates' treatment by the 30% rule was not stated. | Fixed; DATASETS.md now says a zero estimate cannot be judged by the rule and is not hatched. |
+| DATASETS.md: "39 not placed", "only Noble County" crosses the 30% line, district child care split not described, "seven" online schools in the math layer (six have a math value). | Corrected. |
+
+**Noted, not changed.** District 13's share of programs rated Silver or Gold is 44.3% after the fix; the checker got
+43.8% with all programs placed. Both use the resident-share split for split tracts, so the gap is unexplained and
+should be looked at in the next check. Ohio's HUD figures include the few hundred homes HUD could not place in a
+county, and Ohio's turnout includes 2,771 write-in votes the county figures cannot include; both differences are
+under 1%. Ohio has no margin of error shown for Gini or turnout. Not checked: the trend series for 2010-2014 and
+2015-2019, map shapes and tract names, the OH-10 match, and the ODEW files (read from saved copies; the site needs a
+sign-in token).

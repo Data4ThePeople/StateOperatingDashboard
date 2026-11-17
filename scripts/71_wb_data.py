@@ -188,12 +188,12 @@ ACS_META = {  # id: label, unit, decimals, better, note
     "broadband_share": ("Households with a broadband internet subscription", "pct", 1, "higher",
                         "Households with a broadband subscription of any type, including a cellular data plan (B28002)."),
     "no_vehicle_share": ("Households without a vehicle", "pct", 1, "none",
-                         "Occupied homes with no car, van or truck available (B25044). Some households choose not to own one, mostly in cities with transit."),
+                         "Occupied homes with no car, van or truck available (B25044)."),
     "preschool_enrolled": ("Children 3 and 4 enrolled in school or preschool", "pct", 1, "higher",
                            "Children ages 3 and 4 enrolled in public or private nursery school, preschool or kindergarten (B14003)."),
     "median_household_income": ("Median household income", "usd", 0, "higher", "Half of households earn more and half earn less, in 2024 dollars (B19013). District figures are estimated from income brackets (B19001)."),
     "poverty_rate": ("People in poverty", "pct", 1, "lower", "People whose family income is below the federal poverty line (C17002)."),
-    "below_200_share": ("People below 200% of the poverty line", "pct", 1, "lower", "People in poverty plus those just above it (C17002). For a family of four in 2024, 200% of the poverty line was about $62,400 a year."),
+    "below_200_share": ("People below 200% of the poverty line", "pct", 1, "lower", "People in poverty plus those just above it (C17002). For two adults and two children in 2024, 200% of the Census Bureau's poverty threshold was about $63,600 a year."),
     "snap_households_share": ("Households that got SNAP food aid (survey)", "pct", 1, "none", "Households that received SNAP at any time in the past 12 months, as reported in the survey (B22003). Surveys tend to undercount program use."),
     "population": ("Population", "count", 0, "none", "Total residents (B01003)."),
     "bachelors_or_higher": ("Adults with a bachelor's degree or more", "pct", 1, "higher", "Adults 25 and older whose highest degree is a bachelor's or higher (B15003)."),
@@ -201,13 +201,13 @@ ACS_META = {  # id: label, unit, decimals, better, note
     "rent_burden": ("Renters paying 30% or more of income on rent", "pct", 1, "lower", "Renter households whose gross rent is 30% or more of household income (B25070). HUD calls these households cost-burdened."),
     "owner_cost_burden": ("Owners with a mortgage paying 30% or more on housing", "pct", 1, "lower", "Owner households with a mortgage whose monthly costs are 30% or more of household income (B25091)."),
     "disability_share": ("People with a disability", "pct", 1, "none", "Civilians not in institutions reporting a hearing, vision, thinking, walking, self-care or independent-living difficulty (B18101)."),
-    "prime_age_epop": ("Prime-age workers: share of people 25 to 54 with a job", "pct", 1, "higher", "People 25 to 54 who are employed (civilian jobs plus armed forces) as a share of all people 25 to 54 (B23001). Places with a prison, college dorms or a nursing home can show a low rate because those residents rarely hold jobs."),
+    "prime_age_epop": ("Prime-age workers: share of people 25 to 54 with a job", "pct", 1, "higher", "People 25 to 54 who are employed (civilian jobs plus armed forces) as a share of all people 25 to 54 (B23001). Places with a prison, college dorms or a nursing home may show a lower rate, since most of those residents are not in the labor force."),
     "prime_age_share": ("Residents ages 25 to 54", "pct", 1, "none", "Share of all residents who are 25 to 54 (B01001)."),
     "age65_share": ("Residents 65 and older", "pct", 1, "none", "Share of all residents who are 65 or older (B01001)."),
     "nh_white_share": ("White, not Hispanic", "pct", 1, "none", "Share of all residents (B03002)."),
     "nh_black_share": ("Black, not Hispanic", "pct", 1, "none", "Share of all residents (B03002)."),
     "hispanic_share": ("Hispanic or Latino (any race)", "pct", 1, "none", "Share of all residents (B03002)."),
-    "foreign_born_share": ("Residents born outside the U.S.", "pct", 1, "none", "Residents who were not U.S. citizens at birth, including naturalized citizens (B05012)."),
+    "foreign_born_share": ("Foreign-born residents", "pct", 1, "none", "Residents who were not U.S. citizens at birth, including naturalized citizens (B05012)."),
 }
 TRACT_ACS = [k for k in ACS_META]
 PLACES = {  # id: measureid, label, better
@@ -273,9 +273,13 @@ def childcare_by_tract():
     d = json.loads(snap.read_text())
     keep = [r for r in d["rows"] if r["program_type"] in cc.LICENSED and r["program_status"] in cc.ACTIVE]
     young = [r for r in keep if cc.LICENSED[r["program_type"]] != "school_age"]
+    # Full-resolution tract shapes (no server simplification), so points near a boundary or the Lake Erie shore are
+    # placed in the right tract. The map itself uses the simplified shapes.
+    geo70 = importlib.import_module("70_wb_geo")
     polys = {}
     for c in sorted({t[2:5] for t in GEO["tracts"]}):
-        for f in json.loads((RAW / KEY / f"tiger_tracts_{c}.geojson").read_text())["features"]:
+        full = geo70.tiger(6, f"STATE='{STF}' AND COUNTY='{c}'", f"tiger_tracts_full_{c}.geojson", offset="0")
+        for f in full["features"]:
             g = f["geometry"]
             rs = g["coordinates"] if g["type"] == "Polygon" else [r for p in g["coordinates"] for r in p]
             xs = [p[0] for r in rs for p in r]
@@ -315,7 +319,7 @@ if __name__ == "__main__":
 
     # --- districts: weighted sums of tract table lines
     cds = sorted(GEO["districts"])
-    dist_raw, dist_c, dist_w = {}, {}, {}
+    dist_raw, dist_c, dist_w, commute_skipped = {}, {}, {}, {}
     for cd in cds:
         w = {t: v["cd"][cd] / v["pop2020"] for t, v in T.items() if v["pop2020"] and cd in v["cd"]}
         dist_w[cd] = w
@@ -323,6 +327,15 @@ if __name__ == "__main__":
         dist_raw[cd] = agg
         dist_c[cd] = compute(2024, agg)
         dist_c[cd]["median_household_income"] = (median_from_brackets(agg), None)
+        # The Census Bureau withholds aggregate travel time (B08013) for a few tracts with almost no commuters. Average
+        # commute uses the tracts that have it, in both the numerator and the denominator.
+        ok = [t for t in w if tr_raw[t].get("B08013_001", (None,))[0] is not None]
+        if len(ok) < len(w):
+            sub = aggregate([tr_raw[t] for t in ok], [w[t] for t in ok])
+            dist_c[cd]["mean_commute"] = ratio(sub["B08013_001"], sub["B08303_001"])
+            commute_skipped[cd] = sorted(set(w) - set(ok))
+    print("average commute: tracts left out for withheld travel time:", {cd: v for cd, v in commute_skipped.items()},
+          "total", len({t for v in commute_skipped.values() for t in v}))
     # check against the OH-10 page, which uses the same method and data
     oh10 = PROC / "oh10" / "data.json"
     if oh10.exists():
@@ -370,18 +383,23 @@ if __name__ == "__main__":
             tract[i] = [rnd(tract_c[t][i][0], dec) for t in tids]
             tract_moe[i] = [rnd(tract_c[t][i][1], dec) for t in tids]
             tract_weak[i] = [n for n, t in enumerate(tids) if tract_c[t][i][0] is not None and weak(tract_c[t][i])]
-            district[i] = {cd: [rnd(dist_c[cd][i][0], dec), rnd(dist_c[cd][i][1], dec)] for cd in cds}
+            district[i] = {cd: [rnd(dist_c[cd][i][0], dec), rnd(dist_c[cd][i][1], dec),
+                                "high_moe" if dist_c[cd][i][0] is not None and weak(dist_c[cd][i]) else None] for cd in cds}
             ohio[i], ohio_moe[i], us[i] = oh_c[i][0], oh_c[i][1], us_c[i][0]
             j = lay.get(i)
             same = j is not None and abs(j["ohio"][i]["latest"] - ohio[i]) < 1e-6 * max(1, abs(ohio[i]))
             if j is not None and not same:
                 print(f"   {i}: county layer uses another source ({j['metrics'][i]['source'][:50]}); using ACS for counties")
             if same:      # county values and history from the county layer (same method, checked in the tie-out)
-                county[i] = {f: [j["counties"][f][i].get("latest"), j["counties"][f][i].get("moe"), j["counties"][f][i].get("flag")] for f in fips}
+                county[i] = {f: [j["counties"][f][i].get("latest"), j["counties"][f][i].get("moe"),
+                                 j["counties"][f][i].get("flag") or ("high_moe" if j["counties"][f][i].get("latest") is not None
+                                                                     and weak((j["counties"][f][i].get("latest"), j["counties"][f][i].get("moe"))) else None)]
+                             for f in fips}
                 series[i] = {f: j["counties"][f][i].get("series") for f in fips}
                 series[i]["ohio"] = j["ohio"][i].get("series")
             else:
-                county[i] = {f: [cnty_c[f][i][0], cnty_c[f][i][1], None] for f in fips}
+                county[i] = {f: [cnty_c[f][i][0], cnty_c[f][i][1], "high_moe" if cnty_c[f][i][0] is not None and weak(cnty_c[f][i]) else None]
+                             for f in fips}
                 series[i] = {}
                 for f in fips + ["ohio"]:
                     s = [[p, hist_c[y][f][i][0]] for y, p in VINT[:2] if f in hist_c[y] and i in hist_c[y][f] and hist_c[y][f][i][0] is not None]
@@ -426,14 +444,17 @@ if __name__ == "__main__":
                             note="Licensed centers, family child care homes and preschools open on the pull date, placed by their "
                                  "address, per 1,000 children under 5. School-age-only programs are left out. A program counts once "
                                  "no matter its size, so this is not a count of slots. Not shown for tracts: families often use "
-                                 f"care outside their own tract. {cc_miss} of {cc_total} programs could not be placed and are left out.")
+                                 "care outside their own tract. A tract split by a district line counts its programs by the share of "
+                                 "its 2020 residents in each district."
+                                 + (f" {cc_miss} of {cc_total} programs could not be placed and are left out." if cc_miss else ""))
             else:
                 meta = dict(label="Licensed programs rated Silver or Gold", unit="pct", decimals=1, better="higher",
                             source="Ohio Department of Children and Youth, licensed program list (Step Up To Quality ratings)",
                             period_label=f"programs open on {cc_pulled}",
                             note="Share of licensed centers, family child care homes and preschools with a Silver or Gold rating in "
                                  "Step Up To Quality, Ohio's rating system (Bronze, Silver, Gold). Programs with no rating count as "
-                                 "not rated Silver or Gold. A program counts once no matter its size.")
+                                 "not rated Silver or Gold. A program counts once no matter its size. Not shown for tracts, for the same "
+                                 "reason as programs per 1,000 children.")
             county[i] = {f: [rate([t for t in tids if t[:5] == f]), None, None] for f in fips}
             district[i] = {cd: [rnd(rate(None, dist_w[cd]), 1), None] for cd in cds}
             ohio[i] = rate(tids)

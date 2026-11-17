@@ -27,7 +27,7 @@ The math column is "3rd Grade Math 2018-19 % at or above Proficient - District" 
 - Each row carries ODEW's county, and we use it to place districts and schools. A district that spans counties counts in the one county ODEW lists.
 
 **How a county value is built.**
-- Math, same as the reading layer: an average of district and in-person community school percents, weighted by grade 3 fall enrollment from CCD (next section). Online (virtual) community schools are left out, because their students live all over the state. Seven schools are left out.
+- Math, same as the reading layer: an average of district and in-person community school percents, weighted by grade 3 fall enrollment from CCD (next section). Online (virtual) community schools are left out, because their students live all over the state. The same seven schools are flagged as online; six of them have a math value to leave out.
 - Chronic absence: an average of district percents, weighted by total enrollment. The weight is CCD total enrollment for 2017-18 and 2018-19, and ODEW's own enrollment from the same District Details file for 2025-26. Community schools are left out in every year. Their 2025-26 rates are in a file we do not have, and leaving them out in all years keeps the years comparable.
 - The Ohio figure for both measures is built the same way, from every district and school the counties use.
 

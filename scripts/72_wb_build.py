@@ -10,15 +10,21 @@ from common import DIST, PROC, ROOT
 data = json.loads((PROC / "wellbeing" / "data.json").read_text())
 geo = json.loads((PROC / "wellbeing" / "geo.json").read_text())
 M = data["measures"]
-srcs = sorted({m["source"] for m in M.values() if m.get("source")})
+srcs = sorted({part.strip() for m in M.values() if m.get("source") for part in m["source"].split(";") if part.strip()})
 foot = ("<p><b>How the three levels are built.</b> Counties: each source's published county figures. Census tracts: "
         "2020 tracts, with American Community Survey 2020-2024 estimates and CDC PLACES model estimates; a survey "
         "estimate whose margin of error is large next to its value is hatched. Congressional districts: the map the "
         "Ohio Redistricting Commission adopted on October 31, 2025, first used in the 2026 election. No published "
         "estimates exist for these lines, so each district adds up the tracts with district residents; a tract split "
-        "by a district line counts by the share of its 2020 residents inside the line. Measures that sources publish "
-        "only for whole counties are not shown for districts or tracts.</p>"
-        "<p><b>Comparisons.</b> Ohio and U.S. figures come from the same source and method as the local figures. For CDC "
+        "by a district line counts by the share of its 2020 residents inside the line. Average commute leaves out the few "
+        "tracts where the Census Bureau withholds travel time; they have almost no commuters. Measures that sources publish "
+        "only for whole counties are not shown for districts or tracts. HUD subsidized housing is shown for counties and "
+        "tracts but not districts, because HUD withholds or leaves out many tract values, so a district total would be "
+        "incomplete. An estimate is hatched when its margin of error is more than about half its value (coefficient of "
+        "variation above 30%); an estimate of zero cannot be judged this way and is not hatched, so check its margin.</p>"
+        "<p><b>Comparisons.</b> Ohio and U.S. figures come from the same source and method as the local figures, with one "
+        "exception: district median household income is estimated from income brackets, while Ohio's is the published "
+        "median (the bracket method gives $71,503 for Ohio, against $71,389 published). For CDC "
         "PLACES, Ohio is the tract values weighted by adults, since CDC publishes no state value in this form. "
         "\"Near Ohio\" means within 3% of Ohio's value, or 0.3 points for percentages. U.S. targets are Healthy People "
         "2030 national targets where one exists for a close match; most are age-adjusted and the local figures are not. "

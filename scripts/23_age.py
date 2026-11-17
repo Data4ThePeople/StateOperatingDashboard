@@ -132,7 +132,7 @@ if __name__ == "__main__":
             "age65_share": {"latest": g.s65.iloc[-1], "period": "2025", "series": [[y, v] for y, v in zip(g.year, g.s65)], "moe": None, "flag": None},
             "prime_age_epop": {"latest": epop["2020-2024"][f][0], "period": "2020-2024",
                                "series": [[p, epop[p][f][0]] for p in ACS.values()], "moe": epop["2020-2024"][f][1],
-                               "flag": (f"{gq[f]:.0f}% of residents live in group quarters such as prisons, dorms or nursing homes, which pulls this rate down"
+                               "flag": (f"{gq[f]:.0f}% of residents live in group quarters such as prisons, dorms or nursing homes, which can pull this rate down"
                                         if gq[f] >= GQ_FLAG else None)},
             "general_fertility_rate": {"latest": gfr[f][-1][1], "period": "2025", "series": gfr[f], "moe": None, "flag": None},
         }

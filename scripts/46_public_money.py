@@ -17,8 +17,9 @@ Denominators
 
 Rules kept: each program is its own measure, never added to another; tax credits (EITC) are never added to
 benefits; the school measures stay separate from the benefit measures. Ohio values are the publisher's own
-state figure (BEA state row, HUD state extract, Census summary tables), divided by Census state population
-or ACS state households where a denominator is needed.
+state figure (BEA state row, HUD state extract), divided by Census state population or ACS state households
+where a denominator is needed. School finance is the exception: Ohio is the sum of all traditional districts,
+built the same way as the counties, with the published all-systems figure in extras.
 
 Writes data/processed/public_money.json. Run: .venv/bin/python scripts/46_public_money.py
 """
@@ -498,10 +499,15 @@ for g in COUNTIES + ["ohio"]:
     for y in SF_YEARS:
         p = sy(y)
         if g == "ohio":
-            o = sf_ohio[y]
-            ser["pp"].append((p, o["per_pupil"]))
+            # Ohio is built the same way as the counties: traditional districts only. The Census Bureau's published
+            # all-systems figures (Tables 1 and 8, which add joint vocational districts and service centers) are kept
+            # in extras and named in the note.
+            r = sf_ohio_regular[y]
+            ser["pp"].append((p, r["spend"] / r["enroll"] * 1000))
             for k in ("fed", "state", "local"):
-                ser[k].append((p, o[k]))
+                ser[k].append((p, r[k] / r["rev"] * 100))
+            tot = {k: sum(sf_by_cty[y][c][k] for c in COUNTIES) for k in ("spend", "enroll", "rev")}
+            assert all(abs(tot[k] - r[k]) <= 1e-6 * max(1, r[k]) for k in tot), (y, tot, {k: r[k] for k in tot})
             continue
         s = sf_by_cty[y][g]
         ser["pp"].append((p, s["spend"] / s["enroll"] * 1000 if s["enroll"] else None))
@@ -518,6 +524,9 @@ extras["school_district_totals"] = {g: {sy(y): {"current_spending_thousands": sf
                                                 "fall_enrollment": sf_by_cty[y][g]["enroll"],
                                                 "revenue_thousands_excl_other_school_systems": sf_by_cty[y][g]["rev"]}
                                          for y in SF_YEARS} for g in COUNTIES}
+extras["school_ohio_published_all_systems"] = {"ohio": {sy(y): {"per_pupil": o["per_pupil"], "federal_share": o["fed"],
+                                                                "state_share": o["state"], "local_share": o["local"]}
+                                                       for y, o in sf_ohio.items()}}
 extras["school_ohio_traditional_districts_only"] = {"ohio": {
     sy(y): {"per_pupil": r["spend"] / r["enroll"] * 1000, "federal_share": r["fed"] / r["rev"] * 100,
             "state_share": r["state"] / r["rev"] * 100, "local_share": r["local"] / r["rev"] * 100}
@@ -596,8 +605,10 @@ metrics = {
         "period_label": f"School year {sy(SF_YEARS[-1])}",
         "note": "Current spending (pay, benefits, supplies, transportation and other day-to-day costs, not "
                 "buildings or debt) of the traditional school districts based in the county, divided by their "
-                "fall enrollment. Joint vocational districts, service centers and community schools are left "
-                "out of counties but are in Ohio's figure." + NOTE_TAIL},
+                "fall enrollment. Ohio's figure is built the same way, from all traditional districts. Joint "
+                f"vocational districts and educational service centers are left out; with them, the Census Bureau's "
+                f"published Ohio figure is ${sf_ohio[SF_YEARS[-1]]['per_pupil']:,.0f}. Community schools (charter "
+                "schools) are not in this Census survey." + NOTE_TAIL},
 }
 for k, who in (("federal", "the federal government"), ("state", "the state of Ohio"), ("local", "local sources (mostly property and income taxes)")):
     metrics[f"school_revenue_{k}_share"] = {
@@ -605,8 +616,10 @@ for k, who in (("federal", "the federal government"), ("state", "the state of Oh
         "theme": THEME, "unit": "pct", "decimals": 1, "better": "none", "source": SF_SRC, "vintage": SF_VINT,
         "period_label": f"School year {sy(SF_YEARS[-1])}",
         "note": f"Percent of the revenue of the county's traditional school districts that came from {who}. "
-                "Money one school system pays another is left out so it is not counted twice. It describes "
-                "where the money comes from, not results."}
+                "Money one school system pays another is left out so it is not counted twice. Ohio's figure "
+                "is built the same way, from all traditional districts (the Census Bureau's published figure also "
+                f"includes joint vocational districts and service centers: {sf_ohio[SF_YEARS[-1]][k[:3] if k == 'federal' else k]:.1f}%). "
+                "It describes where the money comes from, not results."}
 
 out = {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras, "tracts": tracts}
 

@@ -363,7 +363,7 @@ metrics = {
         "note": ("Share of tested third graders who scored proficient or above on Ohio's third grade math test. "
                  "County figures combine public school districts and in-person community schools, weighted by grade 3 "
                  "enrollment; schools too small for ODEW to report are left out. Fewer students tested in 2020-2021. "
-                 "The Ohio figure is built the same way from all districts and schools so counties compare on equal "
+                 "The Ohio figure is built the same way from the same districts and schools so counties compare on equal "
                  f"terms; ODEW's published state figure is {math_state[ML]:.1f}% for {latest_m}."),
     },
     ABS: {

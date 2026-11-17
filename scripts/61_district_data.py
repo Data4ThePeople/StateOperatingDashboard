@@ -146,7 +146,7 @@ NOTE_MOE = " ± is the 90% margin of error."
 M = {   # id: label, theme, unit, decimals, better, note
     "poverty_rate": ("People in poverty", "income", "pct", 1, "lower", "People whose family income is below the federal poverty line (C17002)."),
     "near_poverty_share": ("People just above the poverty line (100% to 199%)", "income", "pct", 1, "lower", "People whose family income is between 100% and 199% of the federal poverty line (C17002)."),
-    "below_200_share": ("People below 200% of the poverty line", "income", "pct", 1, "lower", "People in poverty plus those just above it (C17002). For a family of four in 2024, 200% of the poverty line was about $62,400 a year."),
+    "below_200_share": ("People below 200% of the poverty line", "income", "pct", 1, "lower", "People in poverty plus those just above it (C17002). For two adults and two children in 2024, 200% of the Census Bureau's poverty threshold was about $63,600 a year."),
     "median_household_income": ("Median household income", "income", "usd", 0, "higher", "Half of households earn more and half earn less, in 2024 dollars (B19013). The district figure is estimated from its income brackets (B19001), because medians cannot be added up across tracts."),
     "snap_households_share": ("Households that got SNAP food aid", "income", "pct", 1, "none", "Households that received SNAP at any time in the past 12 months, as reported in the survey (B22003). Surveys tend to undercount program use."),
     "rent_burden": ("Renters paying 30% or more of income on rent", "housing", "pct", 1, "lower", "Renter households whose gross rent is 30% or more of household income (B25070)."),

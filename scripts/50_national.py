@@ -150,7 +150,7 @@ def epop_measure():
                 gq = float(r["B26001_001E"]) / float(r["B01003_001E"]) * 100
                 if gq >= GQ_FLAG:
                     flags[USPS[r["state"]]] = (f"{gq:.0f}% of residents live in group quarters such as prisons, "
-                                               "dorms or nursing homes, which pulls this rate down")
+                                               "dorms or nursing homes, which can pull this rate down")
     add("prime_age_epop", ACS_PERIOD, val["US"], "publisher's own U.S. figure (ACS us:1)",
         {g: val[g] for g in USPS.values()}, flags)
 

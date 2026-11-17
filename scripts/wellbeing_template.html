@@ -116,7 +116,7 @@ footer p{max-width:112ch}
 <header>
   <h1>Ohio Community Well-Being</h1>
   <p>Conditions in every Ohio county, congressional district and census tract, in nine areas of daily life. Each measure is shown in its own units next to Ohio, the U.S. and, where one exists, a published standard. Nothing here is combined into a single score.</p>
-  <span class="draft">Working draft, __DATE__. These figures have not yet been through an independent tie-out.</span>
+  <span class="draft">Working draft, __DATE__. Every figure was recomputed from the publishers by an independent check on November 17, 2026. The fixes it called for have been made and have not been rechecked.</span>
 </header>
 <div class="bar">
   <div><span class="lbl">Show</span><span class="seg" id="levels"></span></div>
@@ -174,8 +174,8 @@ function fmtMoe(moe, id){
 
 // value of a measure for a place: {v, moe, weak, flag}
 function val(id, level, key){
-  if (level === "county"){ const c = (DATA.county[id] || {})[key]; return c ? {v:c[0], moe:c[1], flag:c[2], weak:false} : {v:null}; }
-  if (level === "district"){ const c = (DATA.district[id] || {})[key]; return c ? {v:c[0], moe:c[1], weak:false} : {v:null}; }
+  if (level === "county"){ const c = (DATA.county[id] || {})[key]; return c ? {v:c[0], moe:c[1], flag:c[2] === "high_moe" ? null : c[2], weak:c[2] === "high_moe"} : {v:null}; }
+  if (level === "district"){ const c = (DATA.district[id] || {})[key]; return c ? {v:c[0], moe:c[1], weak:c[2] === "high_moe"} : {v:null}; }
   const a = DATA.tract[id]; if (!a) return {v:null};
   const i = TIX[key]; return {v:a[i], moe:(DATA.tract_moe[id] || [])[i], weak:WEAK[id] ? WEAK[id].has(i) : false};
 }
@@ -289,22 +289,22 @@ function drawMap(){
   Object.values(GEO.counties).forEach(c => svg += `<text class="cl" data-fs="11" x="${c.p[0]}" y="${c.p[1]}" font-size="${fs / k0}" stroke-width="${fs * 0.3 / k0}" fill="#55534e" text-anchor="middle" dominant-baseline="middle">${esc(c.name)}</text>`);
   svg += `</svg>`;
   const ohio = DATA.ohio[id];
-  const note = ok ? "" : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].unit === "rate" && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
+  const note = ok ? "" : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].dim === "childcare" && M[id].role === "access" && !M[id].levels.includes("tract") && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
   // worst first for judged measures (rank 1 = best), highest first for the rest
   const keys = ok ? places(lv).filter(k => val(id, lv, k).v !== null && val(id, lv, k).v !== undefined) : [];
   const b = M[id].better;
   keys.sort((x, y) => b === "higher" ? val(id, lv, x).v - val(id, lv, y).v : val(id, lv, y).v - val(id, lv, x).v);
   const rankOf = n => b === "none" ? n + 1 : keys.length - n;
   const nShow = st.all ? (lv === "tract" ? 100 : keys.length) : 10;
-  const weakN = lv === "tract" && WEAK[id] ? WEAK[id].size : 0;
+  const weakN = !has(id, lv) ? 0 : lv === "tract" ? (WEAK[id] ? WEAK[id].size : 0) : places(lv).filter(k => val(id, lv, k).weak).length;
   $("mapcard").innerHTML = `<h2>${esc(M[id].label)}</h2>
     <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. Ohio: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
     <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of Ohio">Reset</button></div>${note}</div>
-    ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} tracts)</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
+    ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} ${{county:"counties", district:"districts", tract:"tracts"}[lv]})</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
     <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight.</p>
     <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
     <div class="rank">${keys.slice(0, nShow).map((k, n) => `<div tabindex="0" data-k="${k}"><b>${rankOf(n)}</b><span class="nm">${esc(pname(lv, k))}${val(id, lv, k).weak ? " *" : ""}</span><span class="v">${fmt(val(id, lv, k).v, id)}</span></div>`).join("")}</div>
-    ${lv === "tract" ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate. Tracts with a college, prison or nursing home can show extreme values.</p>` : ""}
+    ${lv === "tract" ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate. Tracts with a college, prison or nursing home can show extreme values.</p>` : weakN ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate: the margin of error is more than about half the value.</p>` : ""}
     <button class="linkbtn" id="all" style="margin-top:6px">${st.all ? "Show 10" : lv === "tract" ? "Show 100" : `Show all ${keys.length}`}</button>` : ""}`;
   wireMap();
 }

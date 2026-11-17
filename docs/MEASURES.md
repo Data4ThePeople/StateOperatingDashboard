@@ -11,7 +11,7 @@ _Can families find licensed, rated child care near home?_
 | Measure | Role | Levels | Ohio | Better | Standard | Source | Period |
 |---|---|---|---|---|---|---|---|
 | Licensed child care programs per 1,000 children under 5 (headline) | Access | C D | 11.5 | higher |  | Ohio Department of Children and Youth, licensed program list; ACS 2020-2024 (children under 5) | programs open on 2026-11-09 |
-| Licensed programs rated Silver or Gold | Access | C D | 37.9% | higher |  | Ohio Department of Children and Youth, licensed program list (Step Up To Quality ratings) | programs open on 2026-11-09 |
+| Licensed programs rated Silver or Gold | Access | C D | 37.8% | higher |  | Ohio Department of Children and Youth, licensed program list (Step Up To Quality ratings) | programs open on 2026-11-09 |
 | Children 3 and 4 enrolled in school or preschool | Access | C D T | 41.2% | higher |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 
 Who runs services: Ohio Department of Children and Youth (licensing, Step Up To Quality ratings and publicly funded child care); county departments of job and family services (eligibility for publicly funded care); U.S. Department of Health and Human Services, Administration for Children and Families (Child Care and Development Fund, Head Start).
@@ -24,13 +24,13 @@ _Are students learning, showing up and finishing school?_
 
 | Measure | Role | Levels | Ohio | Better | Standard | Source | Period |
 |---|---|---|---|---|---|---|---|
-| Third graders reading at grade level (proficient or above on the state English test) (headline) | Experience | C | 65.9% | higher |  | Ohio Department of Education and Workforce, school report card data; NCES Common Core of Data for weights | 2025-2026 school year |
+| Third graders proficient or above in English language arts (state test) (headline) | Experience | C | 65.9% | higher |  | Ohio Department of Education and Workforce, school report card data; NCES Common Core of Data for weights | 2025-2026 school year |
 | Third graders proficient in math (proficient or above on the state math test) | Experience | C | 63.6% | higher |  | Ohio Department of Education and Workforce, school report card data; NCES Common Core of Data for weights | 2025-2026 school year |
 | Students chronically absent (missed 10% or more of school) | Experience | C | 22.4% | lower |  | Ohio Department of Education and Workforce, school report card data; NCES Common Core of Data for weights | 2025-2026 school year |
 | Adults with a high school diploma or more | Experience | C D T | 91.8% | higher |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 | Adults with a bachelor's degree or more | Experience | C D T | 31.5% | higher |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
-| School spending per pupil (day-to-day costs) | Public money | C | 17,257 | none |  | U.S. Census Bureau, Annual Survey of School System Finances | School year 2023-2024 |
-| Share of school district revenue from state sources | Public money | C | 34.6% | none |  | U.S. Census Bureau, Annual Survey of School System Finances | School year 2023-2024 |
+| School spending per pupil (day-to-day costs) | Public money | C | 16,217 | none |  | U.S. Census Bureau, Annual Survey of School System Finances | School year 2023-2024 |
+| Share of school district revenue from state sources | Public money | C | 34.9% | none |  | U.S. Census Bureau, Annual Survey of School System Finances | School year 2023-2024 |
 
 Who runs services: Local school districts and community schools; Ohio Department of Education and Workforce; U.S. Department of Education (Title I, special education).
 
@@ -140,8 +140,8 @@ _Are residents safe from crime and crashes?_
 
 | Measure | Role | Levels | Ohio | Better | Standard | Source | Period |
 |---|---|---|---|---|---|---|---|
-| Violent crime rate (headline) | Experience | C | 276 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
-| Property crime rate | Experience | C | 1,429 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
+| Violent crime rate (headline) | Experience | C | 294 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
+| Property crime rate | Experience | C | 1,513 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
 | Traffic deaths per 100,000 people | Experience | C | 10.6 | lower | 10.1 (Healthy People 2030 national target (IVP-06)) | NHTSA Fatality Analysis Reporting System (FARS); Census Bureau population estimates | 2019-2023 (five years combined) |
 
 Who runs services: City police, county sheriffs and the courts; Ohio Department of Public Safety (Ohio State Highway Patrol, Office of Criminal Justice Services, traffic safety office); Ohio Attorney General.
@@ -161,7 +161,7 @@ _Are residents connected to each other and to community resources?_
 | Adults without reliable transportation in the past year | Access | C D T | 8.5% | lower |  | CDC PLACES: Local Data for Better Health, 2025 release | 2023 estimate |
 | Households without a vehicle | Access | C D T | 7.5% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 | Public library visits per person | Access | C | 4.1 | higher |  | Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates | FY 2024 (calendar year 2024 in Ohio) |
-| Membership groups per 10,000 people | Access | C | 10.8 | higher |  | Census Bureau County Business Patterns; Census Bureau population estimates (definition from County Health Rankings & Roadmaps) | 2023 |
+| Membership groups per 10,000 people | Access | C | 10.5 | higher |  | Census Bureau County Business Patterns; Census Bureau population estimates (definition from County Health Rankings & Roadmaps) | 2023 |
 | Public library spending per person | Public money | C | 80.20 | higher |  | Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates | FY 2024 (calendar year 2024 in Ohio) |
 
 Who runs services: Local library systems (largely funded by Ohio's Public Library Fund); park districts; transit agencies; BroadbandOhio (Ohio Department of Development); county boards of elections.
@@ -178,5 +178,5 @@ Main public programs: Public Library Fund, transit funding, broadband expansion 
 | White, not Hispanic | Context | C D T | 75.8% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 | Black, not Hispanic | Context | C D T | 12.0% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 | Hispanic or Latino (any race) | Context | C D T | 4.8% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
-| Residents born outside the U.S. | Context | C D T | 5.2% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
+| Foreign-born residents | Context | C D T | 5.2% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 | People with a disability | Context | C D T | 14.4% | none |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |

@@ -84,5 +84,6 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
 - **County tables on district pages** cover each whole county, including parts outside the district.
 - **Checks.** Two independent checks of the Ohio County Dashboard recomputed every measure from the publishers
   and matched every value. Ohio's crime rate is built the same way as the county rates, not taken from the FBI's
-  statewide estimate. The district pages and the Community Well-Being page have not had that check yet. `TIEOUT.md` lists
+  statewide estimate. The Community Well-Being page had its own independent check on November 17, 2026. The
+  district pages have not had one yet. `TIEOUT.md` lists
   what has been checked and what has not.

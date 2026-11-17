@@ -110,7 +110,7 @@ MEASURES = [
                                                          "the local figures here are not age-adjusted.")),
     dict(id="uninsured_u65", dim="physical", role="access",
          standard=dict(v=7.6, src=HP + " (AHS-01: 92.4% of people under 65 insured)",
-                       note="The target comes from a different national survey (NHIS) with the same age group.")),
+                       note="The target comes from a different national survey (NHIS).")),
     dict(id="places_checkup", dim="physical", role="access"),
     dict(id="places_dental", dim="physical", role="access"),
     dict(id="pcp_per100k", dim="physical", role="access"),
@@ -127,7 +127,8 @@ MEASURES = [
     dict(id="violent_crime_rate", dim="safety", role="lives", headline=True),
     dict(id="property_crime_rate", dim="safety", role="lives"),
     dict(id="traffic_deaths_per100k", dim="safety", role="lives",
-         standard=dict(v=10.1, src=HP + " (IVP-06)", note="The target is age-adjusted; the local rates here are not.")),
+         standard=dict(v=10.1, src=HP + " (IVP-06)", note="The target is age-adjusted and counts deaths where the person lived; "
+                                                                "the local rates here are not age-adjusted and count deaths where the crash happened.")),
     # social well-being
     dict(id="places_loneliness", dim="social", role="lives", headline=True),
     dict(id="places_emotional_support", dim="social", role="lives"),

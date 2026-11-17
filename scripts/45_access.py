@@ -180,7 +180,7 @@ def main():
     prov = [("pcp_per100k", "004", "4", "2022", "Primary care doctors per 100,000 people",
              "HRSA Area Health Resources Files (American Medical Association Physician Masterfile), via County Health Rankings & Roadmaps",
              "Practicing non-federal doctors (M.D. and D.O.) under age 75 in general practice, family medicine, "
-             "internal medicine and pediatrics, per 100,000 residents. Counted where the doctor practices, so "
+             "general internal medicine and general pediatrics, per 100,000 residents. Counted where the doctor practices, so "
              "people may get care in a nearby county."),
             ("dentists_per100k", "088", "88", "2023", "Dentists per 100,000 people",
              "HRSA Area Health Resources Files (CMS National Provider Identifier file), via County Health Rankings & Roadmaps",
@@ -381,6 +381,16 @@ def main():
                  "per 10,000 residents. Census leaves out any industry with fewer than 3 such places in a county, "
                  "so small counties are undercounted a little.")}
     extras["association_counts"] = {}
+    # Ohio is built the same way as the counties (the sum of county counts), since the state count also includes
+    # places in county cells Census withholds. The state count is kept in extras and named in the note.
+    for y in CBP_YEARS:
+        assoc[y]["ohio_published"] = assoc[y]["ohio"]
+        assoc[y]["ohio"] = {code: sum(assoc[y][f].get(code, 0) for f in COUNTIES) for code in ASSOC_NAICS}
+    st_rate = 1e4 * sum(assoc[CBP_YEARS[-1]]["ohio_published"].values()) / pop["ohio"][CBP_YEARS[-1]]
+    metrics["social_associations_per10k"]["note"] += (
+        f" Ohio's figure is the sum of the county counts, built the same way as the counties; Census's statewide count, "
+        f"which includes the places withheld in county cells, gives {st_rate:.1f}.")
+    extras["association_counts_ohio_published"] = {"ohio": {str(y): assoc[y]["ohio_published"] for y in CBP_YEARS}}
     for f in COUNTIES + ["ohio"]:
         ser = [(str(y), 1e4 * sum(assoc[y][f].values()) / pop[f][y]) for y in CBP_YEARS]
         (ohio if f == "ohio" else counties[f])["social_associations_per10k"] = entry(ser)
