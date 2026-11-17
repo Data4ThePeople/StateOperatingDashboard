@@ -110,7 +110,10 @@ def compute(year, d, full=True):
     out["overcrowded_share"] = acs.share(acs.total(d, ["B25014_005", "B25014_006", "B25014_007", "B25014_011", "B25014_012", "B25014_013"]), S(d, "B25014_001"))
     out["homeownership"] = acs.share(S(d, "B25003_002"), S(d, "B25003_001"))
     out["vacancy_rate"] = acs.share(S(d, "B25002_003"), S(d, "B25002_001"))
-    out["old_housing_share"] = acs.share(acs.total(d, ["B25034_010", "B25034_011"]), S(d, "B25034_001"))
+    # Found by label: the line numbers for 1940-1949 and 1939-or-earlier shift by one in 2010-2014.
+    old = lab_lines(year, "B25034", lambda p: bool(p) and ("1939 or earlier" in p[-1] or "1940 to 1949" in p[-1]))
+    assert len(old) == 2, (year, old)
+    out["old_housing_share"] = acs.share(acs.total(d, old), S(d, "B25034_001"))
     out["broadband_share"] = acs.share(S(d, "B28002_004"), S(d, "B28002_001"))
     out["no_vehicle_share"] = acs.share(acs.total(d, ["B25044_003", "B25044_010"]), S(d, "B25044_001"))
     enr = ["B14003_004", "B14003_013", "B14003_032", "B14003_041"]
@@ -184,14 +187,14 @@ ACS_META = {  # id: label, unit, decimals, better, note
     "vacancy_rate": ("Vacant homes", "pct", 1, "none",
                      "Housing units with no one living in them when surveyed, including homes for sale or rent, seasonal homes and abandoned homes (B25002)."),
     "old_housing_share": ("Homes built before 1950", "pct", 1, "none",
-                          "Housing units built in 1949 or earlier (B25034). Older homes are more likely to have lead paint and need repairs; age alone does not show condition."),
+                          "Housing units built in 1949 or earlier (B25034). Age alone does not show a home's condition."),
     "broadband_share": ("Households with a broadband internet subscription", "pct", 1, "higher",
                         "Households with a broadband subscription of any type, including a cellular data plan (B28002)."),
     "no_vehicle_share": ("Households without a vehicle", "pct", 1, "none",
                          "Occupied homes with no car, van or truck available (B25044)."),
     "preschool_enrolled": ("Children 3 and 4 enrolled in school or preschool", "pct", 1, "higher",
                            "Children ages 3 and 4 enrolled in public or private nursery school, preschool or kindergarten (B14003)."),
-    "median_household_income": ("Median household income", "usd", 0, "higher", "Half of households earn more and half earn less, in 2024 dollars (B19013). District figures are estimated from income brackets (B19001)."),
+    "median_household_income": ("Median household income", "usd", 0, "higher", "Half of households earn more and half earn less (B19013). The latest value is in 2024 dollars; earlier periods on the trend line are in their own years' dollars, not adjusted for inflation. District figures are estimated from income brackets (B19001), with no margin of error."),
     "poverty_rate": ("People in poverty", "pct", 1, "lower", "People whose family income is below the federal poverty line (C17002)."),
     "below_200_share": ("People below 200% of the poverty line", "pct", 1, "lower", "People in poverty plus those just above it (C17002). For two adults and two children in 2024, 200% of the Census Bureau's poverty threshold was about $63,600 a year."),
     "snap_households_share": ("Households that got SNAP food aid (survey)", "pct", 1, "none", "Households that received SNAP at any time in the past 12 months, as reported in the survey (B22003). Surveys tend to undercount program use."),

@@ -116,7 +116,7 @@ footer p{max-width:112ch}
 <header>
   <h1>Ohio Community Well-Being</h1>
   <p>Conditions in every Ohio county, congressional district and census tract, in nine areas of daily life. Each measure is shown in its own units next to Ohio, the U.S. and, where one exists, a published standard. Nothing here is combined into a single score.</p>
-  <span class="draft">Working draft, __DATE__. Every figure was recomputed from the publishers by an independent check on November 17, 2026. The fixes it called for have been made and have not been rechecked.</span>
+  <span class="draft">Working draft, __DATE__. The figures were recomputed from the publishers by independent checks on November 17, 2026, and the fixes they called for were rechecked.</span>
 </header>
 <div class="bar">
   <div><span class="lbl">Show</span><span class="seg" id="levels"></span></div>
@@ -482,7 +482,7 @@ function drawDetail(){
     <p class="sub">${esc(m.note || "")}</p>
     <dl class="kv"><dt>Source</dt><dd>${esc(m.source || "")}</dd><dt>Period</dt><dd>${esc(m.period_label || "")}</dd>
       <dt>Levels</dt><dd>${m.levels.map(l => PL[l]).join(", ")}</dd>
-      <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; tract estimates with a large margin are hatched on the map." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
+      <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; estimates whose margin is more than about half the value are hatched on the map at every level." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
       ${m.standard ? `<dt>Standard</dt><dd>${fmt(m.standard.v, id)}: ${esc(m.standard.src)}. ${esc(m.standard.note || "")}</dd>` : ""}
       <dt>Who runs services</dt><dd>${esc(d.agencies || "")}</dd><dt>Main public programs</dt><dd>${esc(d.programs || "")}</dd>
       ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.ohio[i], i)}${k && has(i, lv) ? "" : " (Ohio)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}

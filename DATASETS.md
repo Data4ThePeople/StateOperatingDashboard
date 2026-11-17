@@ -1348,7 +1348,9 @@ pages (place with at least half the tract's 2020 residents, else township).
 (ACS) measures (uninsured under 65, average commute, crowding, homeownership, vacancy, homes built before 1950,
 broadband, households without a vehicle, children 3 and 4 enrolled in school) are pulled for counties, Ohio and the
 U.S. for 2010-2014, 2015-2019 and 2020-2024 where the table exists (the internet table, B28002, has no 2010-2014
-five-year release) and computed with the county layers' code (`20_acs.py`). The age and race shares on place profiles
+five-year release) and computed with the county layers' code (`20_acs.py`). Homes built before 1950 is found by
+label, because B25034's line numbers for 1940-1949 and 1939-or-earlier shift by one in 2010-2014. Median household
+income trends are in each period's own dollars; only the latest value is in 2024 dollars. The age and race shares on place profiles
 use ACS at every level, so they differ slightly from the Census population estimates on the county dashboard.
 Uninsured under 65 uses B27010's under-19, 19-34 and 35-64 groups (under-18 and 18-34 in 2010-2014).
 
@@ -1361,9 +1363,10 @@ error is shown instead. HUD Picture of Subsidized Households 2025 tract values c
 **Congressional districts.** No published estimates exist for the 2025 lines. Each ACS table line is summed over
 the tracts with district residents, weighted by the share of each tract's 2020 residents inside the district;
 margins of error are weighted the same way and combined as the square root of the sum of squares. The same 30%
-coefficient-of-variation rule marks uncertain county and district values. The Census Bureau withholds aggregate
-travel time (B08013) for 10 tracts with almost no commuters (0 to 5 workers); a district's average commute uses its
-other tracts in both the numerator and the denominator. Median household
+coefficient-of-variation rule marks uncertain county and district values. Twenty Ohio tracts have no aggregate
+travel time (B08013); 10 of them have residents (8 with no commuters, 2 with 3 and 5). A district's average commute
+uses its other tracts in both the numerator and the denominator. District median household income has no margin of
+error; the page shows none. Median household
 income is interpolated from the district's income brackets (B19001); the same method gives 71,503 for Ohio against
 the published 71,389; districts are compared with the published Ohio median, and the footer says so. District 10's values match the OH-10 page exactly. PLACES: tract values weighted by adults 18
 and older times the same share. 112 tracts are split between districts. Measures published only for whole counties
@@ -1378,8 +1381,10 @@ measures have no trend line.
 **Child care.** Licensed centers, family child care homes and preschools open on the pull date (the 41_childcare.py
 snapshot of the DCY list; school-age-only programs left out), placed in tracts by their geocoded address: 7,706
 programs. Placement uses full-resolution 2020 TIGER tract shapes (the map's simplified shapes missed 39 points near
-tract edges and the lake shore). For districts, a split tract's programs count by the share of its 2020 residents
-in each district, the same weight used for survey lines. Programs per 1,000 children under 5 (ACS B01001) and the share rated Silver or Gold in Step
+tract edges and the lake shore). County values come from the tract each program falls in, not DCY's county field; 33 programs geocode
+into a different county than the one DCY lists (mostly Franklin-listed programs in neighboring counties), so this
+page's county figures differ from the county dashboard's for 19 counties. For districts, a split tract's programs
+count by the share of its 2020 residents in each district, the same weight used for survey lines. Programs per 1,000 children under 5 (ACS B01001) and the share rated Silver or Gold in Step
 Up To Quality (unrated programs count as not Silver or Gold). Shown for counties and districts only: a tract is too
 small an area, since families often use care outside it.
 

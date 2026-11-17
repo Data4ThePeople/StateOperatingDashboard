@@ -10,14 +10,16 @@ from common import DIST, PROC, ROOT
 data = json.loads((PROC / "wellbeing" / "data.json").read_text())
 geo = json.loads((PROC / "wellbeing" / "geo.json").read_text())
 M = data["measures"]
-srcs = sorted({part.strip() for m in M.values() if m.get("source") for part in m["source"].split(";") if part.strip()})
+# split combined source strings so each publisher is listed once; drop fragments that only name a table or period
+srcs = sorted({part.strip() for m in M.values() if m.get("source") for part in m["source"].split(";")
+               if part.strip() and not part.strip().startswith(("ACS ", "ACS,"))})
 foot = ("<p><b>How the three levels are built.</b> Counties: each source's published county figures. Census tracts: "
         "2020 tracts, with American Community Survey 2020-2024 estimates and CDC PLACES model estimates; a survey "
         "estimate whose margin of error is large next to its value is hatched. Congressional districts: the map the "
         "Ohio Redistricting Commission adopted on October 31, 2025, first used in the 2026 election. No published "
         "estimates exist for these lines, so each district adds up the tracts with district residents; a tract split "
-        "by a district line counts by the share of its 2020 residents inside the line. Average commute leaves out the few "
-        "tracts where the Census Bureau withholds travel time; they have almost no commuters. Measures that sources publish "
+        "by a district line counts by the share of its 2020 residents inside the line. Average commute leaves out the 10 "
+        "tracts with residents that have no travel time figure (8 have no commuters at all, 2 have 3 to 5). Measures that sources publish "
         "only for whole counties are not shown for districts or tracts. HUD subsidized housing is shown for counties and "
         "tracts but not districts, because HUD withholds or leaves out many tract values, so a district total would be "
         "incomplete. An estimate is hatched when its margin of error is more than about half its value (coefficient of "

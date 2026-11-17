@@ -151,3 +151,29 @@ county, and Ohio's turnout includes 2,771 write-in votes the county figures cann
 under 1%. Ohio has no margin of error shown for Gini or turnout. Not checked: the trend series for 2010-2014 and
 2015-2019, map shapes and tract names, the OH-10 match, and the ODEW files (read from saved copies; the site needs a
 sign-in token).
+
+## Recheck of the Well-Being fixes, November 17, 2026
+
+A fresh agent, with no access to the build code or Claude's numbers, recomputed only what changed after the
+tie-out above and what it had not covered. No wrong numbers.
+
+- Average commute: 15 of 15 districts match, value and margin, within 0.0005.
+- Child care: 7,706 programs counted and all 7,706 placed in full-resolution TIGER/Line tracts; 88 of 88 counties,
+  15 of 15 districts and Ohio match on both measures. District 13's Silver or Gold share is 44.3%, as the page shows;
+  the earlier 43.8% came from the first checker's own calculation.
+- Ohio school spending per pupil and state revenue share (all three years) and membership groups (all five years)
+  are built the same way as the counties; the published figures named in the notes are correct.
+- Uncertainty marking: 2,376 county and 390 district values, no differences (70 county values marked).
+- Trends: 5,696 of 5,696 values for 2010-2014, 2015-2019 and 2020-2024 match.
+
+**Fixed after the recheck.** Homes built before 1950 had no 2010-2014 point (the table's line numbers shift that
+year; now found by label, Ohio 27.5%). The median income note said "2024 dollars" while the trend shows each period's
+own dollars (note corrected). The draft notice claimed every figure was recomputed (reworded). The margin-of-error
+line said only tracts are hatched (now every level). The footer's commute wording said "withholds" (8 of the 10
+tracts have no commuters). A stray "ACS 2020-2024 (children under 5)" entry in the source list (removed). An
+unsourced claim about lead paint in older homes (removed). DATASETS.md now says county child care counts come from
+where each program falls (33 programs, 19 counties differ from DCY's county field) and that district median income
+has no margin of error.
+
+**Not checked.** The claim that the simplified map shapes missed 39 programs (not rebuilt). Map shapes and tract
+names. ODEW files were read from saved copies (the site needs a sign-in token).
