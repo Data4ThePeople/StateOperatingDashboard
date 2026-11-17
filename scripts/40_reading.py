@@ -292,7 +292,7 @@ odew_latest = state[YEARS[-1]]
 
 latest = sy(YEARS[-1])
 metrics = {MID: {
-    "label": "Third graders reading at grade level (proficient or above on the state English test)",
+    "label": "Third graders proficient or above in English language arts (state test)",
     "theme": "people", "unit": "pct", "decimals": 1, "better": "higher",
     "source": "Ohio Department of Education and Workforce, school report card data; NCES Common Core of Data for weights",
     "vintage": (f"school years {', '.join(sy(y) for y in YEARS)} (no test in 2019-2020); ODEW files created "
@@ -301,7 +301,9 @@ metrics = {MID: {
     "note": ("Share of tested third graders who scored proficient or above on Ohio's third grade English test. "
              "County figures combine public school districts and in-person community schools, weighted by grade 3 "
              "enrollment; schools too small for ODEW to report are left out. Fewer students tested in 2020-2021. "
-             f"The Ohio figure is built the same way from all districts and schools so counties compare on equal "
+             "The latest year is weighted by the prior fall's enrollment, the newest federal count. A district that "
+             "spans counties counts in the one county ODEW lists for it. "
+             f"The Ohio figure is built the same way from the same districts and schools so counties compare on equal "
              f"terms; ODEW's published state figure is lower ({odew_latest:.1f}% in {latest}), most likely because it also counts "
              f"students who are not in any one district's or school's result."),
 }}

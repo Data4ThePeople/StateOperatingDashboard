@@ -9,6 +9,13 @@ The owner asked for "petty crime." The FBI has no category by that name; propert
 
 ## Return A master files (FBI Uniform Crime Reporting Program)
 
+Built by `scripts/43_crime.py` into `data/processed/crime.json`. Raw files are cached under
+`data/raw/fbi_cde/`. Pulled 2026-11-09.
+
+Metrics: `violent_crime_rate` and `property_crime_rate`, per 100,000 people, 2015 through 2025.
+The owner asked for "petty crime." The FBI has no category by that name; property crime
+(burglary, larceny-theft, motor vehicle theft) is the closest standard category.
+
 **What it is.** One fixed-width record per law enforcement agency per year. Each record holds the agency's population, the counties it serves, and for each month the count of offenses known to police ("actual" offenses, after unfounded reports are removed) for the Part I crimes. We use murder and nonnegligent manslaughter, rape, robbery and aggravated assault (violent), and burglary, larceny-theft and motor vehicle theft (property).
 
 **Where it comes from.** FBI Crime Data Explorer (CDE), Documents and Downloads, Master Files, "Return A". The page asks `https://cde.ucr.cjis.gov/LATEST/s3/signedurl?key=master_files/reta/reta-<year>.zip` for a short-lived download link. No key or login. One zip per year, about 6 MB, holding one text file (about 195 MB) for the whole country. Ohio rows have UCR state code 34. The record layout comes from the FBI's "Ret A Rec Descrip.pdf" (in `reta-help.zip`, a scanned image) and matches the public setup file by Jacob Kaplan (`jacobkap/crime_data`, `setup_files/ucr_return_a.sps`). Header: ORI in columns 4-10, population group 11-12, "covered by" ORI 24-30, three population and county pairs in 45-89. Months start at column 306, 590 columns each; within a month, columns 3-8 are the date of last update and the actual-offense card starts at column 158 of the block.
@@ -19,7 +26,8 @@ The owner asked for "petty crime." The FBI has no category by that name; propert
 
 How we build a county figure:
 
-- **Reported month.** A month counts as reported when the record shows a nonzero date of last update, or an actual-offense card marked as sent. We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
+- **Offenses.** Violent crime is murder and nonnegligent manslaughter, rape, robbery and aggravated assault. Return A's assault total includes simple assault, so aggravated assault is the assault total minus simple assault. Property crime is burglary, larceny-theft and motor vehicle theft.
+- **Reported month.** A month counts as reported when the record shows a nonzero date of last update (including a month with card type 4, "not available", and zero counts), or an actual-offense card of type 5 (submitted). We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
 - **Full-year agencies only.** An agency counts toward a county's rate only if it reported all 12 months. We do not fill in missing months.
 - **County assignment.** The FBI codes each agency's population to up to three counties. UCR county codes number Ohio's counties A to Z (1 = Adams, 88 = Wyandot), so FIPS = 2 x code - 1. We use the FBI's county fields, not our own geography.
 - **Agencies spanning counties.** 54 Ohio agencies had population in more than one county in 2025 (Columbus covers parts of Franklin, Delaware and Fairfield). We split the population as the FBI does. The FBI does not split offenses by county, so we split them in the same shares as the population. This assumes crime is spread evenly across an agency's area.
@@ -49,13 +57,13 @@ Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 20
 
 ## Crime in the United States, state estimates (FBI)
 
-**What it is.** The FBI's estimated number of violent and property crimes for Ohio, and its population, for each year. Used for the Ohio statewide figure.
+**What it is.** The FBI's estimated number of violent and property crimes for Ohio, and its population, for each year. Named in the crime notes for reference. The page's Ohio figure is not this estimate: it is built the same way as the counties (see Coverage), so a county is not made to look worse by the method alone.
 
 **Where it comes from.** CDE Documents and Downloads, "Crime in the United States," estimations zip for each edition (`cius/<year>/cius-estimations-<year>.zip`), Table 4 "Crime in the United States by Region, Geographic Division, and State," xlsx. Each edition has two years. We read the 2022 through 2025 editions and keep each year from the latest edition that has it. Rate = estimated count / population x 100,000 at full precision (the table rounds to one decimal).
 
 **Version and vintage.** 2025 edition files dated 2026-08-03.
 
-**Coverage.** Ohio, 2021 through 2025. The FBI publishes estimates for earlier years too, but those editions are old `.xls` files that the project's Python setup cannot read, so the `ohio` series starts in 2021. `extras.ohio_reported_agencies` gives a statewide rate for every year built the same way as the counties (all full-year local agencies); it runs higher than the FBI estimate (for 2025, 293.8 vs. 275.6 violent and 1,513 vs. 1,429 property per 100,000).
+**Coverage.** Ohio, 2021 through 2025. The FBI publishes estimates for earlier years too, but those editions are old `.xls` files that the project's Python setup cannot read, so `extras.ohio_fbi_estimate_counts` starts in 2021. The page's `ohio` series, 2015 through 2025, is built the same way as the counties (all full-year local agencies, also in `extras.ohio_reported_agencies`); it runs higher than the FBI estimate (for 2025, 293.8 vs. 275.6 violent and 1,513 vs. 1,429 property per 100,000).
 
 **Changes over time.** The FBI estimates crime for agencies that sent fewer than 12 months: for 3 to 11 months it scales up the agency's own data; for fewer than 3 months it uses similar agencies in the state. The 2021 estimates came out as a limited release because national NIBRS participation was low that year.
 

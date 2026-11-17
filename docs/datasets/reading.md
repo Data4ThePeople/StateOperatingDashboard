@@ -5,6 +5,9 @@ Built by `scripts/40_reading.py` into `data/processed/reading.json`. The ODEW fi
 
 ## School report card achievement files (Ohio Department of Education and Workforce)
 
+Built by `scripts/40_reading.py` into `data/processed/reading.json`. The ODEW files were downloaded by hand into
+`data/raw/odew/`. The script does not fetch them. CCD pulls are cached under `data/raw/urban_ccd/`. Built 2026-11-09.
+
 **What it is.** One row per traditional public school district (`*_Achievement_District.xlsx`) or per community school building (`*_Achievement_CS.xlsx`). We use one field: the percent of the district's or school's third graders who scored proficient or above on the Ohio State Test in English language arts. ODEW reports it on the report card as a "report only" indicator (`grade3_ela_proficient`).
 
 **Where it comes from.** ODEW report card "Download Data" page, https://reportcard.education.ohio.gov/download, categories "District Data" and "School Building Data". Files:
@@ -24,9 +27,9 @@ The data sheet is `Performance_Indicators` in 2018-19 and `Report_Only_Indicator
 - No masked value is ever treated as 0. A masked district or school drops out of its county's average.
 - To show how much that matters, we count its CCD grade 3 enrollment as "masked enrollment" (`extras.reading_rollup_detail`).
 - Statewide, masked enrollment is 0.1% to 0.4% of grade 3 enrollment each year: 323 of about 123,000 in 2025-26.
-- Masked districts: Put-In-Bay Local (Ottawa County, most years), Vanlue Local (Hancock County, 2021-22 through 2024-25) and Bloomfield-Mespo Local (2020-21). The rest are small community schools.
+- Masked districts: Put-In-Bay Local (Ottawa County, every year), Vanlue Local (Hancock County, 2021-22 through 2024-25) and Bloomfield-Mespo Local (2020-21). The rest are small community schools.
 - We flag a county when 5% or more of its grade 3 enrollment is in masked cells. No county reaches that in 2025-26. The highest is Harrison at 4.3%.
-- Earlier years: Harrison reached 5.4% in 2020-21 and Hocking 5.7% in 2023-24. Those flags are not in the series because the flag field covers only the latest year.
+- Earlier years: Harrison reached 5.4% in 2020-21. (Hocking shows 5.7% in 2023-24 only because Southeast Ohio Classical Academy, which first appears in the 2024-25 file, is listed there as "NC" for the prior year; by the rule above Harrison is highest that year at 3.2%. No shown value changes.) Those flags are not in the series because the flag field covers only the latest year.
 
 **Missing data.** All 88 counties have a value in every school year. We could not weight two community schools in 2025-26 because CCD had no grade 3 enrollment for them: LINC Academy Columbus and Virtual Preparatory Academy of Ohio. Both are left out.
 
@@ -36,9 +39,10 @@ The data sheet is `Performance_Indicators` in 2018-19 and `Report_Only_Indicator
 
 **Known quirks.**
 - ODEW does not publish the number of students tested in these files. We weight each district and school by its grade 3 fall enrollment from the NCES Common Core of Data (next section). Enrollment is a close stand-in for students tested but is not the same count.
-- Online (virtual) community schools are left out of county figures, because their students live all over the state while ODEW lists one county for the school. We take the virtual flag from the CCD school directory, and seven schools are left out (the script prints the names).
-- The Ohio figure on the page is the enrollment-weighted sum of the same district and school figures the counties use, for every school year. Counties are compared with a statewide number built the same way.
-- ODEW also prints its own state number in the same files, for 2018-19 and 2021-22 through 2025-26. It runs about 2 to 2.5 points below our statewide sum in every year we can compare, with or without the online schools. We think the cause is the students ODEW counts at the state level but not in any one district's or school's result (for example, students who were not enrolled for the full year). We did not confirm this. Both numbers are in `extras.reading_rollup_detail.ohio`, and the page's note gives ODEW's latest figure.
+- Online (virtual) community schools are left out of county figures, because their students live all over the state while ODEW lists one county for the school. We take the virtual flag from the CCD school directory, counting a school as online if CCD flags it in any year 2017-2024, and seven schools are left out (the script prints the names).
+- The Ohio figure on the page is the enrollment-weighted sum of the same district and school figures the counties use, for every school year. When CCD has no enrollment for a district or school in that year, the nearest year is used, and the earlier year when two are equally near.
+- A district that spans counties counts in the one county ODEW lists for it in that year's file. Counties are compared with a statewide number built the same way.
+- ODEW also prints its own state number in the same files, for 2018-19 and 2021-22 through 2025-26. It runs 1.9 to 2.6 points below our statewide sum in every year we can compare, with or without the online schools. We think the cause is the students ODEW counts at the state level but not in any one district's or school's result (for example, students who were not enrolled for the full year). We did not confirm this. Both numbers are in `extras.reading_rollup_detail.ohio`, and the page's note gives ODEW's latest figure.
 - 2020-21 was tested during the pandemic, and fewer students took the test than usual.
 
 **Uncertainty.** These are counts of all tested students, not a sample, so there is no margin of error. In small counties a single district of 100 to 200 third graders sets the figure, and year-to-year swings of 10 points or more happen (Vinton County went from 64.3% in 2022-23 to 81.4% in 2023-24).

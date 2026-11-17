@@ -118,7 +118,7 @@ if __name__ == "__main__":
         "prime_age_epop": dict(label="Prime-age workers: share of people 25 to 54 with a job", theme="people", unit="pct", decimals=1,
                                better="higher", source="U.S. Census Bureau, American Community Survey 5-year estimates, table B23001",
                                vintage="2010-2014, 2015-2019, 2020-2024; pulled 2026-11-09", period_label="2020-2024 ACS 5-year",
-                               note="People 25 to 54 who are employed (civilian jobs plus armed forces) as a share of all people 25 to 54, including those in group quarters. Counties where 5% or more of residents live in group quarters (prisons, college dorms, nursing homes) are flagged, because those residents rarely hold jobs. Survey estimate; ± is the 90% margin of error by the Census approximation for proportions."),
+                               note="People 25 to 54 who are employed (civilian jobs plus armed forces) as a share of all people 25 to 54, including those in group quarters. Counties where 5% or more of residents live in group quarters (prisons, college dorms, nursing homes) are flagged, because most of those residents are not in the labor force, which can pull the rate down. Survey estimate; ± is the 90% margin of error by the Census approximation for proportions."),
         "general_fertility_rate": dict(label="Fertility rate: births per 1,000 women ages 15 to 44", theme="people", unit="per1000", decimals=1,
                                        better="none", source="U.S. Census Bureau, Population Estimates Program (Vintage 2025): births and women 15 to 44",
                                        vintage="years ending June 30, 2021-2025; pulled 2026-11-09", period_label="July 2024 to June 2025",

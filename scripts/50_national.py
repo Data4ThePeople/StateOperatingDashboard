@@ -229,7 +229,7 @@ def age_measures(st, us):
         {g: agg[(g, 2025)]["s65"] / agg[(g, 2025)]["pop"] * 100 for g in USPS.values()})
     us_fem = (nsum(2, 15, 44, 2024) + nsum(2, 15, 44, 2025)) / 2
     add("general_fertility_rate", "2025", float(us["BIRTHS2025"]) / us_fem * 1000,
-        "publisher's own U.S. figures (NST-EST2025 births, national women 15 to 44)",
+        "computed from the Census Bureau's U.S. births (NST-EST2025) and national women 15 to 44, the same way as the states",
         {g: float(st[g]["BIRTHS2025"]) / ((agg[(g, 2024)]["fem"] + agg[(g, 2025)]["fem"]) / 2) * 1000
          for g in USPS.values()})
 

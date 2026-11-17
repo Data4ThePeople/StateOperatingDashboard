@@ -302,12 +302,17 @@ B23001 comes from the Census Data API with `group(B23001)`.
 births in the year ending June 30 by the average of the July 1 counts of women 15 to 44 at the start and end
 of that year. The age file has no state row; Ohio is the sum of its 88 counties, which in the estimates
 program equals the state total (the script checks that county births sum to the state's births). B23001 lines
-are found by label; the 2014 table labels the armed forces line "In Armed Forces", later years "Armed Forces".
+are found by label ("In Armed Forces" in every period; only trailing colons differ).
 
-**Changes over time.** The B23001 universe is people 16 and older, including people in group quarters (prisons,
-nursing homes, college dorms), so a county with a large prison or college reads lower on prime-age work than
-its household population would. The page flags every county where 5% or more of residents live in group
-quarters (ACS 2020-2024 B26001 over B01003).
+**Group quarters.** The B23001 universe is people 16 and older, including people in group quarters (prisons,
+nursing homes, college dorms), so a county with a large prison can read lower on prime-age work than its
+household population would. The page flags every county where 5% or more of residents live in group quarters
+(ACS 2020-2024 B26001 over B01003). The flag uses all residents, while the rate covers ages 25 to 54, and dorm
+and nursing home residents are mostly outside that age range, so the flag marks a possible effect, not a
+measured one. The flag uses 2020-2024 only: Greene, Seneca, Union and Wood were at 5% or more in earlier periods
+but not now, so their changes over time compare a base that may be affected with a latest value that is not.
+
+**Changes over time.** None in the B23001 lines used.
 
 **Uncertainty.** Estimates-program figures carry no margin of error and are revised back to 2020 with each new
 vintage. Births for the latest year are partly estimated by the Census Bureau and revised the next year. B23001
@@ -591,7 +596,8 @@ The owner asked for "petty crime." The FBI has no category by that name; propert
 
 How we build a county figure:
 
-- **Reported month.** A month counts as reported when the record shows a nonzero date of last update, or an actual-offense card marked as sent. We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
+- **Offenses.** Violent crime is murder and nonnegligent manslaughter, rape, robbery and aggravated assault. Return A's assault total includes simple assault, so aggravated assault is the assault total minus simple assault. Property crime is burglary, larceny-theft and motor vehicle theft.
+- **Reported month.** A month counts as reported when the record shows a nonzero date of last update (including a month with card type 4, "not available", and zero counts), or an actual-offense card of type 5 (submitted). We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
 - **Full-year agencies only.** An agency counts toward a county's rate only if it reported all 12 months. We do not fill in missing months.
 - **County assignment.** The FBI codes each agency's population to up to three counties. UCR county codes number Ohio's counties A to Z (1 = Adams, 88 = Wyandot), so FIPS = 2 x code - 1. We use the FBI's county fields, not our own geography.
 - **Agencies spanning counties.** 54 Ohio agencies had population in more than one county in 2025 (Columbus covers parts of Franklin, Delaware and Fairfield). We split the population as the FBI does. The FBI does not split offenses by county, so we split them in the same shares as the population. This assumes crime is spread evenly across an agency's area.
@@ -621,13 +627,13 @@ Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 20
 
 ## Crime in the United States, state estimates (FBI)
 
-**What it is.** The FBI's estimated number of violent and property crimes for Ohio, and its population, for each year. Used for the Ohio statewide figure.
+**What it is.** The FBI's estimated number of violent and property crimes for Ohio, and its population, for each year. Named in the crime notes for reference. The page's Ohio figure is not this estimate: it is built the same way as the counties (see Coverage), so a county is not made to look worse by the method alone.
 
 **Where it comes from.** CDE Documents and Downloads, "Crime in the United States," estimations zip for each edition (`cius/<year>/cius-estimations-<year>.zip`), Table 4 "Crime in the United States by Region, Geographic Division, and State," xlsx. Each edition has two years. We read the 2022 through 2025 editions and keep each year from the latest edition that has it. Rate = estimated count / population x 100,000 at full precision (the table rounds to one decimal).
 
 **Version and vintage.** 2025 edition files dated 2026-08-03.
 
-**Coverage.** Ohio, 2021 through 2025. The FBI publishes estimates for earlier years too, but those editions are old `.xls` files that the project's Python setup cannot read, so the `ohio` series starts in 2021. `extras.ohio_reported_agencies` gives a statewide rate for every year built the same way as the counties (all full-year local agencies); it runs higher than the FBI estimate (for 2025, 293.8 vs. 275.6 violent and 1,513 vs. 1,429 property per 100,000).
+**Coverage.** Ohio, 2021 through 2025. The FBI publishes estimates for earlier years too, but those editions are old `.xls` files that the project's Python setup cannot read, so `extras.ohio_fbi_estimate_counts` starts in 2021. The page's `ohio` series, 2015 through 2025, is built the same way as the counties (all full-year local agencies, also in `extras.ohio_reported_agencies`); it runs higher than the FBI estimate (for 2025, 293.8 vs. 275.6 violent and 1,513 vs. 1,429 property per 100,000).
 
 **Changes over time.** The FBI estimates crime for agencies that sent fewer than 12 months: for 3 to 11 months it scales up the agency's own data; for fewer than 3 months it uses similar agencies in the state. The 2021 estimates came out as a limited release because national NIBRS participation was low that year.
 
@@ -671,13 +677,15 @@ and Ohio's rank among the 51. Puerto Rico is left out.
 | `foreign_born_share` | ACS 5-year B05012 for every state; U.S. from the publisher's own U.S. row (us:1) | 2020-2024 |
 | `overdose_rate_per100k` | CDC VSRR state file `xkb8-kh2a`, indicator "Number of Drug Overdose Deaths", period "12 month-ending", field `data_value`, over the Census July 1, 2025 population | 12 months ending March 2026 |
 
-**The U.S. value.** It is the publisher's own national figure in every case (ACS `us:1`, CPS annual
-average, QCEW `US000`, SAHIE and SAIPE U.S. rows, the Census national population files, CDC's U.S. row),
-not an average of states. `us_source` names it for each measure.
+**The U.S. value.** It is the publisher's own national figure (ACS `us:1`, CPS annual average, QCEW `US000`,
+SAHIE and SAIPE U.S. rows, the Census national population files, CDC's U.S. row), not an average of states,
+with two exceptions: the race groups and female share are the sum of the 50 states and DC (checked equal to the
+national total), and the U.S. fertility rate is computed from the national births and women 15 to 44 the same
+way as each state's. `us_source` names it for each measure.
 
 **Check against the Ohio figures.** The script computes Ohio the same way as every other state and stops
 if Ohio does not equal the `ohio` value in the layer file at display precision. On the 2026-11-09 run
-all 33 measures matched exactly. The check results are stored in `checks`.
+all 41 measures matched exactly. The check results are stored in `checks`.
 
 **Suppressed values.** BLS withholds the 2025 private manufacturing total for Alaska, DC, Hawaii,
 Louisiana, Maryland and Wyoming to protect employer privacy. Those six are null with the flag
@@ -731,9 +739,9 @@ The data sheet is `Performance_Indicators` in 2018-19 and `Report_Only_Indicator
 - No masked value is ever treated as 0. A masked district or school drops out of its county's average.
 - To show how much that matters, we count its CCD grade 3 enrollment as "masked enrollment" (`extras.reading_rollup_detail`).
 - Statewide, masked enrollment is 0.1% to 0.4% of grade 3 enrollment each year: 323 of about 123,000 in 2025-26.
-- Masked districts: Put-In-Bay Local (Ottawa County, most years), Vanlue Local (Hancock County, 2021-22 through 2024-25) and Bloomfield-Mespo Local (2020-21). The rest are small community schools.
+- Masked districts: Put-In-Bay Local (Ottawa County, every year), Vanlue Local (Hancock County, 2021-22 through 2024-25) and Bloomfield-Mespo Local (2020-21). The rest are small community schools.
 - We flag a county when 5% or more of its grade 3 enrollment is in masked cells. No county reaches that in 2025-26. The highest is Harrison at 4.3%.
-- Earlier years: Harrison reached 5.4% in 2020-21 and Hocking 5.7% in 2023-24. Those flags are not in the series because the flag field covers only the latest year.
+- Earlier years: Harrison reached 5.4% in 2020-21. (Hocking shows 5.7% in 2023-24 only because Southeast Ohio Classical Academy, which first appears in the 2024-25 file, is listed there as "NC" for the prior year; by the rule above Harrison is highest that year at 3.2%. No shown value changes.) Those flags are not in the series because the flag field covers only the latest year.
 
 **Missing data.** All 88 counties have a value in every school year. We could not weight two community schools in 2025-26 because CCD had no grade 3 enrollment for them: LINC Academy Columbus and Virtual Preparatory Academy of Ohio. Both are left out.
 
@@ -743,9 +751,10 @@ The data sheet is `Performance_Indicators` in 2018-19 and `Report_Only_Indicator
 
 **Known quirks.**
 - ODEW does not publish the number of students tested in these files. We weight each district and school by its grade 3 fall enrollment from the NCES Common Core of Data (next section). Enrollment is a close stand-in for students tested but is not the same count.
-- Online (virtual) community schools are left out of county figures, because their students live all over the state while ODEW lists one county for the school. We take the virtual flag from the CCD school directory, and seven schools are left out (the script prints the names).
-- The Ohio figure on the page is the enrollment-weighted sum of the same district and school figures the counties use, for every school year. Counties are compared with a statewide number built the same way.
-- ODEW also prints its own state number in the same files, for 2018-19 and 2021-22 through 2025-26. It runs about 2 to 2.5 points below our statewide sum in every year we can compare, with or without the online schools. We think the cause is the students ODEW counts at the state level but not in any one district's or school's result (for example, students who were not enrolled for the full year). We did not confirm this. Both numbers are in `extras.reading_rollup_detail.ohio`, and the page's note gives ODEW's latest figure.
+- Online (virtual) community schools are left out of county figures, because their students live all over the state while ODEW lists one county for the school. We take the virtual flag from the CCD school directory, counting a school as online if CCD flags it in any year 2017-2024, and seven schools are left out (the script prints the names).
+- The Ohio figure on the page is the enrollment-weighted sum of the same district and school figures the counties use, for every school year. When CCD has no enrollment for a district or school in that year, the nearest year is used, and the earlier year when two are equally near.
+- A district that spans counties counts in the one county ODEW lists for it in that year's file. Counties are compared with a statewide number built the same way.
+- ODEW also prints its own state number in the same files, for 2018-19 and 2021-22 through 2025-26. It runs 1.9 to 2.6 points below our statewide sum in every year we can compare, with or without the online schools. We think the cause is the students ODEW counts at the state level but not in any one district's or school's result (for example, students who were not enrolled for the full year). We did not confirm this. Both numbers are in `extras.reading_rollup_detail.ohio`, and the page's note gives ODEW's latest figure.
 - 2020-21 was tested during the pandemic, and fewer students took the test than usual.
 
 **Uncertainty.** These are counts of all tested students, not a sample, so there is no margin of error. In small counties a single district of 100 to 200 third graders sets the figure, and year-to-year swings of 10 points or more happen (Vinton County went from 64.3% in 2022-23 to 81.4% in 2023-24).
@@ -817,29 +826,38 @@ Negative margin codes are counted as 0.
 
 **Gap.** For each judged measure, a county's gap is its distance from Ohio's value, signed so that positive means
 worse, divided by Ohio's value or by the spread of the measure across counties (standard deviation), whichever is
-larger, and capped at 100%. The spread is used for measures near zero, such as labor force growth since 2019.
-Measures with no statewide figure (CDC PLACES) compare with the median county. Prime-age work rates flagged for
+larger, and capped at 100% in both directions. The spread is used for measures near zero, such as labor force
+growth since 2019; 24 counties reach the cap on that measure, which raises the Work and wages issue's gaps.
+Measures with no statewide figure (CDC PLACES) compare with the median county, so for an issue built only from
+PLACES measures about half the counties are behind by construction. Overdose rates exist for 43 counties; the
+other 45 get an Addiction gap from PLACES alone. Prime-age work rates flagged for
 group quarters (5% or more of residents in prisons, dorms or nursing homes) are left out of every count.
 
-**Issues.** Ten groups of measures, set in `scripts/90_build.py` (`ISSUES`); an issue keeps only the measures that
+**Issues.** Nine groups of measures, set in `scripts/90_build.py` (`ISSUES`); an issue keeps only the measures that
 are on the page. A county's issue gap is the average of its measure gaps. "Behind" means an issue gap above 3%, the
 same "near Ohio" band used on the other tabs.
 
 **By issue.** For each issue: counties behind; residents of those counties (Census estimate, July 1, 2025); the
-middle issue gap among those counties; counties that worsened on more of the issue's measures than they improved on
+median issue gap among those counties (the average of the two middle values when the count is even); counties that worsened on more of the issue's measures than they improved on
 (using the "since 2019 / 10 years" switch; dollar measures left out because they are not adjusted for inflation);
-and Ohio against the U.S. on measures with a same-definition state figure (`scripts/50_national.py`). The order is a
-weighted average of the five factors, each scaled from 0 (lowest issue) to 1 (highest issue), with weights the
-viewer sets. Equal weights by default.
+and Ohio against the other states on measures with a same-definition state figure (`scripts/50_national.py`),
+scored as Ohio's average rank among the 50 states and DC (tied states share the best rank they tie for). The
+order is a weighted average of the five factors, each scaled from 0 (lowest issue) to 1 (highest issue), with
+weights the viewer sets. Equal weights by default. An issue with no value for a factor (no state figures, for
+example) is scored on the factors it has.
 
 **By place.** Counties ranked by the number of issues they are behind on, then by their average issue gap. County
 groups come from k-means clustering (six groups) on each county's issue gaps, started from six counties spread
-evenly across the overall gap, so the result is the same on every load. Groups are named by their largest shared
-gaps. They describe which problems occur together, not causes.
+evenly across the overall gap, so the result is the same on every load. A blank issue gap (for example, a county
+with no crime value) counts as 0, the same as Ohio. The grouping is sensitive to these choices: other starting
+points give groups that agree on only about half of county pairs. Groups are named by their largest shared gaps,
+with more issues added when two groups would otherwise share a name. Not every member is behind on every issue in
+its group's name. They describe which problems occur together, not causes.
 
 **Change window.** "Since 2019" compares the latest value with the period ending in 2019 (2015-2019 for ACS
 five-year data). "Over 10 years" compares with the period ending ten years before the latest (2010-2014 for ACS).
-A source with less history uses its earliest period, and the page names it.
+A source that starts later uses its first period, and the page names it. When a place's latest value or its
+base-period value is blank, no change is shown for it, and it is left out of the "getting worse" counts.
 
 ## Congressional district pages (derived from the sources above; OH-10 and IL-6)
 

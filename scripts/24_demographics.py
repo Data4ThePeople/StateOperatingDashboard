@@ -18,8 +18,10 @@ ALLDATA = "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/co
 ACS = {"2014": "2010-2014", "2019": "2015-2019", "2024": "2020-2024"}
 SRC = "U.S. Census Bureau, Population Estimates Program (Vintage 2025)"
 VIN = "July 1, 2020-2025; pulled 2026-11-09"
-EST = ("Modeled estimates; each new vintage revises back to 2020. Race groups are people who reported one race "
-       "and are not Hispanic; Hispanic or Latino people can be of any race. The groups add to 100%.")
+EST = ("Modeled estimates; each new vintage revises back to 2020. The single-race groups are people who reported "
+       "only that race and are not Hispanic; \"two or more races\" is people who reported more than one race and are "
+       "not Hispanic; Hispanic or Latino people can be of any race. The Census Bureau assigns \"some other race\" answers "
+       "to one of these groups. The groups add to 100% before rounding.")
 
 # id: (label, columns summed over _MALE and _FEMALE)
 GROUPS = {
@@ -83,7 +85,7 @@ if __name__ == "__main__":
         note="Share of all residents who are female. The Census Bureau counts sex (male or female); it does not publish "
              "gender identity by county. Modeled estimates; each new vintage revises back to 2020.")
     metrics["foreign_born_share"] = dict(
-        label="Residents born outside the U.S.", theme="people", unit="pct", decimals=1, better="none",
+        label="Foreign-born residents", theme="people", unit="pct", decimals=1, better="none",
         source="U.S. Census Bureau, American Community Survey 5-year estimates, table B05012",
         vintage="2010-2014, 2015-2019, 2020-2024; pulled 2026-11-09", period_label="2020-2024 ACS 5-year",
         note="Foreign-born residents as a share of all residents: people who were not U.S. citizens at birth, "
@@ -97,7 +99,9 @@ if __name__ == "__main__":
                    "moe": None, "flag": None} for m in list(GROUPS) + ["female_share"]}
         row["foreign_born_share"] = {"latest": fb["2020-2024"][f][0], "period": "2020-2024",
                                      "series": [[p, fb[p][f][0]] for p in ACS.values()],
-                                     "moe": fb["2020-2024"][f][1], "flag": None}
+                                     "moe": fb["2020-2024"][f][1],
+                                     # same rule as the ACS layer: coefficient of variation above 30%
+                                     "flag": "high_moe" if fb["2020-2024"][f][0] and 100 * fb["2020-2024"][f][1] / 1.645 / fb["2020-2024"][f][0] > 30 else None}
         if f == "ohio":
             ohio = row
         else:

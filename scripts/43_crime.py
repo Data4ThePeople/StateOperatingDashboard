@@ -5,8 +5,8 @@ Sources
      (offenses known to law enforcement, by agency and month). Downloaded from the FBI Crime
      Data Explorer (CDE) "Master Files" page. No key needed: the CDE hands out a short-lived
      signed S3 link for each file.
-  2. FBI Crime in the United States (CIUS) estimation tables, Table 4 (state estimates),
-     for the Ohio statewide figure.
+  2. FBI Crime in the United States (CIUS) estimation tables, Table 4 (state estimates), named in the
+     note beside Ohio's figure. Ohio's comparison figure is built the same way as the counties.
 
 Method in brief (full write-up in docs/datasets/crime.md)
   - An agency "reported" a month when the FBI file shows a submission for that month
@@ -209,6 +209,9 @@ def main():
     note_cov = ("Counts only agencies that reported all 12 months, and divides by the population "
                 "those agencies serve, not the full county. Left blank when those agencies cover "
                 "less than 80% of the county's people.")
+    note_more = (" Crimes reported by campus, park, transit and drug task force police count in their county but add no "
+                 "residents, which raises those counties' rates. An agency that serves more than one county is split by "
+                 "population. The FBI updates its counts after the file used here, so newer FBI totals can differ.")
     metrics = {
         "violent_crime_rate": {
             "label": "Violent crime rate", "theme": "safety", "unit": "per100k", "decimals": 0,
@@ -216,14 +219,14 @@ def main():
             "vintage": f"annual {YEARS[0]}-{YEARS[-1]}; 2025 file dated 2026-05-07; pulled {TODAY}",
             "period_label": f"{latest} calendar year",
             "note": ("Murder, rape, robbery and aggravated assault reported to police, per 100,000 "
-                     "people. " + note_cov)},
+                     "people. Aggravated assault excludes simple assault. " + note_cov + note_more)},
         "property_crime_rate": {
             "label": "Property crime rate", "theme": "safety", "unit": "per100k", "decimals": 0,
             "better": "lower", "source": "FBI Uniform Crime Reporting Program, Return A master files",
             "vintage": f"annual {YEARS[0]}-{YEARS[-1]}; 2025 file dated 2026-05-07; pulled {TODAY}",
             "period_label": f"{latest} calendar year",
-            "note": ("Burglary, theft and motor vehicle theft reported to police, per 100,000 people. "
-                     "This is the FBI's standard category closest to petty crime. " + note_cov)},
+            "note": ("Burglary, larceny-theft and motor vehicle theft reported to police, per 100,000 people. "
+                     + note_cov + note_more)},
     }
     counties, extras = {f: {} for f in COUNTIES}, {"coverage": {}, "crime_counts": {}}
     for f in COUNTIES:
@@ -242,15 +245,22 @@ def main():
         counties[f]["property_crime_rate"] = entry(sp, flag)
         extras["coverage"][f] = cv
         extras["crime_counts"][f] = cn
+    # Ohio's comparison figure is built the same way as the counties (all local agencies with 12 months of reports),
+    # so a county is not made to look worse by the method alone. The FBI's statewide estimate, which also fills in
+    # for agencies that did not report, stays in extras and is named in the note.
     ohio = {}
     for mid, k in (("violent_crime_rate", "violent"), ("property_crime_rate", "property")):
-        ohio[mid] = entry([(y, 1e5 * e[k] / e["pop"]) for y, e in est.items()])
+        ohio[mid] = entry([(y, 1e5 * state[y][k] / state[y]["pop_covered"]) for y in sorted(state)])
+        fbi = 1e5 * est[latest][k] / est[latest]["pop"]
+        metrics[mid]["note"] += (f" Ohio's figure is built the same way, from every Ohio agency that reported all 12 months "
+                                 f"({ohio[mid]['latest']:,.1f} in {latest}). The FBI's own statewide estimate, which also "
+                                 f"estimates crimes for agencies that did not report, is {fbi:,.1f}.")
     extras["coverage"]["ohio"] = [[y, state[y]["coverage"]] for y in sorted(state)]
     extras["crime_counts"]["ohio"] = [{"year": y, "violent": state[y]["violent"], "property": state[y]["property"],
                                        "pop_covered": state[y]["pop_covered"], "pop_all": state[y]["pop_all"]}
                                       for y in sorted(state)]
     extras["ohio_reported_agencies"] = {"ohio": {
-        "note": "Same method as the counties, all Ohio local agencies with 12 months of reports.",
+        "note": "Same method as the counties, all Ohio local agencies with 12 months of reports. Also the Ohio figure in ohio.",
         "violent_crime_rate": [[y, 1e5 * state[y]["violent"] / state[y]["pop_covered"]] for y in sorted(state)],
         "property_crime_rate": [[y, 1e5 * state[y]["property"] / state[y]["pop_covered"]] for y in sorted(state)]}}
     extras["ohio_fbi_estimate_counts"] = {"ohio": est}

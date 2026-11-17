@@ -6,6 +6,10 @@ and `data/raw/cdc/national/`. Pulled 2026-11-09.
 
 ## National benchmark (same sources as the county layers)
 
+Built by `scripts/50_national.py` into `data/processed/national.json`. Raw pulls are cached under
+`data/raw/census/national/`, `data/raw/census_pep/`, `data/raw/bls_laus_national/`, `data/raw/bls_qcew/`
+and `data/raw/cdc/national/`. Pulled 2026-11-09.
+
 **What it is.** For each dashboard measure that has a same-definition state figure, the value for all
 50 states and DC (keyed by USPS code) and for the United States. The page uses it to show the U.S. value
 and Ohio's rank among the 51. Puerto Rico is left out.
@@ -22,15 +26,19 @@ and Ohio's rank among the 51. Puerto Rico is left out.
 | `saipe_poverty_rate`, `saipe_child_poverty_rate`, `saipe_median_income` | SAIPE API, `for=state:*` and `for=us:*` | 2024 |
 | `pop_change_pct` and the three components-of-change rates | Vintage 2025 `co-est2025-alldata.csv` state rows (the file `21_popest.py` reads); U.S. row from `NST-EST2025-ALLDATA.csv` | Apr. 2020 to July 2025 |
 | `prime_age_share`, `age65_share`, `general_fertility_rate` | Vintage 2025 `cc-est2025-agesex-all.csv`, each state summed from its counties as `23_age.py` does for Ohio; births from the state rows above. U.S.: `nc-est2025-agesex-res.csv` and the NST U.S. births | July 1, 2025; year ending June 30, 2025 |
+| Six race and ethnicity groups, `female_share` | Vintage 2025 state file `sc-est2025-alldata6.csv` (sex, Hispanic origin, six race groups), all ages. Checked: each state's total equals its NST total, and the six groups add to it. U.S.: sum of the 50 states and DC, checked equal to the NST U.S. total | July 1, 2025 |
+| `foreign_born_share` | ACS 5-year B05012 for every state; U.S. from the publisher's own U.S. row (us:1) | 2020-2024 |
 | `overdose_rate_per100k` | CDC VSRR state file `xkb8-kh2a`, indicator "Number of Drug Overdose Deaths", period "12 month-ending", field `data_value`, over the Census July 1, 2025 population | 12 months ending March 2026 |
 
-**The U.S. value.** It is the publisher's own national figure in every case (ACS `us:1`, CPS annual
-average, QCEW `US000`, SAHIE and SAIPE U.S. rows, the Census national population files, CDC's U.S. row),
-not an average of states. `us_source` names it for each measure.
+**The U.S. value.** It is the publisher's own national figure (ACS `us:1`, CPS annual average, QCEW `US000`,
+SAHIE and SAIPE U.S. rows, the Census national population files, CDC's U.S. row), not an average of states,
+with two exceptions: the race groups and female share are the sum of the 50 states and DC (checked equal to the
+national total), and the U.S. fertility rate is computed from the national births and women 15 to 44 the same
+way as each state's. `us_source` names it for each measure.
 
 **Check against the Ohio figures.** The script computes Ohio the same way as every other state and stops
 if Ohio does not equal the `ohio` value in the layer file at display precision. On the 2026-11-09 run
-all 33 measures matched exactly. The check results are stored in `checks`.
+all 41 measures matched exactly. The check results are stored in `checks`.
 
 **Suppressed values.** BLS withholds the 2025 private manufacturing total for Alaska, DC, Hawaii,
 Louisiana, Maryland and Wyoming to protect employer privacy. Those six are null with the flag

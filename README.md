@@ -82,6 +82,7 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
   published estimates for its 2025 lines yet, so its totals add up every tract with district residents, weighted
   by the share of each tract's 2020 residents who live inside the line.
 - **County tables on district pages** cover each whole county, including parts outside the district.
-- **Checks.** An independent check of the Ohio County Dashboard matched every value at the precision shown.
-  The district pages and some later additions to the Ohio page have not had that check yet. `TIEOUT.md` lists
+- **Checks.** Two independent checks of the Ohio County Dashboard recomputed every measure from the publishers
+  and matched every value. Ohio's crime rate is built the same way as the county rates, not taken from the FBI's
+  statewide estimate. The district pages and the Community Well-Being page have not had that check yet. `TIEOUT.md` lists
   what has been checked and what has not.
