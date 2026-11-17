@@ -190,3 +190,13 @@ chart axis label: Morgan County rent burden's top gridline reads 56.2% instead o
 near 56.25, not a data point). The new land outline matches the old clip on 29.19 million of 29.19 million land
 pixels at full map scale; 217 pixels along the shore differ by 2 units or less, and 6,963 hairline gaps between
 tracts are now filled.
+
+## Compare two measures, November 17, 2026
+
+The Well-Being page has a "Compare two measures" view: a scatterplot of every place at the current level, with the
+mapped measure across and a second measure up, and a rank (Spearman) correlation in words. It is worked out in the
+browser from the same values the map uses. Claude checked the page's place counts and correlations against pandas
+(Pearson correlation of average ranks, from `data.json`) for five pairs at the county and tract levels, such as
+people below 200% of poverty against adults in fair or poor health (0.88 for 88 counties and for 3,151 tracts) and
+violent crime against poverty (0.50 for 59 counties). All match to two decimals. District counts (15) match; the
+page gives no pattern for fewer than 30 places.

@@ -82,6 +82,10 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
   published estimates for its 2025 lines yet, so its totals add up every tract with district residents, weighted
   by the share of each tract's 2020 residents who live inside the line.
 - **County tables on district pages** cover each whole county, including parts outside the district.
+- **Comparing two measures.** The Community Well-Being page can plot any two measures for every place at one level.
+  The pattern is described with a rank (Spearman) correlation, which compares the order of places on each measure.
+  Each place counts the same, whatever its population. No pattern is given for fewer than 30 places (districts). A
+  pattern means the two measures move together across places; it does not show that one causes the other.
 - **Checks.** Two independent checks of the Ohio County Dashboard recomputed every measure from the publishers
   and matched every value. Ohio's crime rate is built the same way as the county rates, not taken from the FBI's
   statewide estimate. The Community Well-Being page had its own independent check on November 17, 2026. The

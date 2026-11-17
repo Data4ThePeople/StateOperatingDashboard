@@ -105,6 +105,14 @@ th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule);vertic
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 tr.click{cursor:pointer}tr.click:hover{background:var(--tile)}
 #tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--onink);font-size:12px;padding:6px 8px;border-radius:4px;max-width:300px;display:none;z-index:9}
+.cmp .ctl{display:flex;flex-wrap:wrap;gap:8px 16px;margin:8px 0 4px}
+.cmp label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;min-width:0;flex:1 1 260px;max-width:480px}
+.cmp select{font:inherit;font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:5px 8px;width:100%}
+.cmp .ax{font-size:12px;color:var(--ink2);margin:6px 0 2px}
+.cmp .ax.x{text-align:right;margin:0 0 4px}
+.cmp svg{width:100%;height:auto;display:block;touch-action:manipulation}
+.cmp .result{font-family:var(--serif);font-size:18px;margin:4px 0 8px;text-wrap:pretty}
+.cmp label.chk{flex-direction:row;flex:none;max-width:none;font-size:13px;color:var(--ink2);text-transform:none;letter-spacing:0;gap:6px;align-items:center;margin:6px 0}
 footer{margin-top:18px;font-size:12px;color:var(--ink3);border-top:1px solid var(--rule);padding-top:8px}
 footer p{max-width:112ch}
 #map circle.pulse{fill:none;stroke:#121212;stroke-width:2.5;vector-effect:non-scaling-stroke;pointer-events:none;transform-box:fill-box;transform-origin:center;animation:pulse 1.1s ease-out 3 forwards}
@@ -127,6 +135,7 @@ footer p{max-width:112ch}
 <p class="question" id="question"></p>
 <div class="grid"><div class="card" id="mapcard"></div><div class="card" id="panel"></div></div>
 <div class="card detail" id="detail"></div>
+<div class="card detail cmp" id="compare"></div>
 <footer id="foot"></footer>
 </div>
 <div id="tip"></div>
@@ -152,7 +161,7 @@ const BASE = GEO.viewBox.split(" ").map(Number);
 const MAXZ = {county:8, district:8, tract:40};
 // Census county and district shapes reach into Lake Erie; everything is clipped to Ohio's land (the land tracts merged)
 const LAND = GEO.land;
-const st = {level:"county", dim:"economic", m:"below_200_share", place:null, hl:false, pulse:false, vb:null, all:false};
+const st = {level:"county", dim:"economic", m:"below_200_share", place:null, hl:false, pulse:false, vb:null, all:false, cy:"places_ghlth", cweak:true};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -311,7 +320,7 @@ function drawMap(){
     <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. Ohio: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
     <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of Ohio">Reset</button></div>${note}</div>
     ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} ${{county:"counties", district:"districts", tract:"tracts"}[lv]})</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
-    <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight.</p>
+    <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight. <button class="linkbtn" id="gocmp">Compare with another measure</button></p>
     <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
     <div class="rank">${keys.slice(0, nShow).map((k, n) => `<div tabindex="0" data-k="${k}"><b>${rankOf(n)}</b><span class="nm">${esc(pname(lv, k))}${val(id, lv, k).weak ? " *" : ""}</span><span class="v">${fmt(val(id, lv, k).v, id)}</span></div>`).join("")}</div>
     ${lv === "tract" ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate. Tracts with a college, prison or nursing home can show extreme values.</p>` : weakN ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate: the margin of error is more than about half the value.</p>` : ""}
@@ -350,6 +359,7 @@ function wireMap(){
   $("mapcard").querySelectorAll(".rank div").forEach(d => d.onclick = d.onkeydown = e => { if (e.type === "keydown" && e.key !== "Enter") return; pick(d.dataset.k); });
   if ($("all")) $("all").onclick = () => { st.all = !st.all; drawMap(); };
   if ($("golv")) $("golv").onclick = () => setLevel(M[id].levels[0]);
+  if ($("gocmp")) $("gocmp").onclick = () => $("compare").scrollIntoView({block:"start", behavior:"smooth"});
   wireZoom(svg);
 }
 function pick(k, zoom){
@@ -498,6 +508,121 @@ function drawDetail(){
       ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.ohio[i], i)}${k && has(i, lv) ? "" : " (Ohio)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}
     </dl></div>
     <div class="trend"><h3 style="margin-top:0">Over time</h3>${trendSvg(id, lines)}<p class="sub">${tnote}</p></div></div>`;
+  drawCompare();
+}
+
+// ---------------------------------------------------------------- compare two measures
+// The across axis is the mapped measure; the up axis is picked here. Each dot is one place at the current level.
+const CMPIDS = Object.keys(M).filter(i => DIM[M[i].dim]);
+function cmpOptions(sel){
+  return DIMS.map(d => `<optgroup label="${esc(d.label)}">${CMPIDS.filter(i => M[i].dim === d.id).map(i => `<option value="${i}"${i === sel ? " selected" : ""}>${esc(M[i].label)}</option>`).join("")}</optgroup>`).join("");
+}
+function ranks(a){   // ranks from 1, ties get the average of their ranks
+  const o = a.map((v, i) => [v, i]).sort((p, q) => p[0] - q[0]), r = new Array(a.length);
+  for (let i = 0; i < o.length;){ let j = i; while (j + 1 < o.length && o[j + 1][0] === o[i][0]) j++; for (let k = i; k <= j; k++) r[o[k][1]] = (i + j) / 2 + 1; i = j + 1; }
+  return r;
+}
+function corr(x, y){
+  const n = x.length, mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++){ const dx = x[i] - mx, dy = y[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : null;
+}
+function ticks(lo, hi){
+  const raw = (hi - lo) / 5 || 1, p = 10 ** Math.floor(Math.log10(raw)), s = +([1, 2, 2.5, 5, 10].map(m => m * p).find(m => m >= raw * 0.999)).toPrecision(6);
+  const t = []; for (let v = Math.ceil(lo / s - 1e-9) * s; v <= hi + s * 1e-9; v += s) t.push(+v.toPrecision(10));
+  return {t, d:((String(s).split(".")[1]) || "").length};
+}
+function tickFmt(v, id, d){
+  const n = v.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d}), u = M[id].unit;
+  return u === "usd" ? "$" + n : u === "pct" ? n + "%" : n;
+}
+function cmpDefaultY(x){
+  return CMPIDS.find(i => M[i].headline && M[i].dim !== M[x].dim && has(i, st.level)) || CMPIDS.find(i => i !== x);
+}
+function drawCompare(){
+  const C = $("compare"), x = st.m, lv = st.level;
+  if (st.cy === x || !M[st.cy]) st.cy = cmpDefaultY(x);
+  const y = st.cy, both = M[x].levels.filter(l => M[y].levels.includes(l));
+  let h = `<h2>Compare two measures</h2>
+    <p class="sub">Each dot is one ${LVNAME[lv]}. The mapped measure runs across; pick a second measure to run up. Hover over a dot to see the place, and click it to select it on the map.</p>
+    <div class="ctl"><label>Across (the mapped measure)<select id="cx">${cmpOptions(x)}</select></label><label>Up<select id="cy">${cmpOptions(y)}</select></label></div>`;
+  const off = !has(x, lv) || !has(y, lv), wait = lv === "tract" && !TREADY;
+  if (off || wait){
+    h += `<div class="callout">${wait ? (TFAIL ? "Census tracts could not be loaded. Reload the page to try again." : "Loading census tracts&hellip;")
+      : `These two measures are both available for ${both.map(l => PL[l]).join(" and ")} only. <button class="linkbtn" id="cmplv">Show ${PL[both[0]]}</button>`}</div>`;
+    C.innerHTML = h; wireCompare(); return;
+  }
+  const all = places(lv).map(k => { const a = val(x, lv, k), b = val(y, lv, k); return {k, x:a.v, y:b.v, weak:!!(a.weak || b.weak)}; })
+    .filter(p => p.x !== null && p.x !== undefined && p.y !== null && p.y !== undefined && !Number.isNaN(p.x) && !Number.isNaN(p.y));
+  const nWeak = all.filter(p => p.weak).length, pts = st.cweak ? all : all.filter(p => !p.weak), n = pts.length;
+  // drawn at the width it will show, so the axis labels stay readable on a phone
+  const W = Math.round(Math.min(640, Math.max(320, (C.clientWidth || 640) - 30))), H = Math.round(Math.min(400, W * 0.7)), L = 62, R = 18, T = 12, B = 30;
+  const ext = a => { let lo = Math.min(...a), hi = Math.max(...a); const pad = (hi - lo) * 0.04 || Math.abs(hi) * 0.05 || 1; return [lo - pad, hi + pad]; };
+  const [x0, x1] = ext(pts.map(p => p.x)), [y0, y1] = ext(pts.map(p => p.y));
+  const sx = v => L + (v - x0) / (x1 - x0) * (W - L - R), sy = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const tx = ticks(x0, x1), ty = ticks(y0, y1);
+  let g = `<svg id="cmpsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Scatterplot of ${n} ${PL[lv]}: ${esc(M[x].label)} across, ${esc(M[y].label)} up">`;
+  ty.t.forEach(v => g += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="#e3e2dd"/><text x="${L - 6}" y="${sy(v) + 4}" font-size="11" fill="#8a8780" text-anchor="end">${tickFmt(v, y, ty.d)}</text>`);
+  tx.t.forEach(v => g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${T}" y2="${H - B}" stroke="#efeeea"/><text x="${sx(v)}" y="${H - B + 16}" font-size="11" fill="#8a8780" text-anchor="middle">${tickFmt(v, x, tx.d)}</text>`);
+  const ox = DATA.ohio[x], oy = DATA.ohio[y];
+  if (ox !== null && ox !== undefined && ox > x0 && ox < x1) g += `<line x1="${sx(ox)}" x2="${sx(ox)}" y1="${T}" y2="${H - B}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${sx(ox) + 4}" y="${T + 10}" font-size="11" fill="#55534e">Ohio</text>`;
+  if (oy !== null && oy !== undefined && oy > y0 && oy < y1) g += `<line x1="${L}" x2="${W - R}" y1="${sy(oy)}" y2="${sy(oy)}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${W - R - 4}" y="${sy(oy) - 5}" font-size="11" fill="#55534e" text-anchor="end">Ohio</text>`;
+  const r = lv === "district" ? 6 : lv === "county" ? 4.5 : 2.6, op = lv === "tract" ? .5 : .75;
+  pts.forEach(p => { p.px = sx(p.x); p.py = sy(p.y); });
+  g += pts.map(p => p.weak ? `<circle cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="${r}" fill="none" stroke="#2a78d6" stroke-opacity="${op + .15}" stroke-width="1.2"/>`
+    : `<circle cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="${r}" fill="#2a78d6" fill-opacity="${op}"/>`).join("");
+  const sel = st.place ? pts.find(p => p.k === st.place) : null;
+  if (sel){
+    const right = sel.px > W * 0.6;
+    g += `<circle cx="${sel.px}" cy="${sel.py}" r="${r + 3}" fill="#121212" stroke="#ffffff" stroke-width="2"/><text x="${sel.px + (right ? -10 : 10)}" y="${sel.py - 8}" font-size="12" font-weight="700" fill="#121212" text-anchor="${right ? "end" : "start"}" paint-order="stroke" stroke="#ffffff" stroke-width="3">${esc(pname(lv, sel.k))}</text>`;
+  }
+  g += `<circle id="cmphov" r="${r + 3}" fill="none" stroke="#121212" stroke-width="2" style="display:none" pointer-events="none"/></svg>`;
+  // the pattern, in words: rank correlation, so a single extreme place has less pull
+  const sgn = v => v.toFixed(2).replace("-", "\u2212");
+  const rho = n >= 3 ? corr(ranks(pts.map(p => p.x)), ranks(pts.map(p => p.y))) : null;
+  const Pl = PL[lv][0].toUpperCase() + PL[lv].slice(1);
+  let res;
+  if (rho === null) res = `Too few ${PL[lv]} have both measures to show a pattern.`;
+  else if (n < 30) res = `Only ${n} ${PL[lv]} have both measures. That is too few to judge a pattern.`;
+  else {
+    const a = Math.abs(rho), word = a < 0.2 ? null : a < 0.4 ? "weak" : a < 0.6 ? "moderate" : "strong";
+    res = word ? `${Pl} higher on <b>${esc(M[x].label)}</b> tend to be ${rho > 0 ? "higher" : "lower"} on <b>${esc(M[y].label)}</b>. The pattern is ${word}: the rank correlation is ${sgn(rho)} across ${n.toLocaleString("en-US")} ${PL[lv]}.`
+      : `Across ${n.toLocaleString("en-US")} ${PL[lv]}, these two measures show little or no pattern. The rank correlation is ${sgn(rho)}.`;
+  }
+  const money = M[x].role === "money" || M[y].role === "money";
+  const selNote = st.place ? (sel ? `<p class="ctx"><b>${esc(pname(lv, sel.k))}</b>: ${fmt(sel.x, x)} across, ${fmt(sel.y, y)} up${sel.weak ? " (uncertain estimate)" : ""}.</p>`
+    : `<p class="ctx">${esc(pname(lv, st.place))} is not shown: it has no value for one of these measures${!st.cweak ? " or is an uncertain estimate" : ""}.</p>`) : "";
+  h += `<div class="dgrid"><div><p class="ax">&uarr; ${esc(M[y].label)}</p>${g}<p class="ax x">${esc(M[x].label)} &rarr;</p></div><div>
+    <p class="result">${res}</p>${selNote}
+    ${nWeak ? `<label class="chk"><input type="checkbox" id="cweak"${st.cweak ? " checked" : ""}> Include uncertain estimates (${nWeak.toLocaleString("en-US")} hollow dots)</label>` : ""}
+    <p class="sub">A pattern means the two measures tend to rise or fall together across places. It does not show that one causes the other.${money ? " Public money tends to go where needs are greater, so spending often lines up with harder conditions." : ""}</p>
+    <p class="sub">The rank correlation runs from &minus;1 to 1, and 0 means no pattern. It compares the order of places on each measure, so a single extreme place has less pull. Each dot counts the same, whatever its population.${lv === "tract" ? " Tracts with a college, prison or nursing home can show extreme values." : ""}</p>
+    <p class="sub">Years: ${esc(M[x].period_label || "")} across; ${esc(M[y].period_label || "")} up.</p></div></div>`;
+  C.innerHTML = h; wireCompare(pts, W);
+}
+function wireCompare(pts, W){
+  $("cx").onchange = e => { const v = e.target.value; st.m = v; st.dim = M[v].dim; st.all = false; render(); };
+  $("cy").onchange = e => { st.cy = e.target.value; drawCompare(); };
+  if ($("cmplv")) $("cmplv").onclick = () => { const both = M[st.m].levels.filter(l => M[st.cy].levels.includes(l)); setLevel(both[0]); };
+  if ($("cweak")) $("cweak").onchange = e => { st.cweak = e.target.checked; drawCompare(); };
+  const svg = $("cmpsvg"); if (!svg || !pts) return;
+  const tip = $("tip"), hov = $("cmphov"), x = st.m, y = st.cy, lv = st.level;
+  const near = e => {
+    const b = svg.getBoundingClientRect(), k = W / b.width, mx = (e.clientX - b.left) * k, my = (e.clientY - b.top) * k;
+    let best = null, bd = (14 * k) ** 2;
+    for (const p of pts){ const d = (p.px - mx) ** 2 + (p.py - my) ** 2; if (d < bd){ bd = d; best = p; } }
+    return best;
+  };
+  svg.addEventListener("mousemove", e => {
+    const p = near(e);
+    if (!p){ tip.style.display = "none"; hov.style.display = "none"; svg.style.cursor = ""; return; }
+    hov.setAttribute("cx", p.px); hov.setAttribute("cy", p.py); hov.style.display = ""; svg.style.cursor = "pointer";
+    tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 12, innerWidth - 310) + "px"; tip.style.top = (e.clientY + 12) + "px";
+    tip.innerHTML = `<b>${esc(pname(lv, p.k))}</b>${lv === "tract" ? `<br>${esc(GEO.counties[p.k.slice(0, 5)].name)} County` : ""}<br>${esc(M[x].label)}: ${fmt(p.x, x)}<br>${esc(M[y].label)}: ${fmt(p.y, y)}${p.weak ? "<br>Uncertain estimate" : ""}`;
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; hov.style.display = "none"; });
+  svg.addEventListener("click", e => { const p = near(e); if (p){ tip.style.display = "none"; pick(p.k); } });
 }
 
 // ---------------------------------------------------------------- search
@@ -527,8 +652,8 @@ function loadTracts(){
     TID = j.ids; TIX = Object.fromEntries(TID.map((t, i) => [t, i]));
     WEAK = Object.fromEntries(Object.entries(j.tract_weak).map(([k, a]) => [k, new Set(a)]));
     GEO.tracts = j.shapes; DATA.tract = j.tract; DATA.tract_moe = j.tract_moe; TREADY = true;
-    buildSearch(); if (st.level === "tract") drawMap();
-  }).catch(() => { TFAIL = true; if (st.level === "tract") drawMap(); });
+    buildSearch(); if (st.level === "tract"){ drawMap(); drawCompare(); }
+  }).catch(() => { TFAIL = true; if (st.level === "tract"){ drawMap(); drawCompare(); } });
 }
 $("foot").innerHTML = FOOT;
 buildSearch();
