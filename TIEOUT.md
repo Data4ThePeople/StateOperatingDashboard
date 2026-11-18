@@ -326,6 +326,8 @@ the flags from the method in `DATASETS.md`.
 - Write-up fixes: the student floor removes 2 Ohio tracts, not 3. The two poverty tables differ by up to 10.6 points
   in one tract, not 5.5. The 18 to 64 age range is now described as a stand-in for 25 to 54.
 
-Open: many college tract flags have a margin of error as large as the drop. That is described in `DATASETS.md` but
-the rule is unchanged, pending Eric's decision. The agent did not check facility lists for the smallest prison
+Follow-up at Eric's request: the college flag now also requires the drop to be larger than its 90% margin of error.
+College tract counts are now 89 (Ohio), 95 (Georgia) and 106 (Illinois); every county flag stays. The four worst
+cases the agent named (39065000401, 39049001121, 13121006602, 17031251000) are no longer flagged. The margin test
+itself has not had an independent check. The agent did not check facility lists for the smallest prison
 tracts, and its margins of error are approximate.

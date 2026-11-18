@@ -1445,11 +1445,20 @@ and add a note in the place's profile. They do not change any value. Built in `s
 - **What it measures.** Students in dorms are already left out of poverty figures. The flag measures how much
   students living off campus raise the rate: the poverty rate, minus the rate after leaving out people enrolled in
   college undergraduate years or graduate or professional school (both those below and those above the poverty line).
-- **Rule.** A place is flagged when leaving students out lowers the poverty rate by 3 points or more, before
-  rounding, and at least 100 college and graduate students live there. The student floor keeps a handful of survey
-  responses from flagging a tract; it removes 2 tracts in Ohio, 4 in Georgia and 4 in Illinois.
-- **Survey error.** The drop is a survey estimate. In many flagged tracts its margin of error is as large as the drop
-  itself, so a tract near 3 points could fall on either side. The flag is a caution, not a finding about the tract.
+- **Rule.** A place is flagged when all three hold:
+  - leaving students out lowers the poverty rate by 3 points or more, before rounding;
+  - the drop is larger than its 90% margin of error, so it stays above zero after the margin is taken off;
+  - at least 100 college and graduate students live there.
+- **Margin of error of the drop.** B14006 is split into four parts that share no lines: non-students below poverty
+  (lines 4-8 and 11), non-students at or above (14-18 and 21), college and graduate students below (9-10) and at or
+  above (19-20). Each part's margin is the square root of the sum of its lines' squared margins. The drop's margin
+  follows from those four by the delta method, treating the parts as independent, the Census Bureau's usual
+  approximation. Districts use the combined margins of their weighted tracts. The profile note shows the margin
+  (for example "about 7.8 points (±1.0)" for Athens County).
+- **What the tests remove.** The margin test removes 39 tracts in Ohio, 47 in Georgia and 42 in Illinois that met
+  the 3-point rule. The student floor removes 2 more in Ohio, 4 in Georgia and 4 in Illinois. No county loses its
+  flag: county margins run 0.5 to 1.1 points. A tract that passes can still have a margin close to its drop, so the
+  flag is a caution, not a finding about the tract.
 - **Measures noted.** People in poverty and people below 200% of the poverty line. The note gives the drop in points.
   No published figure leaves students out of the 200% measure, so its note gives the drop in the 100% poverty rate.
 - **Why points and not a second rate.** B14006 counts people 3 and older, so its poverty rate can differ from the
@@ -1460,9 +1469,9 @@ and add a note in the place's profile. They do not change any value. Built in `s
 
 | State | Counties | Tracts |
 |---|---|---|
-| Ohio | 1 (Athens, 7.8 points) | 128 |
-| Georgia | 4 (Clarke, Bulloch, Baldwin and Lumpkin) | 142 |
-| Illinois | 4 (Champaign, Jackson, McDonough and McLean) | 148 |
+| Ohio | 1 (Athens, 7.8 points) | 89 |
+| Georgia | 4 (Clarke, Bulloch, Baldwin and Lumpkin) | 95 |
+| Illinois | 4 (Champaign, Jackson, McDonough and McLean) | 106 |
 
 ## Georgia Community Well-Being page (same build, Georgia sources and differences)
 

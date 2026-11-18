@@ -165,8 +165,8 @@ function ctxOf(id, lv, key){
   if (p && p.measures[id] && p[lv] && p[lv][key] != null)
     out.push(`Prison or jail: about ${Math.round(p[lv][key])}% of residents 18 to 64 lived in one at the 2020 census. ${p.measures[id]}`);
   if (c && c.measures.includes(id) && c[lv] && c[lv][key]){
-    const gap = c[lv][key][1];
-    out.push(`College town: college and graduate students living off campus count here. Leaving them out lowers the poverty rate by about ${gap.toFixed(1)} points.${id === "poverty_rate" ? "" : " (No figure leaves them out of this measure.)"}`);
+    const [, gap, gm] = c[lv][key];
+    out.push(`College town: college and graduate students living off campus count here. Leaving them out lowers the poverty rate by about ${gap.toFixed(1)} points${gm != null ? ` (±${gm.toFixed(1)})` : ""}.${id === "poverty_rate" ? "" : " (No figure leaves them out of this measure.)"}`);
   }
   return out;
 }
@@ -531,7 +531,7 @@ function drawDetail(){
       <dt>Levels</dt><dd>${m.levels.map(l => PL[l]).join(", ")}</dd>
       <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; estimates whose margin is more than about half the value are hatched on the map at every level." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
       ${ctxOn(id) === "prison" ? `<dt>Prison and jail towns</dt><dd>Adults in prisons and jails count as residents where the facility is. ${esc(CTX.prison.measures[id])} Where they were ${CTX.prison.min}% or more of residents 18 to 64 at the 2020 census, the place has a dashed outline on the map and a note in its profile: ${ctxCount("prison")}. Values are not changed.</dd>` : ""}
-      ${ctxOn(id) === "college" ? `<dt>College towns</dt><dd>College and graduate students living off campus count in poverty figures; students in dorms do not. Where leaving them out lowers the poverty rate by ${CTX.college.min} points or more, and at least ${CTX.college.students} students live there, the place has a dashed outline on the map and a note in its profile: ${ctxCount("college")}. Values are not changed. The size of the drop comes from Census table B14006, which counts residents 3 and older, so it can differ a little from a rate built from this measure's own table. For all of __SN__, leaving students out lowers the poverty rate by ${CTX.college.st ? CTX.college.st[1].toFixed(1) + " points" : "an amount not available"}.</dd>` : ""}
+      ${ctxOn(id) === "college" ? `<dt>College towns</dt><dd>College and graduate students living off campus count in poverty figures; students in dorms do not. Where leaving them out lowers the poverty rate by ${CTX.college.min} points or more, the drop is more than its 90% margin of error, and at least ${CTX.college.students} students live there, the place has a dashed outline on the map and a note in its profile: ${ctxCount("college")}. Values are not changed. The size of the drop comes from Census table B14006, which counts residents 3 and older, so it can differ a little from a rate built from this measure's own table. For all of __SN__, leaving students out lowers the poverty rate by ${CTX.college.st ? CTX.college.st[1].toFixed(1) + " points" : "an amount not available"}.</dd>` : ""}
       ${m.standard ? `<dt>Standard</dt><dd>${fmt(m.standard.v, id)}: ${esc(m.standard.src)}. ${esc(m.standard.note || "")}</dd>` : ""}
       <dt>Who runs services</dt><dd>${esc(d.agencies || "")}</dd><dt>Main public programs</dt><dd>${esc(d.programs || "")}</dd>
       ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.st[i], i)}${k && has(i, lv) ? "" : " (__SN__)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}

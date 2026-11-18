@@ -204,12 +204,38 @@ def prison_counts():
 
 
 def college_poverty(d):
-    """(poverty rate, poverty rate leaving out college and graduate students, students) from B14006 lines, people 3 and older."""
-    g = lambda n: (d.get(f"B14006_{n:03d}") or (None,))[0]
-    t, bp, u, gr, ua, ga = g(1), g(2), g(9), g(10), g(19), g(20)
-    if None in (t, bp, u, gr, ua, ga) or t <= 0 or t - u - gr - ua - ga <= 0:
-        return None, None, 0
-    return bp / t * 100, (bp - u - gr) / (t - u - gr - ua - ga) * 100, u + gr + ua + ga
+    """(poverty rate, poverty rate leaving out college and graduate students, students, 90% margin of error of the
+    drop) from B14006 lines, people 3 and older. The drop is built from four parts that share no lines: non-students
+    below and at or above poverty (lines 4-8 and 11; 14-18 and 21) and college or graduate students below and at or
+    above (9-10; 19-20). Each part's margin is the root sum of squares of its lines' margins, and the drop's margin
+    follows by the delta method, treating the parts as independent (the Census Bureau's usual approximation)."""
+    parts = {"nb": (4, 5, 6, 7, 8, 11), "na": (14, 15, 16, 17, 18, 21), "sb": (9, 10), "sa": (19, 20)}
+    lines = {n: d.get(f"B14006_{n:03d}") or (None, None) for ns in parts.values() for n in ns}
+    if any(lines[n][0] is None for n in lines):
+        return None, None, 0, None
+    x = {k: sum(lines[n][0] for n in ns) for k, ns in parts.items()}
+    mo = {k: (None if any(lines[n][1] is None for n in ns) else math.sqrt(sum(lines[n][1] ** 2 for n in ns)))
+          for k, ns in parts.items()}
+
+    def rates(v):
+        tot, rest = v["nb"] + v["na"] + v["sb"] + v["sa"], v["nb"] + v["na"]
+        return (v["nb"] + v["sb"]) / tot * 100, v["nb"] / rest * 100
+
+    if x["nb"] + x["na"] <= 0:
+        return None, None, 0, None
+    p, px = rates(x)
+    moe = None
+    if None not in mo.values():
+        sq = 0.0
+        for k in parts:                         # numerical partial derivative of the drop for each part
+            h = max(x[k] * 1e-4, 1e-3)
+            y = dict(x, **{k: x[k] + h})
+            if y["nb"] + y["na"] <= 0:
+                continue
+            a, b = rates(y)
+            sq += (((a - b) - (p - px)) / h * mo[k]) ** 2
+        moe = math.sqrt(sq)
+    return p, px, x["sb"] + x["sa"], moe
 
 
 def weak(v):
@@ -716,10 +742,11 @@ if __name__ == "__main__":
         n, a = pc.get(k, (0, 0))
         return n / a * 100 if a else None
     def cflag(k, test=False):
-        p, px, n = college_poverty(cp.get(k, {}))
-        if p is None or (test and (p - px < COLLEGE_MIN or n < COLLEGE_STUDENTS)):    # unrounded, like the prison rule
+        p, px, n, moe = college_poverty(cp.get(k, {}))
+        # unrounded, like the prison rule; and the drop must stay above zero after taking off its margin of error
+        if p is None or (test and (p - px < COLLEGE_MIN or n < COLLEGE_STUDENTS or moe is None or p - px - moe <= 0)):
             return None
-        return [round(px, 1), round(p - px, 1)]
+        return [round(px, 1), round(p - px, 1), None if moe is None else round(moe, 1)]
     ctx = {"prison": {"min": PRISON_MIN, "measures": PRISON_MEASURES, "st": round(pshare(SK), 1)},
            "college": {"min": COLLEGE_MIN, "students": COLLEGE_STUDENTS, "measures": COLLEGE_MEASURES, "st": cflag(SK)}}
     for lv, keys in (("county", fips), ("district", cds), ("tract", tids)):

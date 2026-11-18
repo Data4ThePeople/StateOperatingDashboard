@@ -51,3 +51,4 @@ None.
 - 2026-11-18 Added Georgia child care from Eric's DECAL export (3,825 programs; 271 not geocoded count at county level only).
 - 2026-11-18 Added prison and college town flags to all three Well-Being pages at Eric's request (outline, †, profile note; values unchanged). Not independently checked yet.
 - 2026-11-18 Independent tie-out of the prison and college flags: prison exact; fixed the college rounding (9 tracts), corrected write-up claims. Open: whether to add a margin-of-error test to the college flag.
+- 2026-11-18 Added a margin-of-error test to the college flag at Eric's request (tracts 89 OH, 95 GA, 106 IL).
