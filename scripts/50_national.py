@@ -5,7 +5,7 @@ Writes data/processed/national.json:
    "omitted": {"<metric_id>": "reason"}, "checks": {"<metric_id>": {...}}}
 
 Every measure uses the same table lines, periods and vintage as the layer script that builds the
-county figure. The Ohio value computed here must equal data/processed/<layer>.json "ohio" to display
+county figure. The Ohio value computed here must equal data/processed/<layer>.json SK to display
 precision; a mismatch is printed and the run fails. The U.S. value is the publisher's own national figure
 wherever one exists. Puerto Rico is left out.
 
@@ -20,7 +20,7 @@ import math
 import sys
 import urllib.parse
 
-from common import PROC, RAW, cached, census, write_json
+from common import ABBR, NRAW, PROC, RAW, SK, SNAME, cached, census, write_json
 
 acs = importlib.import_module("20_acs")
 jobs = importlib.import_module("10_jobs_industry")
@@ -55,18 +55,18 @@ def layer_of(mid):
 def add(mid, period, us, us_source, states, flags=None):
     """Store one measure after checking it against the layer's Ohio figure."""
     name, lay = layer_of(mid)
-    meta, oh = lay["metrics"][mid], lay["ohio"][mid]
+    meta, oh = lay["metrics"][mid], lay[SK][mid]
     states = {k: states[k] for k in sorted(states)}
     if sorted(states) != sorted(USPS.values()):
         sys.exit(f"{mid}: states {sorted(set(USPS.values()) ^ set(states))} missing or extra")
     flags = flags or {}
     bad = [g for g, v in states.items() if v is None or math.isnan(v)]
-    if us is None or "OH" in bad or any(flags.get(g) != "suppressed" for g in bad):
+    if us is None or ABBR in bad or any(flags.get(g) != "suppressed" for g in bad):
         sys.exit(f"{mid}: null value without a suppressed flag: {bad}")
     if str(oh["period"]) != str(period):
-        sys.exit(f"{mid}: period {period} but the layer's Ohio period is {oh['period']}")
+        sys.exit(f"{mid}: period {period} but the layer's {SNAME} period is {oh['period']}")
     dec = meta["decimals"]
-    mine, theirs = states["OH"], oh["latest"]
+    mine, theirs = states[ABBR], oh["latest"]
     ok = round(mine, dec) == round(theirs, dec)
     CHECKS[mid] = {"layer": name, "ohio_here": mine, "ohio_layer": theirs, "difference": mine - theirs,
                    "match_at_display_precision": ok}
@@ -160,7 +160,7 @@ PEP = "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025"
 
 
 def pep_csv(path, name):
-    return list(csv.DictReader(io.StringIO(cached(RAW / "census_pep" / name, f"{PEP}/{path}").decode("latin-1"))))
+    return list(csv.DictReader(io.StringIO(cached(NRAW / "census_pep" / name, f"{PEP}/{path}").decode("latin-1"))))
 
 
 def pep_totals():
@@ -277,7 +277,7 @@ def demographic_measures(st, us):
 # ================================================================ LAUS (10_jobs_industry.py)
 def laus_measures():
     lay = LAYERS["jobs"]
-    year = lay["ohio"]["unemployment_rate"]["period"]
+    year = lay[SK]["unemployment_rate"]["period"]
     base = str(jobs.LAUS_BASE_YEAR)
     ids = {g: (f"LAUST{f}00000000000{3:02d}", f"LAUST{f}00000000000{6:02d}") for f, g in USPS.items()}
     ids["US"] = ("LNU04000000", "LNU01000000")                      # CPS, not seasonally adjusted
@@ -299,7 +299,7 @@ def laus_measures():
 
 # ================================================================ QCEW (10_jobs_industry.py)
 def qcew_measures():
-    year = int(LAYERS["jobs"]["ohio"]["avg_weekly_wage"]["period"])
+    year = int(LAYERS["jobs"][SK]["avg_weekly_wage"]["period"])
     areas = {g: f"{f}000" for f, g in USPS.items()}
     areas["US"] = "US000"
     wage, mfg, hc = {}, {}, {}
@@ -323,7 +323,7 @@ def qcew_measures():
 # ================================================================ SAHIE and SAIPE (30_health.py)
 def sahie_measures():
     for ipr, mid in (("0", "uninsured_under65"), ("1", "uninsured_under65_low_income")):
-        year = LAYERS["health"]["ohio"][mid]["period"]
+        year = LAYERS["health"][SK][mid]["period"]
         base = {"get": "NAME,PCTUI_PT,PCTUI_MOE,YEAR", "AGECAT": "0", "IPRCAT": ipr, "SEXCAT": "0",
                 "RACECAT": "0", "time": year}
         st = census("timeseries/healthins/sahie", dict(base, **{"for": "state:*"}), f"national/sahie_states_ipr{ipr}_{year}.json")
@@ -336,7 +336,7 @@ def sahie_measures():
 def saipe_measures():
     for mid, var in (("saipe_poverty_rate", "SAEPOVRTALL"), ("saipe_child_poverty_rate", "SAEPOVRT0_17"),
                      ("saipe_median_income", "SAEMHI")):
-        year = LAYERS["health"]["ohio"][mid]["period"]
+        year = LAYERS["health"][SK][mid]["period"]
         p = {"get": f"NAME,YEAR,{var}_PT", "time": year}
         st = census("timeseries/poverty/saipe", dict(p, **{"for": "state:*"}), f"national/saipe_states_{var}_{year}.json")
         us = census("timeseries/poverty/saipe", dict(p, **{"for": "us:*"}), f"national/saipe_us_{var}_{year}.json")
@@ -351,7 +351,7 @@ MONTHS = ["January", "February", "March", "April", "May", "June", "July", "Augus
 
 
 def overdose_measure(st, us):
-    period = LAYERS["health"]["ohio"]["overdose_rate_per100k"]["period"]       # "2026-03"
+    period = LAYERS["health"][SK]["overdose_rate_per100k"]["period"]       # "2026-03"
     y, m = period.split("-")
     q = {"$where": f"indicator='Number of Drug Overdose Deaths' and period='12 month-ending' "
                    f"and year='{y}' and month='{MONTHS[int(m) - 1]}'", "$limit": "500"}
@@ -410,7 +410,7 @@ def main():
         OMITTED[mid] = why
     for mid in LAYERS["health"]["metrics"]:
         if mid.startswith("places_"):
-            OMITTED[mid] = "the CDC PLACES county file has no state rows, so the dashboard has no Ohio figure to check against"
+            OMITTED[mid] = f"the CDC PLACES county file has no state rows, so the dashboard has no {SNAME} figure to check against"
     every = {m for lay in LAYERS.values() for m in lay["metrics"]}
     unhandled = every - set(OUT) - set(OMITTED)
     if unhandled:
@@ -419,7 +419,7 @@ def main():
     write_json("national.json", {"national": OUT, "omitted": OMITTED, "checks": CHECKS,
                                  "note": f"States are the 50 states and DC, keyed by USPS code; Puerto Rico left out. Pulled {TODAY}."})
 
-    print(f"\n{'metric':34} {'period':10} {'US':>10} {'OH':>10}  rank  better")
+    print(f"\n{'metric':34} {'period':10} {'US':>10} {ABBR:>10}  rank  better")
     for mid, o in OUT.items():
         name, lay = layer_of(mid)
         meta = lay["metrics"][mid]
@@ -427,15 +427,15 @@ def main():
         v = o["states"]
         rv = {g: round(x, dec) for g, x in v.items() if x is not None}
         hi_first = better != "lower"
-        rank = 1 + sum((x > rv["OH"]) if hi_first else (x < rv["OH"]) for x in rv.values())
-        ties = sum(x == rv["OH"] for x in rv.values()) - 1
-        print(f"{mid:34} {o['period']:10} {o['us']:10.{dec}f} {v['OH']:10.{dec}f}  {rank:>3}{'=' if ties else ' '}/{len(rv)} "
+        rank = 1 + sum((x > rv[ABBR]) if hi_first else (x < rv[ABBR]) for x in rv.values())
+        ties = sum(x == rv[ABBR] for x in rv.values()) - 1
+        print(f"{mid:34} {o['period']:10} {o['us']:10.{dec}f} {v[ABBR]:10.{dec}f}  {rank:>3}{'=' if ties else ' '}/{len(rv)} "
               f"{better}{' (ranked highest first)' if better == 'none' else ''}")
-    print("\nOhio check (here vs layer):")
+    print(f"\n{SNAME} check (here vs layer):")
     for mid, c in CHECKS.items():
         print(f"  {mid:34} {'ok' if c['match_at_display_precision'] else 'MISMATCH'}  diff {c['difference']:+.6g}")
     if MISMATCH:
-        sys.exit(f"Ohio mismatch: {MISMATCH}")
+        sys.exit(f"{SNAME} mismatch: {MISMATCH}")
 
 
 if __name__ == "__main__":

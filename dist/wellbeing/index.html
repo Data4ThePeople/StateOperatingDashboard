@@ -450,8 +450,10 @@ function drawPanel(){
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start"><button class="linkbtn" id="zplace">Zoom to this place</button><button class="linkbtn" id="back">Back to the measures</button></div></div>`;
     ROLES.forEach(([r, lab]) => { const ids = dimIds.filter(i => M[i].role === r); if (ids.length) h += `<h3>${esc(DIM[st.dim].label)}: ${lab.toLowerCase()}</h3><div class="mlist">${measureRows(ids, true)}</div>`; });
     // other areas: the headline measure of each, for this place
-    h += `<h3>Other areas, headline measure</h3><table>${DIMS.filter(d => d.id !== st.dim).map(d => {
-      const id = Object.keys(M).find(i => M[i].dim === d.id && M[i].headline), ok = has(id, lv), c = ok ? val(id, lv, k) : {v:null};
+    // (an area whose headline measure has no data yet shows its first conditions measure, else its first measure)
+    const headOf = d => { const ids = Object.keys(M).filter(i => M[i].dim === d); return ids.find(i => M[i].headline) || ids.find(i => M[i].role === "lives") || ids[0]; };
+    h += `<h3>Other areas, headline measure</h3><table>${DIMS.filter(d => d.id !== st.dim && headOf(d.id)).map(d => {
+      const id = headOf(d.id), ok = has(id, lv), c = ok ? val(id, lv, k) : {v:null};
       return `<tr class="click" data-d="${d.id}" data-m="${id}"><td>${esc(d.label)}<br><span class="moe">${esc(M[id].label)}</span></td><td class="n">${ok ? fmt(c.v, id) : `<span class="moe">not for ${PL[lv]}</span>`}</td><td>${ok ? badge(vs(c.v, DATA.st[id], id)) : ""}</td></tr>`; }).join("")}</table>`;
     h += `<h3>Who lives here</h3><p class="ctx">${["age65_share","nh_white_share","nh_black_share","hispanic_share","foreign_born_share","disability_share"].map(i => `${esc(M[i].label)}: ${fmt(val(i, lv, k).v, i)}`).join(" · ")}</p>`;
   }

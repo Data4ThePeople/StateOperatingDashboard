@@ -200,3 +200,27 @@ browser from the same values the map uses. Claude checked the page's place count
 people below 200% of poverty against adults in fair or poor health (0.88 for 88 counties and for 3,151 tracts) and
 violent crime against poverty (0.50 for 59 counties). All match to two decimals. District counts (15) match; the
 page gives no pattern for fewer than 30 places.
+
+## Georgia Community Well-Being page, November 18, 2026
+
+The Georgia page (`dist/georgia/`) is built by the same scripts as the Ohio page with `D4TP_STATE=ga`. Before
+building it, Claude made the scripts state-aware and showed that Ohio did not change. Rerunning Ohio from cached
+downloads reproduces every Ohio layer file, `tracts.json` and `docs/MEASURES.md` exactly, apart from pull dates. The
+Ohio page renders the same values, maps, rankings, profiles and trend charts in all 1,867 views compared.
+
+**Checked by Claude's own scripts (not independent):**
+- **National checks.** All 41 Georgia figures in `50_national.py` match their county layers at display precision.
+- **Schools.** Georgia figures built from the county and city systems are within 0.3 points of GOSA's published
+  statewide figures in every year: grade 3 English 35.2 vs 35.1 in 2024-2025, math 44.5 vs 44.3, and chronic
+  absence 20.2 vs 20.4.
+- **District lines.** The 14 districts have 765,135 to 765,137 residents in 2020, and the blocks sum to 10,711,908.
+  Every tract wholly inside a district falls within that district's TIGERweb outline.
+- **Crime county codes.** Checked against known agencies, including the five counties whose order differs between
+  sources (McDuffie, McIntosh, Macon, Madison, Marion).
+- **Rendering.** The page renders without errors for every measure at every level, and for every county and
+  district profile on every tab.
+
+**Not checked yet.**
+- No independent tie-out of the Georgia page.
+- Child care: the DECAL file has not been saved yet, so the page has no child care measures.
+- The library split by population across regional systems has not been compared with any published county figure.

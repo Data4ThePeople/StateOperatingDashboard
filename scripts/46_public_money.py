@@ -266,7 +266,11 @@ for y in HUD_YEARS:
         seen.add(code)
         hud_cty[code][y] = hud_summary(d)
     if seen != set(COUNTIES):
-        raise SystemExit(f"{cname}: missing counties {sorted(set(COUNTIES) - seen)}")
+        if ST_ID == "oh":
+            raise SystemExit(f"{cname}: missing counties {sorted(set(COUNTIES) - seen)}")
+        for f in set(COUNTIES) - seen:     # Georgia: Echols County has no row in the 2015 file
+            print(f"{cname}: no row for {f}; that year is blank")
+            hud_cty[f][y] = (None, None, None, False, "not in HUD's county file")
     spath, sname = hud_file("STATE", y)
     got = [d for d in hud_rows(spath) if str(d.get("code") or "").strip() == STATE and str(d.get("program")).strip() == "1"]
     if len(got) != 1:
@@ -320,8 +324,9 @@ extras["hud_units_not_placed_in_a_county"] = {SK: hud_unplaced}
 
 # ---- tracts, latest year only
 TRACT_YEAR = 2025
-tpath, tname = fetch("hud_picture", f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx",
-                     HUD + f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx", b"PK"), f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx"
+TRACT_PART = "MO_WY" if ABBR >= "MO" else "AK_MN"     # HUD splits the tract extract into two files by state name
+tname = f"TRACT_{TRACT_PART}_{TRACT_YEAR}_2020census.xlsx"
+tpath = fetch("hud_picture", tname, HUD + tname, b"PK")
 acs_tr = {}
 for r in census(f"{ACS_LAST}/acs/acs5", {"get": "B11001_001E,B01003_001E", "for": "tract:*", "in": f"state:{STATE}"},
                 f"public_money_acs5_{ACS_LAST}_B11001_B01003_tract.json"):
@@ -435,7 +440,7 @@ for y in SF_YEARS:
             raise SystemExit(f"elsec{yy} {d['NAME']}: revenue parts do not add to total")
         for k, v in (("spend", spend), ("enroll", enroll), ("rev", rev - inter), ("fed", fed), ("state", st), ("local", loc - inter)):
             all_units[k] += v
-        if str(d["SCHLEV"]).zfill(2) != "03":
+        if str(d["SCHLEV"]).zfill(2) not in CFG["sf_levels"]:
             continue
         census_cty = str(d["CONUM"]).zfill(5)
         nces = str(d["NCESID"]).zfill(7)

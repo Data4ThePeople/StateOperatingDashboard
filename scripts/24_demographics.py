@@ -68,7 +68,7 @@ def acs_foreign_born(year):
             inner = mn ** 2 - p ** 2 * md ** 2
             moe = math.sqrt(inner if inner > 0 else mn ** 2 + p ** 2 * md ** 2) / d
             out[f] = (p * 100, moe * 100)
-    assert len(out) == 89
+    assert len(out) == len(COUNTIES) + 1
     return out
 
 

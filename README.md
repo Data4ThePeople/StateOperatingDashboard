@@ -1,4 +1,4 @@
-# Ohio County Dashboard and congressional district pages
+# Ohio County Dashboard, Community Well-Being pages and congressional district pages
 
 Interactive pages built from public federal and state data by Data 4 The People. This is a draft.
 
@@ -10,6 +10,9 @@ Interactive pages built from public federal and state data by Data 4 The People.
   economic security, jobs, housing, physical health, mental health, public safety and social well-being. Each
   measure is shown in its own units next to Ohio, the U.S. and, where one exists, a national target, with no
   combined score. Public spending is shown beside conditions. The measure list is in `docs/MEASURES.md`.
+- **Georgia Community Well-Being:** https://data4thepeople.github.io/StateOperatingDashboard/georgia/
+  The same page for Georgia's 159 counties, 14 congressional districts and census tracts, built from the same
+  national sources plus Georgia's own school and child care data. The measure list is in `docs/MEASURES_GA.md`.
 - **Ohio's 10th Congressional District:** https://data4thepeople.github.io/StateOperatingDashboard/oh10/
   Census tracts under the congressional map the Ohio Redistricting Commission adopted on October 31, 2025.
 - **Illinois's 6th Congressional District:** https://data4thepeople.github.io/StateOperatingDashboard/il06/
@@ -21,7 +24,7 @@ Interactive pages built from public federal and state data by Data 4 The People.
 |---|---|
 | `dist/` | The built pages. GitHub Pages serves this folder. Each page is one self-contained HTML file, except the Well-Being page, which loads its census tract layer from `dist/wellbeing/tracts.json` after the first map is drawn. |
 | `scripts/` | Python that pulls each source and writes one layer file, plus the page builders and HTML templates. |
-| `data/processed/` | The layer files the pages are built from (JSON). Raw downloads are not kept in the repo. |
+| `data/processed/` | The layer files the pages are built from (JSON). Ohio's are at the top level and Georgia's are in `data/processed/ga/`. Raw downloads are not kept in the repo. |
 | `DATASETS.md` | Every source: what it is, where it comes from, vintage, coverage, quirks and how we use it. |
 | `TIEOUT.md` | Checks of the built pages against the sources, including what has not been checked yet. |
 | `docs/` | The layer file format and notes on each dataset. |
@@ -41,8 +44,10 @@ Interactive pages built from public federal and state data by Data 4 The People.
 - FBI Uniform Crime Reporting Program: Return A files and state estimates.
 - Ohio Department of Education and Workforce report cards, NCES Common Core of Data, and the Ohio Department of
   Children and Youth licensed program list.
-- District lines: the Ohio Redistricting Commission's block assignment file (OH-10) and the Census Bureau's
-  119th Congress block file (IL-6).
+- Georgia Governor's Office of Student Achievement (Georgia Milestones and attendance files) and the Georgia
+  Department of Early Care and Learning provider list.
+- District lines: the Ohio Redistricting Commission's block assignment file (Ohio) and the Census Bureau's
+  119th Congress block file (Georgia and IL-6).
 
 `DATASETS.md` has the details for each one.
 
@@ -62,6 +67,14 @@ python scripts/70_wb_geo.py
 python scripts/71_wb_data.py
 python scripts/72_wb_build.py         # writes dist/wellbeing/index.html and docs/MEASURES.md
 
+# Georgia Community Well-Being: the same scripts with D4TP_STATE=ga, which reads and writes
+# data/raw/ga and data/processed/ga. 47_schools_ga.py replaces 40_reading.py and 44_schools.py;
+# 41_childcare.py is Ohio only (Georgia's child care measures are built in 71_wb_data.py).
+export D4TP_STATE=ga
+python scripts/05_geo.py              # then 10 through 46, 47_schools_ga.py, 50_national.py, 70, 71 and 72
+python scripts/72_wb_build.py         # writes dist/georgia/index.html and docs/MEASURES_GA.md
+unset D4TP_STATE
+
 # District pages (key: oh10 or il06)
 python scripts/60_district_geo.py il06
 python scripts/61_district_data.py il06
@@ -73,8 +86,8 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
 
 ## Method notes
 
-- **Counties are compared with Ohio.** "Near Ohio" means within 3% of Ohio's value or 0.3 points, whichever is
-  larger. Where a source has no statewide figure (CDC PLACES), counties are compared with the median county.
+- **Counties are compared with their state.** "Near Ohio" (or "Near Georgia") means within 3% of the state's value
+  or 0.3 points, whichever is larger. Where a source has no statewide figure (CDC PLACES), counties are compared with the median county.
 - **Survey figures have margins of error.** Tiles show the 90% margin where the publisher gives one.
 - **District tracts.** A tract is mapped and given a scorecard when most of its 2020 residents live in the
   district. Those figures cover the whole tract.
@@ -88,6 +101,6 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
   pattern means the two measures move together across places; it does not show that one causes the other.
 - **Checks.** Two independent checks of the Ohio County Dashboard recomputed every measure from the publishers
   and matched every value. Ohio's crime rate is built the same way as the county rates, not taken from the FBI's
-  statewide estimate. The Community Well-Being page had its own independent check on November 17, 2026. The
-  district pages have not had one yet. `TIEOUT.md` lists
+  statewide estimate. The Ohio Community Well-Being page had its own independent check on November 17, 2026. The
+  Georgia page and the district pages have not had one yet. `TIEOUT.md` lists
   what has been checked and what has not.

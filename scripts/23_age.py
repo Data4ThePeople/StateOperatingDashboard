@@ -16,7 +16,7 @@ import math
 
 import pandas as pd
 
-from common import COUNTIES, NRAW, RAW, SK, SNAME, STATE, cached, census, write_json
+from common import COUNTIES, NRAW, RAW, SK, SNAME, ST_ID, STATE, cached, census, write_json
 
 AGESEX = f"https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/asrh/cc-est2025-agesex-{STATE}.csv"
 ALLDATA = "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/totals/co-est2025-alldata.csv"
@@ -83,7 +83,7 @@ def acs_epop(year):
             inner = mn ** 2 - p ** 2 * md ** 2
             moe = math.sqrt(inner if inner > 0 else mn ** 2 + p ** 2 * md ** 2) / d   # Census approximation; ratio form if negative
             out[f] = (p * 100, moe * 100)
-    assert len(out) == 89
+    assert len(out) == len(COUNTIES) + 1
     return out
 
 
@@ -146,7 +146,9 @@ if __name__ == "__main__":
             assert len(ps) == len(set(ps)), "duplicate periods"
     flagged = sorted((round(gq[f], 1), f) for f in fips if gq[f] >= GQ_FLAG)
     print("group-quarters flag:", flagged)
-    big = [(f, round(r["prime_age_epop"]["moe"], 1)) for f, r in counties.items() if r["prime_age_epop"]["moe"] > 10]
+    # a sanity check on the margin math: Ohio's largest county margin is under 10 points; Georgia's smallest counties
+    # (about 1,500 to 3,000 residents) reach 15
+    big = [(f, round(r["prime_age_epop"]["moe"], 1)) for f, r in counties.items() if r["prime_age_epop"]["moe"] > (10 if ST_ID == "oh" else 20)]
     assert not big, f"implausible margins: {big}"
     write_json("age.json", {"metrics": metrics, "counties": counties, SK: ohio, "extras": {}})
     for f in (*COUNTIES[:3], SK):

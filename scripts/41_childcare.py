@@ -27,6 +27,10 @@ from collections import Counter
 import pandas as pd
 
 from common import RAW, cached, get, write_json
+from common import ST_ID
+
+if ST_ID != "oh":
+    raise SystemExit("This layer reads Ohio's child care program list. Georgia's child care measures are built in 71_wb_data.py.")
 
 LAYER = "https://maps.ohio.gov/arcgis/rest/services/Hosted/Ohio_Daycares_view/FeatureServer/0"
 ITEM = "https://maps.ohio.gov/portal/sharing/rest/content/items/e7b80e83d8764427b5de7fde6f67f83d?f=json"

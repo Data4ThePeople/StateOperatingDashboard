@@ -313,13 +313,42 @@ def main():
                 m.setdefault(nm, {"assigned_to": ae_cty[o["FSCSKEY"]], "outlets_elsewhere": []})
                 m[nm]["outlets_elsewhere"].append({"outlet": o["LIBNAME"].title(), "county": of})
         multi[year] = m
+        if ST_ID != "oh":
+            # Most Georgia systems are regional, serving several counties from one main office. Split each system's
+            # spending and visits among the counties where it has a central or branch library, by population.
+            area = {}
+            for r in ae:
+                area[r["FSCSKEY"]] = {ae_cty[r["FSCSKEY"]]}
+            for o in outlets:
+                of = names.get(o["CNTY"].upper().strip())
+                if o.get("C_OUT_TY") in ("CE", "BR") and o["FSCSKEY"] in area and of:
+                    area[o["FSCSKEY"]].add(of)
+            sp = {f: 0.0 for f in COUNTIES}
+            vi = {f: 0.0 for f in COUNTIES}
+            systems = {f: [] for f in COUNTIES}
+            for r in ae:
+                e, v = num(r["TOTOPEXP"]), num(r["VISITS"])
+                if e is None or v is None or e < 0 or v < 0:
+                    continue
+                cs = sorted(area[r["FSCSKEY"]])
+                tot = sum(pop[c][year] for c in cs)
+                for c in cs:
+                    w = pop[c][year] / tot
+                    sp[c] += e * w
+                    vi[c] += v * w
+                    systems[c].append({"name": r["LIBNAME"].title(), "operating_spending": e, "visits": v,
+                                       "counties_served": len(cs), "share_here": w,
+                                       "legal_service_area_pop": num(r["POPU_LSA"]), "geocode": r.get("GEOCODE")})
         lib[year] = (sp, vi, systems, sum(sp.values()), sum(vi.values()), len(ae))
         print(f"PLS FY{year}: {len(ae)} {SNAME} systems, spending ${sum(sp.values()):,.0f}, visits {sum(vi.values()):,.0f}, "
               f"systems with a building in another county: {len(m)}")
     latest_fy = max(PLS)
     lib_note = ("Each library system is counted in the county of its main office and divided by the "
                 "county's whole population. Some systems serve school districts that reach into a neighboring "
-                f"county. The {SNAME} figure adds up all {SNAME} systems.")
+                f"county. The {SNAME} figure adds up all {SNAME} systems.") if ST_ID == "oh" else (
+                f"Most {SNAME} library systems serve several counties. Each system's total is split among the counties "
+                "where it has a library building, by population, so every county in a regional system shows that "
+                f"system's per-person figure. The {SNAME} figure adds up all {SNAME} systems.")
     metrics["library_spend_per_capita"] = {
         "label": "Public library spending per person", "theme": "people", "unit": "usd", "decimals": 2,
         "better": "higher", "source": "Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates",

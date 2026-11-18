@@ -1402,3 +1402,75 @@ in the measure's units. Measures without a direction, and public money, use fift
 **Trends.** County history where the county layer has it (and the three ACS periods for new ACS measures). Tract
 lines changed in 2020 and the district lines are new, so a tract shows its county's trend and a district shows
 Ohio's.
+
+## Georgia Community Well-Being page (same build, Georgia sources and differences)
+
+**What it is.** `dist/georgia/index.html`, built by the same scripts as the Ohio page with `D4TP_STATE=ga`
+(settings in `scripts/states.py`). It covers Georgia's 159 counties, its 14 congressional districts and its 2020
+census tracts, with the same measures, roles, standards, colors and comparisons as the Ohio page, except where
+noted here. Georgia's layer files are in `data/processed/ga/`; its raw downloads go in `data/raw/ga/`. Files
+that cover the whole nation are shared with Ohio. `docs/MEASURES_GA.md` is written from the measure list.
+
+**Congressional districts.** The map Georgia enacted in December 2023 after a federal court ruling, first used in
+the 2024 election, from the Census Bureau's 119th Congress block assignment file (`NationalCD119.txt`), joined to
+2020 census block population. Every district's 2020 population is 765,135 to 765,137, and the blocks sum to
+Georgia's 10,711,908. Georgia has no township governments, so a tract outside a census place is named by its county.
+
+**Schools (`scripts/47_schools_ga.py`).** Georgia Governor's Office of Student Achievement (GOSA) open files at
+https://download.gosa.ga.gov/, one folder per year:
+- Georgia Milestones End-of-Grade results by grade (`EOG_by_GRADE` files), school years 2017-2018 to 2024-2025.
+  There was no test in 2019-2020.
+- Attendance files for the same years.
+
+Proficient or above means Proficient plus Distinguished. Third grade results use the "All Students" rows at the
+system level (`INSTN_NUMBER` = ALL). County figures add up proficient students and tested students over:
+- the county school system,
+- any city school systems in the county, and
+- in-person state charter schools in the county.
+
+Each system's county comes from the NCES Common Core of Data district directory (Urban Institute Education Data
+Portal). The county systems are codes 601 to 759, numbered almost in alphabetical order (Georgia lists McDuffie and
+McIntosh after Marion), so the county comes from the directory, not the code. Atlanta Public Schools is placed in
+Fulton County, where the directory puts it. Some systems are left out:
+- virtual state charter schools (CCD virtual flag),
+- the state schools (code 799), and
+- systems whose counts GOSA suppresses ("TFS").
+
+Chronic absence is the share of students absent more than 10% of the days they were enrolled. It uses county and
+city systems only, weighted by GOSA's student count. This matches Ohio, where only traditional districts are used.
+The year 2019-2020 is left out because school buildings closed in March 2020.
+
+The Georgia figure is built the same way from the same systems. It is within 0.3 points of GOSA's own statewide
+figure in every year, and GOSA's figures are kept in the layer's extras. In 2024-2025, 8 counties tested fewer than
+30 third graders, and their notes say so. Georgia began testing new math standards in 2023-2024.
+
+**SNAP (FNS-388A county file).** FNS codes Echols County as 13100 instead of 13101, so that row is placed by county
+name. The July 2024 file has no Georgia rows. The July 2025 Georgia county lines add up to 28% more than FNS's
+Georgia total for that month. Georgia's county series therefore stops at July 2023, for counties and the state alike.
+
+**Libraries (IMLS Public Libraries Survey).** Most Georgia library systems are regional and serve several counties
+from one main office. Each system's spending and visits are split among the counties where it has a central or
+branch library, by population, so every county in a regional system shows that system's per-person figure. Georgia's
+library fiscal year runs July to June.
+
+**HUD Picture of Subsidized Households.** Tract values come from HUD's `TRACT_AK_MN` file (Ohio uses `TRACT_MO_WY`).
+The 2015 county file has no row for Echols County, so that year is blank there.
+
+**School finance (Census Annual Survey of School System Finances).** Local school systems are the rows with school
+level codes 01, 02, 03 or 06. Clay and Webster are coded 01 and Taliaferro is coded 06. The regional educational
+service agencies (07) are left out. State charter schools are not in this survey.
+
+**Crime (FBI Return A).** Georgia's UCR state code is 10. Georgia State Patrol posts (ORI prefix GAGSP) are left out
+of county totals, as the Ohio State Highway Patrol is for Ohio. County codes in the files follow alphabetical order
+and were checked against known agencies (Atlanta in Fulton and DeKalb, Savannah in Chatham, Augusta in Richmond).
+Reporting coverage fell in 2019 as Georgia moved to the FBI's newer reporting system, and many counties are below
+80% coverage in later years. The same coverage rules as Ohio apply.
+
+**Age (ACS table B23001).** The sanity check on county margins of error allows up to 20 points, against 10 for Ohio.
+Georgia's smallest counties have about 1,500 to 3,000 residents.
+
+**Child care.** The Georgia Department of Early Care and Learning (DECAL) provider export, saved by hand from
+https://families.decal.ga.gov/Provider/Data into `data/raw/ga/decal/`. Licensed child care learning centers and
+family child care learning homes serving children under 5 are geocoded with the Census batch geocoder. The rated
+share counts Quality Rated programs with 2 or 3 stars. Until that file is saved, the page has no child care
+measures for Georgia.

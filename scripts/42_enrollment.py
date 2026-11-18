@@ -52,6 +52,9 @@ def sheet_rows(zf, name, sheet=None):
     return list(ws.iter_rows(values_only=True))
 
 
+# county names, for project areas whose code is not the county's FIPS code
+BYNAME = {v["name"].upper(): k for k, v in json.loads((PROC / "geo.json").read_text())["counties"].items()}
+
 # --------------------------------------------------------------------------- county file
 cz = zipfile.ZipFile(io.BytesIO(cached(NRAW / "fns" / COUNTY_ZIP, FNS + COUNTY_ZIP)))
 by_upper = {n.upper(): n for n in cz.namelist()}
@@ -72,12 +75,21 @@ for y in YEARS:
             continue
         f = code[:5]
         if f not in COUNTIES:
-            raise SystemExit(f"{name}: unknown {SNAME} project area {code!r}")
+            # FNS gives Georgia's Echols County the code 13100; it is 13101. Fall back to the county name.
+            f = BYNAME.get(code.split(" EBT ")[-1].strip().upper()) if " EBT " in code else None
+            if f is None:
+                raise SystemExit(f"{name}: unknown {SNAME} project area {code!r}")
+            print(f"{name}: {code!r} placed by name in {f}")
         v = num(r[col])
         if v is None:
             raise SystemExit(f"{name}: no persons value for {code!r}")
         # Cuyahoga has two lines (regular EBT and the SSI combined application project); they add.
         got[f] = got.get(f, 0.0) + v
+    if not got and ST_ID != "oh":
+        # FNS left some states out of some months (Georgia has no rows in July 2024); that year stays blank
+        print(f"{name}: no {SNAME} rows; July {y} left blank")
+        county_persons[y] = None
+        continue
     missing = [f for f in COUNTIES if f not in got]
     if missing:
         raise SystemExit(f"{name}: no row for {missing}")
@@ -115,8 +127,23 @@ for y in YEARS:
 # The county lines should add to the state total; record any gap rather than hide it.
 county_sum_gap = {}
 for y in YEARS:
+    if county_persons[y] is None:
+        continue
     s = sum(county_persons[y].values())
     county_sum_gap[f"{y}-07"] = s - state_monthly[f"{y}-07"]
+# Outside Ohio, a year whose county lines do not add up to FNS's own state total (within 2%) is left blank: Georgia's
+# July 2025 county lines add to about 28% more than the state total, with every county higher by a similar share.
+UNBALANCED, BLANK = [], []
+if ST_ID != "oh":
+    for y in YEARS:
+        if county_persons[y] is not None and abs(county_sum_gap[f"{y}-07"]) > 0.02 * state_monthly[f"{y}-07"]:
+            print(f"July {y}: county lines sum to {sum(county_persons[y].values()):,.0f}, state total "
+                  f"{state_monthly[f'{y}-07']:,.0f}; left blank")
+            UNBALANCED.append(y)
+            county_persons[y] = None
+    BLANK = [y for y in YEARS if county_persons[y] is None]
+    while county_persons[YEARS[-1]] is None:    # the series ends at the last usable year, for counties and the state
+        YEARS = YEARS[:-1]
 
 # --------------------------------------------------------------------------- population
 pe = json.loads((PROC / "popest.json").read_text())
@@ -151,7 +178,7 @@ ohio = {}
 extras = {"snap_persons_count": {}, "snap_south_central_combined": {}}
 
 for f in COUNTIES:
-    cnt = [(f"{y}-07", county_persons[y][f]) for y in YEARS]
+    cnt = [(f"{y}-07", county_persons[y][f] if county_persons[y] else None) for y in YEARS]
     if f in SOUTH_CENTRAL:
         others = " and ".join(NAMES[o] for o in SOUTH_CENTRAL if o != f)
         flag = f"reported with {others} (South Central Ohio JFS)"
@@ -160,7 +187,7 @@ for f in COUNTIES:
             "moe": None, "flag": flag}
         extras["snap_persons_count"][f] = None
         continue
-    share = [(p, v / pop(f, int(p[:4])) * 100) for p, v in cnt]
+    share = [(p, v / pop(f, int(p[:4])) * 100 if v is not None else None) for p, v in cnt]
     counties[f]["snap_persons_share"] = entry(share)
     extras["snap_persons_count"][f] = [[p, v] for p, v in cnt]
 
@@ -185,6 +212,10 @@ extras["snap_persons_ohio_monthly" if ST_ID == "oh" else "snap_persons_state_mon
 extras["snap_county_sum_minus_state"] = {SK: county_sum_gap}
 
 last = max(YEARS)
+_why = [f"FNS's county file has no {SNAME} rows for July {y}" for y in BLANK if y not in UNBALANCED and y > last]
+_why += [f"the July {y} county lines add up to {100 * county_sum_gap[f'{y}-07'] / state_monthly[f'{y}-07']:.0f}% more "
+         f"than FNS's {SNAME} total for that month" for y in UNBALANCED if y > last]
+GAP_NOTE = (f" The figures stop at July {last}: " + " and ".join(_why) + ".") if _why else ""
 vintage = (f"FNS-388A county file, July {YEARS[0]}-July {last} (zip {COUNTY_ZIP}); {SNAME} total from FNS "
            f"state file ({STATE_ZIP}); population: Census vintage 2025 July 1 estimates; pulled {TODAY}")
 metrics = {
@@ -196,7 +227,7 @@ metrics = {
         "vintage": vintage,
         "period_label": f"July {last}",
         "note": "People in households that got SNAP benefits in July, from program records, divided by the "
-                "Census July 1 population of the same year." + (" Ross, Hocking and Vinton are reported together "
+                "Census July 1 population of the same year." + GAP_NOTE + (" Ross, Hocking and Vinton are reported together "
                 "by one county agency, so they show no single-county value." if SOUTH_CENTRAL else ""),
     }
 }

@@ -91,7 +91,7 @@ if __name__ == "__main__":
     m["tract"] = m.Block.str[:11]
     cdpop = m.groupby("cd")["pop"].sum()
     print("district 2020 populations:", dict(cdpop))
-    assert len(cdpop) == CFG["districts"] and cdpop.max() - cdpop.min() <= 1, "districts should be within one person of each other"
+    assert len(cdpop) == CFG["districts"] and cdpop.max() - cdpop.min() <= CFG["pop_spread"], "districts should be within a person or two of each other"
 
     # place names
     zp = zipfile.ZipFile(io.BytesIO(cached(RAW / KEY / BAF_PLACE.rsplit("/", 1)[1], BAF_PLACE)))
