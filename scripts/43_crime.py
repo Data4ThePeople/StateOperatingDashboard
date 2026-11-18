@@ -6,7 +6,7 @@ Sources
      Data Explorer (CDE) "Master Files" page. No key needed: the CDE hands out a short-lived
      signed S3 link for each file.
   2. FBI Crime in the United States (CIUS) estimation tables, Table 4 (state estimates), named in the
-     note beside Ohio's figure. Ohio's comparison figure is built the same way as the counties.
+     note beside the state's figure. The state's comparison figure is built the same way as the counties.
 
 Method in brief (full write-up in docs/datasets/crime.md)
   - An agency "reported" a month when the FBI file shows a submission for that month
@@ -30,15 +30,13 @@ import io
 import json
 import zipfile
 
-from common import RAW, cached, get, write_json
+from common import CFG, COUNTIES, NRAW, SK, SNAME, cached, get, write_json
 
 TODAY = dt.date.today().isoformat()
 YEARS = list(range(2015, 2026))
 COVERAGE_MIN = 80.0
-COUNTIES = [f"39{n:03d}" for n in range(1, 176, 2)]
-assert len(COUNTIES) == 88
-OH_UCR_STATE = "34"   # UCR numeric state code for Ohio
-FOLDER = RAW / "fbi_cde"
+OH_UCR_STATE = CFG["ucr"]   # UCR numeric state code (34 for Ohio)
+FOLDER = NRAW / "fbi_cde"
 SIGN = "https://cde.ucr.cjis.gov/LATEST/s3/signedurl?key="
 
 # Return A layout (FBI Return A record description; positions match the public setup file
@@ -93,8 +91,8 @@ def parse_year(year):
         pops = []
         for p, cc in (("pop1", "cty1"), ("pop2", "cty2"), ("pop3", "cty3")):
             n, code = int(a[p] or 0), a[cc].strip()
-            if code.isdigit() and 1 <= int(code) <= 88:
-                pops.append((f"39{2 * int(code) - 1:03d}", n))   # UCR county code n = nth county A-Z
+            if code.isdigit() and 1 <= int(code) <= len(COUNTIES):
+                pops.append((COUNTIES[int(code) - 1], n))   # UCR county code n = nth county A-Z
         rec = {"ori": a["ori"], "group": a["group"], "covered_by": a["covered_by"].strip(),
                "name": a["name"].strip(), "months": months, "off": off, "pops": pops}
         if rec["ori"] in out:   # a few duplicate rows: keep the one with more reported months
@@ -108,7 +106,7 @@ def excluded(a):
     """State police, statewide state agencies and federal agencies stay out of county figures."""
     if a.get("covered"):
         return "covered by another agency"
-    if a["group"] in STATE_POLICE_GROUPS or a["ori"].startswith("OHOHP"):
+    if a["group"] in STATE_POLICE_GROUPS or a["ori"].startswith(CFG["state_police_ori"]):
         return "state police"
     if not a["ori"][2:5].isdigit():
         if sum(n for _, n in a["pops"]) > 0:
@@ -176,7 +174,7 @@ def ohio_estimates():
         ws = openpyxl.load_workbook(io.BytesIO(z.read(name)), data_only=True, read_only=True).active
         rows = list(ws.iter_rows(values_only=True))
         for i, r in enumerate(rows):
-            if r[0] and str(r[0]).strip() == "Ohio":
+            if r[0] and str(r[0]).strip() == SNAME:
                 for rr in rows[i:i + 2]:
                     yr, pop = int(rr[1]), float(rr[2])
                     out[str(yr)] = {"pop": pop, "violent": float(rr[3]), "property": float(rr[13]),
@@ -252,21 +250,21 @@ def main():
     for mid, k in (("violent_crime_rate", "violent"), ("property_crime_rate", "property")):
         ohio[mid] = entry([(y, 1e5 * state[y][k] / state[y]["pop_covered"]) for y in sorted(state)])
         fbi = 1e5 * est[latest][k] / est[latest]["pop"]
-        metrics[mid]["note"] += (f" Ohio's figure is built the same way, from every Ohio agency that reported all 12 months "
+        metrics[mid]["note"] += (f" {SNAME}'s figure is built the same way, from every {SNAME} agency that reported all 12 months "
                                  f"({ohio[mid]['latest']:,.1f} in {latest}). The FBI's own statewide estimate, which also "
                                  f"estimates crimes for agencies that did not report, is {fbi:,.1f}.")
-    extras["coverage"]["ohio"] = [[y, state[y]["coverage"]] for y in sorted(state)]
-    extras["crime_counts"]["ohio"] = [{"year": y, "violent": state[y]["violent"], "property": state[y]["property"],
+    extras["coverage"][SK] = [[y, state[y]["coverage"]] for y in sorted(state)]
+    extras["crime_counts"][SK] = [{"year": y, "violent": state[y]["violent"], "property": state[y]["property"],
                                        "pop_covered": state[y]["pop_covered"], "pop_all": state[y]["pop_all"]}
                                       for y in sorted(state)]
-    extras["ohio_reported_agencies"] = {"ohio": {
-        "note": "Same method as the counties, all Ohio local agencies with 12 months of reports. Also the Ohio figure in ohio.",
+    extras[f"{SK}_reported_agencies"] = {SK: {
+        "note": f"Same method as the counties, all {SNAME} local agencies with 12 months of reports. Also the {SNAME} figure in {SK}.",
         "violent_crime_rate": [[y, 1e5 * state[y]["violent"] / state[y]["pop_covered"]] for y in sorted(state)],
         "property_crime_rate": [[y, 1e5 * state[y]["property"] / state[y]["pop_covered"]] for y in sorted(state)]}}
-    extras["ohio_fbi_estimate_counts"] = {"ohio": est}
-    extras["coverage_threshold_pct"] = {"ohio": COVERAGE_MIN}
-    extras["agencies_left_out"] = {"ohio": skipped_by_year}
-    write_json("crime.json", {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras})
+    extras[f"{SK}_fbi_estimate_counts"] = {SK: est}
+    extras["coverage_threshold_pct"] = {SK: COVERAGE_MIN}
+    extras["agencies_left_out"] = {SK: skipped_by_year}
+    write_json("crime.json", {"metrics": metrics, "counties": counties, SK: ohio, "extras": extras})
 
 
 if __name__ == "__main__":

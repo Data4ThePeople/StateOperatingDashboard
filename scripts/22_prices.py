@@ -6,12 +6,12 @@ with no measures, only extras.price_index {year: annual average}.
 """
 import pandas as pd
 
-from common import RAW, cached, write_json
+from common import NRAW, SK, cached, write_json
 
 URL = "https://www.bls.gov/cpi/research-series/r-cpi-u-rs-allitems.xlsx"
 
 if __name__ == "__main__":
-    path = RAW / "prices" / "r-cpi-u-rs-allitems.xlsx"
+    path = NRAW / "prices" / "r-cpi-u-rs-allitems.xlsx"
     cached(path, URL)
     x = pd.read_excel(path, header=None)
     head = x.index[x[0].astype(str).str.strip() == "YEAR"][0]
@@ -21,6 +21,6 @@ if __name__ == "__main__":
     assert len(idx) == len(t), "duplicate years in R-CPI-U-RS"
     for y in ("2014", "2019", "2024"):
         assert y in idx, f"R-CPI-U-RS has no {y} annual average"
-    write_json("prices.json", {"metrics": {}, "counties": {}, "ohio": {},
+    write_json("prices.json", {"metrics": {}, "counties": {}, SK: {},
                                "extras": {"price_index": {"name": "R-CPI-U-RS, annual average", "base_year": "2024", "years": idx}}})
     print({y: round(idx[y], 3) for y in ("2014", "2019", "2024")}, "2014 to 2024 factor", round(idx["2024"] / idx["2014"], 4))

@@ -1,4 +1,4 @@
-"""Census Bureau population estimates (Vintage 2025) for the 88 Ohio counties and Ohio: popest.json
+"""Census Bureau population estimates (Vintage 2025) for every county in the state and the state: popest.json
 (theme people).
 
 Population on July 1, 2020-2025; change since the April 1, 2020 estimates base; and the components of
@@ -11,7 +11,7 @@ import datetime as dt
 import io
 import sys
 
-from common import RAW, STATE, cached, write_json
+from common import COUNTIES, NRAW, SK, STATE, cached, write_json
 
 FILES = [(2025, "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/totals/co-est2025-alldata.csv"),
          (2024, "https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/counties/totals/co-est2024-alldata.csv")]
@@ -21,7 +21,7 @@ PULLED = dt.date.today().isoformat()
 def load():
     for v, url in FILES:
         try:
-            raw = cached(RAW / "popest" / url.rsplit("/", 1)[1], url)
+            raw = cached(NRAW / "popest" / url.rsplit("/", 1)[1], url)
         except Exception as e:  # noqa: BLE001
             print(f"Vintage {v} not available ({e}); trying the next one")
             continue
@@ -39,8 +39,8 @@ def main():
     oh = [r for r in rows if r["STATE"] == STATE]
     state = [r for r in oh if r["SUMLEV"] == "040"]
     counties = {r["STATE"] + r["COUNTY"]: r for r in oh if r["SUMLEV"] == "050"}
-    if len(state) != 1 or len(counties) != 88:
-        sys.exit(f"expected 1 state row and 88 counties, got {len(state)} and {len(counties)}")
+    if len(state) != 1 or sorted(counties) != COUNTIES:
+        sys.exit(f"expected 1 state row and {len(COUNTIES)} counties, got {len(state)} and {len(counties)}")
 
     period_all = f"Apr. 2020 to July {vint}"
 
@@ -71,10 +71,10 @@ def main():
                         "covers July 1 of the prior year to July 1 of that year.")
         return out, comp
 
-    out = {"metrics": {}, "counties": {}, "ohio": {}, "extras": {"components": {}}}
+    out = {"metrics": {}, "counties": {}, SK: {}, "extras": {"components": {}}}
     for g, r in sorted(counties.items()):
         out["counties"][g], out["extras"]["components"][g] = cells(r)
-    out["ohio"], out["extras"]["components"]["ohio"] = cells(state[0])
+    out[SK], out["extras"]["components"][SK] = cells(state[0])
 
     src = "U.S. Census Bureau, Population Estimates Program"
     vs = f"Vintage {vint} county estimates (co-est{vint}-alldata.csv); pulled {PULLED}"
@@ -101,10 +101,10 @@ def main():
                              "source": src, "vintage": vs, "period_label": pl, "note": note}
     write_json("popest.json", out)
 
-    for g in ("39049", "39163"):
+    for g in COUNTIES[:2]:
         c = out["counties"][g]
         print(g, counties[g]["CTYNAME"], {k: round(v["latest"], 2) for k, v in c.items()})
-    print("ohio", {k: round(v["latest"], 2) for k, v in out["ohio"].items()})
+    print(SK, {k: round(v["latest"], 2) for k, v in out[SK].items()})
 
 
 if __name__ == "__main__":

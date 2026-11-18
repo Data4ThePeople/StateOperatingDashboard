@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light only">
-<title>Ohio Community Well-Being</title>
+<title>__SN__ Community Well-Being</title>
 <meta name="description" content="__DESC__">
 <style>
 /* Light only by design: the map colors are tuned for a white page. */
@@ -127,8 +127,8 @@ footer p{max-width:112ch}
 <div class="proto" role="note"><div class="in"><b>Prototype</b><span>This page is shared to give people an idea of what can be built. It has not been thoroughly validated yet. Updated __DATE__.</span></div></div>
 <div class="wrap">
 <header>
-  <h1>Ohio Community Well-Being</h1>
-  <p>Conditions in every Ohio county, congressional district and census tract, in nine areas of daily life. Each measure is shown in its own units next to Ohio, the U.S. and, where one exists, a published standard. Nothing here is combined into a single score.</p>
+  <h1>__SN__ Community Well-Being</h1>
+  <p>Conditions in every __SN__ county, congressional district and census tract, in nine areas of daily life. Each measure is shown in its own units next to __SN__, the U.S. and, where one exists, a published standard. Nothing here is combined into a single score.</p>
 </header>
 <div class="bar">
   <div><span class="lbl">Show</span><span class="seg" id="levels"></span></div>
@@ -162,7 +162,7 @@ const SEQ = ["#ece9f5","#c3bce0","#958bc6","#6a5aa8","#3f2d80"];
 const SEQ_MONEY = ["#f3ecd8","#e2cf98","#c9a95a","#9c7a2c","#5b4a1f"];
 const BASE = GEO.viewBox.split(" ").map(Number);
 const MAXZ = {county:8, district:8, tract:40};
-// Census county and district shapes reach into Lake Erie; everything is clipped to Ohio's land (the land tracts merged)
+// Census county and district shapes reach into lakes and the ocean; everything is clipped to the state's land (the land tracts merged)
 const LAND = GEO.land;
 const st = {level:"county", dim:"economic", m:"below_200_share", place:null, hl:false, pulse:false, vb:null, all:false, cy:"places_ghlth", cweak:true};
 const $ = id => document.getElementById(id);
@@ -209,14 +209,14 @@ function pname(level, key){
 }
 const shape = (level, key) => level === "county" ? GEO.counties[key] : level === "district" ? GEO.districts[key] : GEO.tracts[key];
 
-// near = within 3% of Ohio or 0.3 points for percentages
+// near = within 3% of __SN__ or 0.3 points for percentages
 function vs(v, ref, id){
   const b = M[id].better; if (v === null || v === undefined || ref === null || ref === undefined || b === "none") return null;
   const band = Math.max(Math.abs(ref) * 0.03, M[id].unit === "pct" ? 0.3 : 0);
   if (Math.abs(v - ref) <= band) return "near";
   return (v > ref) === (b === "higher") ? "better" : "worse";
 }
-const BADGE = {worse:["b-worse","worse than Ohio"], better:["b-better","better than Ohio"], near:["b-near","near Ohio"]};
+const BADGE = {worse:["b-worse","worse than __SN__"], better:["b-better","better than __SN__"], near:["b-near","near __SN__"]};
 const badge = k => k ? `<span class="badge ${BADGE[k][0]}">${BADGE[k][1]}</span>` : "";
 function stdBadge(v, id){
   const s = M[id].standard; if (!s || v === null || v === undefined) return "";
@@ -225,7 +225,7 @@ function stdBadge(v, id){
 }
 
 function scale(id){
-  const lv = st.level, keys = places(lv), o = DATA.ohio[id], b = M[id].better;
+  const lv = st.level, keys = places(lv), o = DATA.st[id], b = M[id].better;
   if (b === "none" || o === null || o === undefined){
     const vals = keys.map(k => val(id, lv, k).v).filter(v => v !== null && v !== undefined).sort((a, c) => a - c);
     const q = [0.2, 0.4, 0.6, 0.8].map(p => vals[Math.floor(p * (vals.length - 1))]);
@@ -234,7 +234,7 @@ function scale(id){
       legend:pal.map((c, i) => [c, i === 0 ? `under ${fmt(q[0], id)}` : i === 4 ? `${fmt(q[3], id)} or more` : `${fmt(q[i-1], id)} to ${fmt(q[i], id)}`]),
       how:`Colors split the ${PL[lv]} into fifths, low to high.`};
   }
-  // diverging around Ohio; the breaks are shown in the measure's own units
+  // diverging around __SN__; the breaks are shown in the measure's own units
   const cut = r => o * (1 + r), up = b === "higher";
   const cls = v => {
     if (v === null || v === undefined) return null;
@@ -247,8 +247,8 @@ function scale(id){
   const bb = up ? [cut(-.03), cut(-.10), cut(-.25)] : [cut(.03), cut(.10), cut(.25)];
   return {color:v => { const c = cls(v); return c === null ? null : DIV[c]; },
     legend:[[DIV[0], `better, ${up ? "above" : "below"} ${fmt(gb[0], id)}`], [DIV[1], lo(gb[0], gb[1])], [DIV[2], lo(gb[1], gb[2])],
-            [DIV[3], `near Ohio (${fmt(o, id)})`], [DIV[4], lo(bb[0], bb[1])], [DIV[5], lo(bb[1], bb[2])], [DIV[6], `worse, ${up ? "below" : "above"} ${fmt(bb[2], id)}`]],
-    how:`Blue is better than Ohio and red is worse, by 3%, 10% and 25% of Ohio's value.`};
+            [DIV[3], `near __SN__ (${fmt(o, id)})`], [DIV[4], lo(bb[0], bb[1])], [DIV[5], lo(bb[1], bb[2])], [DIV[6], `worse, ${up ? "below" : "above"} ${fmt(bb[2], id)}`]],
+    how:`Blue is better than __SN__ and red is worse, by 3%, 10% and 25% of __SN__'s value.`};
 }
 
 function drawLevels(){
@@ -281,7 +281,7 @@ function drawTabs(){
 function drawMap(){
   const id = st.m, lv = st.level, sc = scale(id), ok = has(id, lv) && (lv !== "tract" || TREADY);
   const vb = st.vb || BASE, k0 = BASE[2] / vb[2], hl = st.hl ? st.place : null;
-  let svg = `<svg viewBox="${vb.join(" ")}" class="lv-${lv}${hl ? " hasSel" : ""}" role="img" aria-label="Map of Ohio ${PL[lv]}: ${esc(M[id].label)}">
+  let svg = `<svg viewBox="${vb.join(" ")}" class="lv-${lv}${hl ? " hasSel" : ""}" role="img" aria-label="Map of __SN__ ${PL[lv]}: ${esc(M[id].label)}">
     <defs><pattern id="weak" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#121212" stroke-width="1.1" stroke-opacity=".45"/></pattern>
     <pattern id="nodata" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="5" stroke="#8a8780" stroke-width="1"/></pattern>
     <clipPath id="land"><path clip-rule="evenodd" d="${LAND}"/></clipPath></defs><g class="land" clip-path="url(#land)">`;
@@ -310,7 +310,7 @@ function drawMap(){
   if (lv === "district") Object.entries(GEO.districts).forEach(([k, d]) => svg += `<text data-fs="15" x="${d.p[0]}" y="${d.p[1]}" font-size="${fs * 15 / 11 / k0}" stroke-width="${fs * 0.3 / k0}" font-weight="700" fill="#121212" text-anchor="middle" dominant-baseline="middle">${Number(k)}</text>`);
   Object.values(GEO.counties).forEach(c => svg += `<text class="cl" data-fs="11" x="${c.p[0]}" y="${c.p[1]}" font-size="${fs / k0}" stroke-width="${fs * 0.3 / k0}" fill="#55534e" text-anchor="middle" dominant-baseline="middle">${esc(c.name)}</text>`);
   svg += `</svg>`;
-  const ohio = DATA.ohio[id];
+  const ohio = DATA.st[id];
   const note = ok ? "" : lv === "tract" && has(id, lv) ? `<div class="nolevel">${TFAIL ? "Census tracts could not be loaded. Reload the page to try again." : "Loading census tracts&hellip;"}</div>` : `<div class="nolevel">${esc(M[id].label)} is available for ${M[id].levels.map(l => PL[l]).join(" and ")} only.${M[id].dim === "childcare" && M[id].role === "access" && !M[id].levels.includes("tract") && lv === "tract" ? " A tract is too small an area for this one: families often use care outside their own tract." : ""}<br><button class="linkbtn" id="golv" style="margin-top:8px">Show ${PL[M[id].levels[0]]}</button></div>`;
   // worst first for judged measures (rank 1 = best), highest first for the rest
   const keys = ok ? places(lv).filter(k => val(id, lv, k).v !== null && val(id, lv, k).v !== undefined) : [];
@@ -320,8 +320,8 @@ function drawMap(){
   const nShow = st.all ? (lv === "tract" ? 100 : keys.length) : 10;
   const weakN = !has(id, lv) ? 0 : lv === "tract" ? (WEAK[id] ? WEAK[id].size : 0) : places(lv).filter(k => val(id, lv, k).weak).length;
   $("mapcard").innerHTML = `<h2>${esc(M[id].label)}</h2>
-    <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. Ohio: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
-    <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of Ohio">Reset</button></div>${note}</div>
+    <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. __SN__: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
+    <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of __SN__">Reset</button></div>${note}</div>
     ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} ${{county:"counties", district:"districts", tract:"tracts"}[lv]})</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
     <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight. <button class="linkbtn" id="gocmp">Compare with another measure</button></p>
     <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
@@ -427,11 +427,11 @@ function measureRows(ids, placeVals){
     if (placeVals){
       const c = ok ? val(id, st.level, st.place) : null;
       main = ok ? fmt(c.v, id) + fmtMoe(c.moe, id) : `<span class="moe">not for ${PL[st.level]}</span>`;
-      cmp = ok ? `Ohio ${fmt(DATA.ohio[id], id)}${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${badge(vs(c.v, DATA.ohio[id], id))}${stdBadge(c.v, id)}${c.weak && c.v !== null ? ` <span class="weak">uncertain estimate</span>` : ""}${c.flag ? ` <span class="weak">${esc(c.flag)}</span>` : ""}`
-               : `Ohio ${fmt(DATA.ohio[id], id)}`;
+      cmp = ok ? `__SN__ ${fmt(DATA.st[id], id)}${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${badge(vs(c.v, DATA.st[id], id))}${stdBadge(c.v, id)}${c.weak && c.v !== null ? ` <span class="weak">uncertain estimate</span>` : ""}${c.flag ? ` <span class="weak">${esc(c.flag)}</span>` : ""}`
+               : `__SN__ ${fmt(DATA.st[id], id)}`;
     } else {
-      main = fmt(DATA.ohio[id], id);
-      cmp = `Ohio${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${m.standard ? ` · U.S. target ${fmt(m.standard.v, id)}` : ""} · ${esc(m.period_label || "")}`;
+      main = fmt(DATA.st[id], id);
+      cmp = `__SN__${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${m.standard ? ` · U.S. target ${fmt(m.standard.v, id)}` : ""} · ${esc(m.period_label || "")}`;
     }
     return `<div class="mrow${id === st.m ? " on" : ""}${ok ? "" : " off"}${m.role === "money" ? " money" : ""}" tabindex="0" data-m="${id}"><div class="ml">${esc(m.label)} ${lvTags(id)}</div><div class="mv">${main}</div><div class="mc">${cmp}</div></div>`;
   }).join("");
@@ -440,19 +440,19 @@ function drawPanel(){
   const P = $("panel"), dimIds = Object.keys(M).filter(i => M[i].dim === st.dim);
   let h;
   if (!st.place){
-    h = `<h2>${esc(DIM[st.dim].label)}: the measures</h2><p class="sub">Ohio's value for each measure. Click one to map it. C, D and T show whether it is available for counties, districts and tracts. Click a place on the map, or search for one, to see its own values.</p>`;
+    h = `<h2>${esc(DIM[st.dim].label)}: the measures</h2><p class="sub">__SN__'s value for each measure. Click one to map it. C, D and T show whether it is available for counties, districts and tracts. Click a place on the map, or search for one, to see its own values.</p>`;
     ROLES.forEach(([r, lab]) => { const ids = dimIds.filter(i => M[i].role === r); if (ids.length) h += `<h3>${lab}</h3><div class="mlist">${measureRows(ids, false)}</div>`; });
     if (!dimIds.some(i => M[i].role === "money")) h += `<h3>Public money</h3><p class="sub">Not added yet for this area.</p>`;
   } else {
     const lv = st.level, k = st.place, pop = val("population", lv, k);
     h = `<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h2>${esc(pname(lv, k))}</h2>
-      <p class="sub">${lv === "tract" ? `${esc(GEO.counties[k.slice(0, 5)].name)} County · tract ${k} · ` : ""}${lv === "district" ? `2025 map, first used in 2026 · built from ${DATA.district_note[k].tracts} tracts (${DATA.district_note[k].split} split by the district line) · ` : ""}about ${fmt(pop.v, "population")} residents (2020-2024)</p></div>
+      <p class="sub">${lv === "tract" ? `${esc(GEO.counties[k.slice(0, 5)].name)} County · tract ${k} · ` : ""}${lv === "district" ? `__DMAP__ · built from ${DATA.district_note[k].tracts} tracts (${DATA.district_note[k].split} split by the district line) · ` : ""}about ${fmt(pop.v, "population")} residents (2020-2024)</p></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start"><button class="linkbtn" id="zplace">Zoom to this place</button><button class="linkbtn" id="back">Back to the measures</button></div></div>`;
     ROLES.forEach(([r, lab]) => { const ids = dimIds.filter(i => M[i].role === r); if (ids.length) h += `<h3>${esc(DIM[st.dim].label)}: ${lab.toLowerCase()}</h3><div class="mlist">${measureRows(ids, true)}</div>`; });
     // other areas: the headline measure of each, for this place
     h += `<h3>Other areas, headline measure</h3><table>${DIMS.filter(d => d.id !== st.dim).map(d => {
       const id = Object.keys(M).find(i => M[i].dim === d.id && M[i].headline), ok = has(id, lv), c = ok ? val(id, lv, k) : {v:null};
-      return `<tr class="click" data-d="${d.id}" data-m="${id}"><td>${esc(d.label)}<br><span class="moe">${esc(M[id].label)}</span></td><td class="n">${ok ? fmt(c.v, id) : `<span class="moe">not for ${PL[lv]}</span>`}</td><td>${ok ? badge(vs(c.v, DATA.ohio[id], id)) : ""}</td></tr>`; }).join("")}</table>`;
+      return `<tr class="click" data-d="${d.id}" data-m="${id}"><td>${esc(d.label)}<br><span class="moe">${esc(M[id].label)}</span></td><td class="n">${ok ? fmt(c.v, id) : `<span class="moe">not for ${PL[lv]}</span>`}</td><td>${ok ? badge(vs(c.v, DATA.st[id], id)) : ""}</td></tr>`; }).join("")}</table>`;
     h += `<h3>Who lives here</h3><p class="ctx">${["age65_share","nh_white_share","nh_black_share","hispanic_share","foreign_born_share","disability_share"].map(i => `${esc(M[i].label)}: ${fmt(val(i, lv, k).v, i)}`).join(" · ")}</p>`;
   }
   P.innerHTML = h;
@@ -495,10 +495,10 @@ function drawDetail(){
   const cty = k ? (lv === "county" ? k : lv === "tract" ? k.slice(0, 5) : null) : null;
   const lines = [];
   if (cty && ser[cty]) lines.push({n:GEO.counties[cty].name, s:ser[cty], c:"#2a78d6"});
-  if (ser.ohio) lines.push({n:"Ohio", s:ser.ohio, c:"#121212"});
+  if (ser.st) lines.push({n:"__SN__", s:ser.st, c:"#121212"});
   const tnote = !Object.keys(ser).length ? "No history in this form yet." :
     lv === "tract" && k ? "Trend for the county: tract lines changed in 2020, so tract history is not comparable yet." :
-    lv === "district" && k ? "Trend for Ohio only: the 2025 district lines are new." : k ? "" : "Click a county to add its line.";
+    lv === "district" && k ? "Trend for __SN__ only: the __DYEAR__ district lines are new." : k ? "" : "Click a county to add its line.";
   const money = Object.keys(M).filter(i => M[i].dim === m.dim && M[i].role === "money");
   $("detail").innerHTML = `<div class="dgrid"><div>
     <h2>About this measure: ${esc(m.label)}</h2>
@@ -508,7 +508,7 @@ function drawDetail(){
       <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; estimates whose margin is more than about half the value are hatched on the map at every level." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
       ${m.standard ? `<dt>Standard</dt><dd>${fmt(m.standard.v, id)}: ${esc(m.standard.src)}. ${esc(m.standard.note || "")}</dd>` : ""}
       <dt>Who runs services</dt><dd>${esc(d.agencies || "")}</dd><dt>Main public programs</dt><dd>${esc(d.programs || "")}</dd>
-      ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.ohio[i], i)}${k && has(i, lv) ? "" : " (Ohio)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}
+      ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.st[i], i)}${k && has(i, lv) ? "" : " (__SN__)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}
     </dl></div>
     <div class="trend"><h3 style="margin-top:0">Over time</h3>${trendSvg(id, lines)}<p class="sub">${tnote}</p></div></div>`;
   drawCompare();
@@ -568,9 +568,9 @@ function drawCompare(){
   let g = `<svg id="cmpsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Scatterplot of ${n} ${PL[lv]}: ${esc(M[x].label)} across, ${esc(M[y].label)} up">`;
   ty.t.forEach(v => g += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="#e3e2dd"/><text x="${L - 6}" y="${sy(v) + 4}" font-size="11" fill="#8a8780" text-anchor="end">${tickFmt(v, y, ty.d)}</text>`);
   tx.t.forEach(v => g += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${T}" y2="${H - B}" stroke="#efeeea"/><text x="${sx(v)}" y="${H - B + 16}" font-size="11" fill="#8a8780" text-anchor="middle">${tickFmt(v, x, tx.d)}</text>`);
-  const ox = DATA.ohio[x], oy = DATA.ohio[y];
-  if (ox !== null && ox !== undefined && ox > x0 && ox < x1) g += `<line x1="${sx(ox)}" x2="${sx(ox)}" y1="${T}" y2="${H - B}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${sx(ox) + 4}" y="${T + 10}" font-size="11" fill="#55534e">Ohio</text>`;
-  if (oy !== null && oy !== undefined && oy > y0 && oy < y1) g += `<line x1="${L}" x2="${W - R}" y1="${sy(oy)}" y2="${sy(oy)}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${W - R - 4}" y="${sy(oy) - 5}" font-size="11" fill="#55534e" text-anchor="end">Ohio</text>`;
+  const ox = DATA.st[x], oy = DATA.st[y];
+  if (ox !== null && ox !== undefined && ox > x0 && ox < x1) g += `<line x1="${sx(ox)}" x2="${sx(ox)}" y1="${T}" y2="${H - B}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${sx(ox) + 4}" y="${T + 10}" font-size="11" fill="#55534e">__SN__</text>`;
+  if (oy !== null && oy !== undefined && oy > y0 && oy < y1) g += `<line x1="${L}" x2="${W - R}" y1="${sy(oy)}" y2="${sy(oy)}" stroke="#55534e" stroke-dasharray="4 3"/><text x="${W - R - 4}" y="${sy(oy) - 5}" font-size="11" fill="#55534e" text-anchor="end">__SN__</text>`;
   const r = lv === "district" ? 6 : lv === "county" ? 4.5 : 2.6, op = lv === "tract" ? .5 : .75;
   pts.forEach(p => { p.px = sx(p.x); p.py = sy(p.y); });
   g += pts.map(p => p.weak ? `<circle cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="${r}" fill="none" stroke="#2a78d6" stroke-opacity="${op + .15}" stroke-width="1.2"/>`

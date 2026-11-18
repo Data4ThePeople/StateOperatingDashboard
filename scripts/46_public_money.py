@@ -34,19 +34,18 @@ import zipfile
 
 import openpyxl
 
-from common import PROC, RAW, census, get, write_json
+from common import ABBR, CFG, COUNTIES, NRAW, PROC, RAW, SK, SNAME, ST_ID, STATE, census, get, write_json
 
 TODAY = dt.date.today().isoformat()
-COUNTIES = [f"39{n:03d}" for n in range(1, 176, 2)]
-assert len(COUNTIES) == 88
 THEME = "money"
+NATIONAL = ("bea_cainc35", "hud_picture", "census_school_finance")   # whole-nation files, shared by every state
 NOTE_TAIL = " It describes spending, not results. Dollars are not adjusted for inflation."
 
 
 def fetch(folder, name, url, magic):
     """Download once into data/raw/<folder>/; refuse a reply that is not the expected file type
     (HUD sometimes answers 202 with an empty body)."""
-    path = RAW / folder / name
+    path = (NRAW if folder in NATIONAL else RAW) / folder / name
     if not path.exists():
         body = get(url)
         if not body.startswith(magic):
@@ -78,16 +77,16 @@ def entry(series, flags=None):
 # --------------------------------------------------------------------------- population
 geo = json.loads((PROC / "geo.json").read_text())["counties"]
 NAME2FIPS = {v["name"].strip().lower(): f for f, v in geo.items()}
-assert len(NAME2FIPS) == 88
+assert sorted(NAME2FIPS.values()) == COUNTIES
 
 pe = json.loads((PROC / "popest.json").read_text())
 POP = {f: {int(y): v for y, v in pe["counties"][f]["population_estimate"]["series"]} for f in COUNTIES}
-POP["ohio"] = {int(y): v for y, v in pe["ohio"]["population_estimate"]["series"]}
+POP[SK] = {int(y): v for y, v in pe[SK]["population_estimate"]["series"]}
 POPEST_VINTAGE = pe["metrics"]["population_estimate"]["vintage"]
 
 INT_URL = ("https://www2.census.gov/programs-surveys/popest/tables/2010-2020/intercensal/county/"
-           "co-est2020int-pop-39.xlsx")
-wb = openpyxl.load_workbook(fetch("popest_int", "co-est2020int-pop-39.xlsx", INT_URL, b"PK"), read_only=True)
+           f"co-est2020int-pop-{STATE}.xlsx")
+wb = openpyxl.load_workbook(fetch("popest_int", f"co-est2020int-pop-{STATE}.xlsx", INT_URL, b"PK"), read_only=True)
 rows = list(wb[wb.sheetnames[0]].iter_rows(values_only=True))
 hdr_i = [i for i, r in enumerate(rows) if r[2] == 2010][0]
 years_cols = {int(y): j for j, y in enumerate(rows[hdr_i]) if isinstance(y, int) and 2010 <= y <= 2019}
@@ -96,16 +95,16 @@ for r in rows[hdr_i + 1:]:
     if not r[0]:
         continue
     name = str(r[0]).strip()
-    if name == "Ohio":
-        key = "ohio"
+    if name == SNAME:
+        key = SK
     else:
-        m = re.fullmatch(r"\.(.+) County, Ohio", name)
+        m = re.fullmatch(r"\.(.+) County, " + SNAME, name)
         if not m:
             continue
         key = NAME2FIPS[m.group(1).strip().lower()]
     for y, j in years_cols.items():
         POP[key][y] = float(r[j])
-for k in COUNTIES + ["ohio"]:
+for k in COUNTIES + [SK]:
     missing = [y for y in range(2010, 2026) if y not in POP[k]]
     if missing:
         raise SystemExit(f"no population for {k} in {missing}")
@@ -118,9 +117,9 @@ def pop(geo_key, year):
 # =========================================================================== 1. BEA CAINC35
 BEA_URL = "https://apps.bea.gov/regional/zip/CAINC35.zip"
 bz = zipfile.ZipFile(fetch("bea_cainc35", "CAINC35.zip", BEA_URL, b"PK"))
-oh_name = [n for n in bz.namelist() if re.fullmatch(r"CAINC35_OH_1969_\d{4}\.csv", n)]
+oh_name = [n for n in bz.namelist() if re.fullmatch(rf"CAINC35_{ABBR}_1969_\d{{4}}\.csv", n)]
 if len(oh_name) != 1:
-    raise SystemExit(f"Ohio file not found in CAINC35.zip: {bz.namelist()[:5]}")
+    raise SystemExit(f"{SNAME} file not found in CAINC35.zip: {bz.namelist()[:5]}")
 oh_name = oh_name[0]
 BEA_LAST = int(oh_name[-8:-4])
 BEA_YEARS = list(range(2010, BEA_LAST + 1))
@@ -162,13 +161,13 @@ def bea_num(s):
 
 bea_check = {}
 for mid, (code, _) in BEA_LINES.items():
-    for g in COUNTIES + ["39000"]:
+    for g in COUNTIES + [STATE + "000"]:
         if (g, code) not in bea:
             raise SystemExit(f"BEA: no line {code} for {g}")
     gaps = {}
     for y in BEA_YEARS:
         vals = [bea_num(bea[(g, code)][y]) for g in COUNTIES]
-        st = bea_num(bea[("39000", code)][y])
+        st = bea_num(bea[(STATE + "000", code)][y])
         if None in vals or st is None:
             gaps[str(y)] = "a county or state value is not a number"
             continue
@@ -181,8 +180,8 @@ extras = {}
 
 for mid, (code, _) in BEA_LINES.items():
     extras[mid.replace("_per_resident", "_dollars")] = {}
-    for g in COUNTIES + ["ohio"]:
-        src = "39000" if g == "ohio" else g
+    for g in COUNTIES + [SK]:
+        src = STATE + "000" if g == SK else g
         ser, flags, dollars = [], {}, []
         for y in BEA_YEARS:
             raw = bea[(src, code)][y]
@@ -195,7 +194,7 @@ for mid, (code, _) in BEA_LINES.items():
                 ser.append((p, v / pop(g, y)))
             dollars.append([p, v])
         e = entry(ser, flags)
-        (ohio if g == "ohio" else counties[g])[mid] = e
+        (ohio if g == SK else counties[g])[mid] = e
         extras[mid.replace("_per_resident", "_dollars")][g] = dollars
 
 # =========================================================================== 2. HUD Picture
@@ -254,9 +253,9 @@ for y in HUD_YEARS:
     seen = set()
     for d in hud_rows(cpath):
         code = str(d.get("code") or "").strip()
-        if not code.startswith("39") or str(d.get("program")).strip() != "1":
+        if not code.startswith(STATE) or str(d.get("program")).strip() != "1":
             continue
-        if code == "39XXX":
+        if code == STATE + "XXX":
             hud_unplaced[str(y)] = {"units": hud_num(d.get("total_units")), "pct_occupied": hud_num(d.get("pct_occupied")),
                                     "occupied": hud_num(d.get("total_occupied"))}
             continue
@@ -269,9 +268,9 @@ for y in HUD_YEARS:
     if seen != set(COUNTIES):
         raise SystemExit(f"{cname}: missing counties {sorted(set(COUNTIES) - seen)}")
     spath, sname = hud_file("STATE", y)
-    got = [d for d in hud_rows(spath) if str(d.get("code") or "").strip() == "39" and str(d.get("program")).strip() == "1"]
+    got = [d for d in hud_rows(spath) if str(d.get("code") or "").strip() == STATE and str(d.get("program")).strip() == "1"]
     if len(got) != 1:
-        raise SystemExit(f"{sname}: expected one Ohio summary row, found {len(got)}")
+        raise SystemExit(f"{sname}: expected one {SNAME} summary row, found {len(got)}")
     hud_oh[y] = hud_summary(got[0])
 
 # ACS households (and state) for each HUD year: 5-year period ending in that year, or the latest one.
@@ -284,16 +283,16 @@ def acs_year(y):
 
 hh = {}
 for ay in sorted({acs_year(y) for y in HUD_YEARS}):
-    for geo_for, extra in (("county:*", {"in": "state:39"}), ("state:39", {})):
+    for geo_for, extra in (("county:*", {"in": f"state:{STATE}"}), (f"state:{STATE}", {})):
         params = {"get": "B11001_001E", "for": geo_for}
         params.update(extra)
         level = geo_for.split(":")[0]
         for r in census(f"{ay}/acs/acs5", params, f"public_money_acs5_{ay}_B11001_{level}.json"):
-            key = "ohio" if level == "state" else r["state"] + r["county"]
+            key = SK if level == "state" else r["state"] + r["county"]
             hh[(key, ay)] = float(r["B11001_001E"])
 
-for g in COUNTIES + ["ohio"]:
-    src = hud_oh if g == "ohio" else hud_cty[g]
+for g in COUNTIES + [SK]:
+    src = hud_oh if g == SK else hud_cty[g]
     s_hh, s_sp, f_hh, f_sp = [], [], {}, {}
     for y in HUD_YEARS:
         occ, annual, units, exact, flag = src[y]
@@ -308,23 +307,23 @@ for g in COUNTIES + ["ohio"]:
             f_sp[p] = flag
         else:
             s_sp.append((p, annual / pop(g, y)))
-    target = ohio if g == "ohio" else counties[g]
+    target = ohio if g == SK else counties[g]
     target["hud_households_per_1000"] = entry(s_hh, f_hh)
     target["hud_spending_per_resident"] = entry(s_sp, f_sp)
 
 extras["hud_counts"] = {}
-for g in COUNTIES + ["ohio"]:
-    src = hud_oh if g == "ohio" else hud_cty[g]
+for g in COUNTIES + [SK]:
+    src = hud_oh if g == SK else hud_cty[g]
     extras["hud_counts"][g] = {str(y): {"units": src[y][2], "occupied": src[y][0], "occupied_is_published": src[y][3],
                                         "annual_spending_usd": src[y][1]} for y in HUD_YEARS}
-extras["hud_units_not_placed_in_a_county"] = {"ohio": hud_unplaced}
+extras["hud_units_not_placed_in_a_county"] = {SK: hud_unplaced}
 
 # ---- tracts, latest year only
 TRACT_YEAR = 2025
 tpath, tname = fetch("hud_picture", f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx",
                      HUD + f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx", b"PK"), f"TRACT_MO_WY_{TRACT_YEAR}_2020census.xlsx"
 acs_tr = {}
-for r in census(f"{ACS_LAST}/acs/acs5", {"get": "B11001_001E,B01003_001E", "for": "tract:*", "in": "state:39"},
+for r in census(f"{ACS_LAST}/acs/acs5", {"get": "B11001_001E,B01003_001E", "for": "tract:*", "in": f"state:{STATE}"},
                 f"public_money_acs5_{ACS_LAST}_B11001_B01003_tract.json"):
     acs_tr[r["state"] + r["county"] + r["tract"]] = (float(r["B11001_001E"]), float(r["B01003_001E"]))
 
@@ -333,13 +332,13 @@ tract_skipped = []
 tract_flags = {}
 for d in hud_rows(tpath):
     code = str(d.get("code") or "").strip()
-    if not code.startswith("39") or str(d.get("program")).strip() != "1":
+    if not code.startswith(STATE) or str(d.get("program")).strip() != "1":
         continue
     if "XXX" in code or code.endswith("999999"):
         tract_skipped.append({"code": code, "units": hud_num(d.get("total_units")),
                               "occupied": hud_num(d.get("total_occupied"))})
         continue
-    if not re.fullmatch(r"39\d{9}", code) or code[:5] not in counties:
+    if not re.fullmatch(STATE + r"\d{9}", code) or code[:5] not in counties:
         raise SystemExit(f"{tname}: odd tract code {code!r}")
     if code in tracts:
         raise SystemExit(f"{tname}: duplicate tract {code}")
@@ -383,9 +382,9 @@ def urban(path, name):
 # NCES district ID -> Ohio IRN (CCD directory), IRN -> county (ODEW District Details, as in 40_reading.py)
 nces2irn = {}
 for y in (2022, 2023, 2024):
-    for r in urban(f"school-districts/ccd/directory/{y}/?fips=39", f"lea_dir_{y}"):
+    for r in urban(f"school-districts/ccd/directory/{y}/?fips={int(STATE)}", f"lea_dir_{y}"):
         if r.get("state_leaid"):
-            nces2irn[r["leaid"]] = r["state_leaid"].replace("OH-", "").zfill(6)
+            nces2irn[r["leaid"]] = r["state_leaid"].replace(f"{ABBR}-", "").zfill(6)
 irn2cty = {}
 dd_path = RAW / "odew" / "2026_District_Details.xlsx"
 if dd_path.exists():
@@ -399,7 +398,7 @@ if dd_path.exists():
         c = NAME2FIPS.get(str(d["County"]).strip().lower())
         if c:
             irn2cty[str(d["District IRN"]).strip().zfill(6)] = c
-else:
+elif ST_ID == "oh":
     print("ODEW District Details not found; districts are placed by the Census county code only")
 
 
@@ -422,9 +421,10 @@ for y in SF_YEARS:
     it = wb[f"elsec{yy}"].iter_rows(values_only=True)
     h = [str(x).strip() for x in next(it)]
     rows = [dict(zip(h, r)) for r in it]
-    oh_rows = [d for d in rows if str(d["FIPST"]).zfill(2) == "39"]
-    if not 650 < len(oh_rows) < 800:
-        raise SystemExit(f"elsec{yy}: {len(oh_rows)} Ohio rows")
+    oh_rows = [d for d in rows if str(d["FIPST"]).zfill(2) == STATE]
+    lo_n, hi_n = CFG["sf_rows"]
+    if not lo_n < len(oh_rows) < hi_n:
+        raise SystemExit(f"elsec{yy}: {len(oh_rows)} {SNAME} rows")
     sums = {f: {"spend": 0.0, "enroll": 0.0, "rev": 0.0, "fed": 0.0, "state": 0.0, "local": 0.0, "n": 0} for f in COUNTIES}
     all_units = {"spend": 0.0, "enroll": 0.0, "rev": 0.0, "fed": 0.0, "state": 0.0, "local": 0.0}
     names = {f: [] for f in COUNTIES}
@@ -471,15 +471,15 @@ for y in SF_YEARS:
 
     def ohio_row(sheet):
         for r in wb[sheet].iter_rows(values_only=True):
-            if r and str(r[0] or "").startswith("Ohio."):
+            if r and str(r[0] or "").startswith(SNAME + "."):
                 return [x for x in r[1:] if isinstance(x, (int, float))]
-        raise SystemExit(f"elsec{yy}_sumtables sheet {sheet}: no Ohio row")
+        raise SystemExit(f"elsec{yy}_sumtables sheet {sheet}: no {SNAME} row")
 
     t1 = ohio_row("1")
     t8 = ohio_row("8")
     tot, fed, st, loc = t1[:4]
     if abs(fed + st + loc - tot) > 3:
-        raise SystemExit(f"FY{y} Table 1 Ohio: parts {fed}+{st}+{loc} != {tot}")
+        raise SystemExit(f"FY{y} Table 1 {SNAME}: parts {fed}+{st}+{loc} != {tot}")
     sf_ohio[y] = {"per_pupil": t8[0], "fed": fed / tot * 100, "state": st / tot * 100, "local": loc / tot * 100,
                   "total_rev_thousands": tot}
     # cross-checks against the per-district file (all units)
@@ -494,11 +494,11 @@ def sy(y):
     return f"{y - 1}-{y}"
 
 
-for g in COUNTIES + ["ohio"]:
+for g in COUNTIES + [SK]:
     ser = {"pp": [], "fed": [], "state": [], "local": []}
     for y in SF_YEARS:
         p = sy(y)
-        if g == "ohio":
+        if g == SK:
             # Ohio is built the same way as the counties: traditional districts only. The Census Bureau's published
             # all-systems figures (Tables 1 and 8, which add joint vocational districts and service centers) are kept
             # in extras and named in the note.
@@ -513,7 +513,7 @@ for g in COUNTIES + ["ohio"]:
         ser["pp"].append((p, s["spend"] / s["enroll"] * 1000 if s["enroll"] else None))
         for k in ("fed", "state", "local"):
             ser[k].append((p, s[k] / s["rev"] * 100 if s["rev"] else None))
-    target = ohio if g == "ohio" else counties[g]
+    target = ohio if g == SK else counties[g]
     target["school_spending_per_pupil"] = entry(ser["pp"], {})
     target["school_revenue_federal_share"] = entry(ser["fed"], {})
     target["school_revenue_state_share"] = entry(ser["state"], {})
@@ -524,14 +524,14 @@ extras["school_district_totals"] = {g: {sy(y): {"current_spending_thousands": sf
                                                 "fall_enrollment": sf_by_cty[y][g]["enroll"],
                                                 "revenue_thousands_excl_other_school_systems": sf_by_cty[y][g]["rev"]}
                                          for y in SF_YEARS} for g in COUNTIES}
-extras["school_ohio_published_all_systems"] = {"ohio": {sy(y): {"per_pupil": o["per_pupil"], "federal_share": o["fed"],
+extras[f"school_{SK}_published_all_systems"] = {SK: {sy(y): {"per_pupil": o["per_pupil"], "federal_share": o["fed"],
                                                                 "state_share": o["state"], "local_share": o["local"]}
                                                        for y, o in sf_ohio.items()}}
-extras["school_ohio_traditional_districts_only"] = {"ohio": {
+extras[f"school_{SK}_traditional_districts_only"] = {SK: {
     sy(y): {"per_pupil": r["spend"] / r["enroll"] * 1000, "federal_share": r["fed"] / r["rev"] * 100,
             "state_share": r["state"] / r["rev"] * 100, "local_share": r["local"] / r["rev"] * 100}
     for y, r in sf_ohio_regular.items()}}
-extras["school_district_county_differences"] = {"ohio": [
+extras["school_district_county_differences"] = {SK: [
     {"nces_id": k, "name": v[0], "census_county": v[1], "odew_county": v[2]} for k, v in sorted(sf_diff.items())]}
 
 # =========================================================================== metrics
@@ -605,42 +605,41 @@ metrics = {
         "period_label": f"School year {sy(SF_YEARS[-1])}",
         "note": "Current spending (pay, benefits, supplies, transportation and other day-to-day costs, not "
                 "buildings or debt) of the traditional school districts based in the county, divided by their "
-                "fall enrollment. Ohio's figure is built the same way, from all traditional districts. Joint "
-                f"vocational districts and educational service centers are left out; with them, the Census Bureau's "
-                f"published Ohio figure is ${sf_ohio[SF_YEARS[-1]]['per_pupil']:,.0f}. Community schools (charter "
-                "schools) are not in this Census survey." + NOTE_TAIL},
+                f"fall enrollment. {SNAME}'s figure is built the same way, from all traditional districts. "
+                f"{CFG['sf_other']} are left out; with them, the Census Bureau's "
+                f"published {SNAME} figure is ${sf_ohio[SF_YEARS[-1]]['per_pupil']:,.0f}. {CFG['sf_charter']}" + NOTE_TAIL},
 }
-for k, who in (("federal", "the federal government"), ("state", "the state of Ohio"), ("local", "local sources (mostly property and income taxes)")):
+for k, who in (("federal", "the federal government"), ("state", f"the state of {SNAME}"), ("local", CFG["sf_local"])):
     metrics[f"school_revenue_{k}_share"] = {
         "label": f"Share of school district revenue from {k} sources",
         "theme": THEME, "unit": "pct", "decimals": 1, "better": "none", "source": SF_SRC, "vintage": SF_VINT,
         "period_label": f"School year {sy(SF_YEARS[-1])}",
         "note": f"Percent of the revenue of the county's traditional school districts that came from {who}. "
-                "Money one school system pays another is left out so it is not counted twice. Ohio's figure "
+                f"Money one school system pays another is left out so it is not counted twice. {SNAME}'s figure "
                 "is built the same way, from all traditional districts (the Census Bureau's published figure also "
-                f"includes joint vocational districts and service centers: {sf_ohio[SF_YEARS[-1]][k[:3] if k == 'federal' else k]:.1f}%). "
+                f"includes {CFG['sf_other_short']}: {sf_ohio[SF_YEARS[-1]][k[:3] if k == 'federal' else k]:.1f}%). "
                 "It describes where the money comes from, not results."}
 
-out = {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras, "tracts": tracts}
+out = {"metrics": metrics, "counties": counties, SK: ohio, "extras": extras, "tracts": tracts}
 
 # --------------------------------------------------------------------------- final checks and write
 for f in COUNTIES:
     if set(counties[f]) != set(metrics):
         raise SystemExit(f"{f}: metrics {set(metrics) ^ set(counties[f])}")
 if set(ohio) != set(metrics):
-    raise SystemExit("ohio metrics incomplete")
+    raise SystemExit(f"{SK} metrics incomplete")
 write_json("public_money.json", out)
 
 print(f"\nBEA CAINC35 {BEA_UPDATED}; county sum minus state row, dollars (thousands as published x 1000):")
 for code, gaps in bea_check.items():
     worst = max((abs(v) for v in gaps.values() if isinstance(v, float)), default=None)
     print(f"  line {code}: largest gap {worst}")
-print(f"HUD tracts: {len(tracts)} Ohio tracts written; skipped {len(tract_skipped)} not-placed rows; "
+print(f"HUD tracts: {len(tracts)} {SNAME} tracts written; skipped {len(tract_skipped)} not-placed rows; "
       f"ACS tracts not in HUD file {len(not_in_hud)}; HUD tracts not in ACS {len(not_in_acs)}")
 print("  flags (both tract metrics):", tract_flags)
 print("School districts: county differences between Census and ODEW:", len(sf_diff),
       "| assigned by Census code:", sorted({k[1] for k, v in sf_assign.items() if v != "ODEW"}))
-print("\nmetric | period | Ohio | min county | max county")
+print(f"\nmetric | period | {SNAME} | min county | max county")
 for mid in metrics:
     vals = [(counties[f][mid]["latest"], f) for f in COUNTIES if counties[f][mid]["latest"] is not None]
     lo, hi = min(vals), max(vals)

@@ -1,4 +1,4 @@
-"""ACS 5-year layers for the 88 Ohio counties and Ohio: income.json (theme income) and people.json
+"""ACS 5-year layers for every county in the state and the state (Ohio unless D4TP_STATE says otherwise): income.json (theme income) and people.json
 (themes people and health).
 
 Three non-overlapping 5-year vintages: 2010-2014, 2015-2019, 2020-2024. Whole tables are pulled with
@@ -14,7 +14,7 @@ import json
 import math
 import sys
 
-from common import RAW, STATE, cached, census, write_json
+from common import CFG, COUNTIES, RAW, SK, STATE, cached, census, write_json
 
 VINTAGES = [(2014, "2010-2014"), (2019, "2015-2019"), (2024, "2020-2024")]
 LATEST = VINTAGES[-1]
@@ -50,14 +50,14 @@ def labels(year, table):
 
 
 def pull(year):
-    """{geo: {var: (estimate, moe)}} for every Ohio county ('39001') and the state ('ohio')."""
+    """{geo: {var: (estimate, moe)}} for every county ('39001') and the state (SK)."""
     out = {}
     for t in TABLES:
         for tag, geo in (("county", {"for": "county:*", "in": f"state:{STATE}"}),
                          ("state", {"for": f"state:{STATE}"})):
             rows = census(f"{year}/acs/acs5", dict(get=f"NAME,group({t})", **geo), f"acs5_{year}_{t}_{tag}.json")
             for r in rows:
-                key = "ohio" if tag == "state" else r["state"] + r["county"]
+                key = SK if tag == "state" else r["state"] + r["county"]
                 d = out.setdefault(key, {})
                 for k, v in r.items():
                     if k.startswith(t + "_") and k.endswith("E") and not k.endswith("EA"):
@@ -201,7 +201,7 @@ PEOPLE = {
     "uninsured_acs": dict(
         label="People without health insurance (ACS)", unit="pct", decimals=1, better="lower", theme="health",
         note="Share of the civilian population not in institutions with no health insurance at the time of the "
-             "survey (B27010). The 2010-2014 period mostly predates Ohio's 2014 Medicaid expansion." + NOTE_MOE),
+             "survey (B27010)." + CFG["medicaid_note"] + NOTE_MOE),
     "disability_share": dict(
         label="People with a disability", unit="pct", decimals=1, better="none", theme="health",
         note="Share of the civilian population not in institutions reporting a hearing, vision, thinking, walking, "
@@ -218,14 +218,14 @@ def bracket_labels():
 
 def build():
     data = {y: pull(y) for y, _ in VINTAGES}
-    geos = sorted(k for k in data[LATEST[0]] if k != "ohio")
-    if len(geos) != 88:
-        sys.exit(f"expected 88 counties, got {len(geos)}")
+    geos = sorted(k for k in data[LATEST[0]] if k != SK)
+    if geos != COUNTIES:
+        sys.exit(f"expected {len(COUNTIES)} counties, got {len(geos)}")
     for y, _ in VINTAGES:
         missing = set(geos) - set(data[y])
         if missing:
             sys.exit(f"{y}: counties missing {sorted(missing)}")
-    vals = {y: {g: compute(y, data[y][g]) for g in geos + ["ohio"]} for y, _ in VINTAGES}
+    vals = {y: {g: compute(y, data[y][g]) for g in geos + [SK]} for y, _ in VINTAGES}
 
     def cell(g, m):
         series = [[p, vals[y][g][m][0]] for y, p in VINTAGES if vals[y][g][m][0] is not None]
@@ -249,13 +249,13 @@ def build():
                           "period_label": PL, "note": s["note"]}
         return {"metrics": metrics,
                 "counties": {g: {m: cell(g, m) for m in spec} for g in geos},
-                "ohio": {m: cell("ohio", m) for m in spec},
+                SK: {m: cell(SK, m) for m in spec},
                 "extras": {}}
 
     inc = layer(INCOME, "income")
     brackets = bracket_labels()
     dist, bands = {}, {}
-    for g in geos + ["ohio"]:
+    for g in geos + [SK]:
         per = {}
         for y, p in VINTAGES:
             d = data[y][g]
@@ -277,7 +277,7 @@ def build():
 if __name__ == "__main__":
     data, vals = build()
     y = LATEST[0]
-    for g in ("39049", "39163", "ohio"):
+    for g in (COUNTIES[0], COUNTIES[1], SK):
         d = data[y][g]
         print(g, "B19013", d["B19013_001"], "C17002_001", d["C17002_001"])
         for m in ("median_household_income", "poverty_rate", "near_poverty_share", "rent_burden", "uninsured_acs"):

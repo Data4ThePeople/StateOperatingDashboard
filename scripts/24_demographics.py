@@ -1,8 +1,8 @@
-"""Race and ethnicity, sex, and place of birth for Ohio counties. Writes data/processed/demographics.json (theme "people").
+"""Race and ethnicity, sex, and place of birth for the counties of the state. Writes data/processed/demographics.json (theme "people").
 
 - Race and Hispanic origin, and sex: Census population estimates (Vintage 2025, county characteristics by
-  age, sex, race and Hispanic origin, cc-est2025-alldata-39.csv), all ages, July 1 of 2020-2025. Ohio = sum of
-  its 88 counties (the file has no state row). Groups do not overlap: Hispanic or Latino of any race, then
+  age, sex, race and Hispanic origin, cc-est2025-alldata-<FIPS>.csv), all ages, July 1 of 2020-2025. The state = sum of
+  its counties (the file has no state row). Groups do not overlap: Hispanic or Latino of any race, then
   non-Hispanic people by race alone, plus non-Hispanic people of two or more races. They add to 100%.
 - foreign_born_share: ACS 5-year table B05012, foreign-born residents as a share of all residents. Periods
   2010-2014, 2015-2019, 2020-2024. 90% margin of error by the Census approximation for proportions.
@@ -12,9 +12,9 @@ import math
 
 import pandas as pd
 
-from common import RAW, STATE, cached, census, write_json
+from common import COUNTIES, RAW, SK, STATE, cached, census, write_json
 
-ALLDATA = "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/asrh/cc-est2025-alldata-39.csv"
+ALLDATA = f"https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/asrh/cc-est2025-alldata-{STATE}.csv"
 ACS = {"2014": "2010-2014", "2019": "2015-2019", "2024": "2020-2024"}
 SRC = "U.S. Census Bureau, Population Estimates Program (Vintage 2025)"
 VIN = "July 1, 2020-2025; pulled 2026-11-09"
@@ -35,16 +35,16 @@ GROUPS = {
 
 
 def pep():
-    a = pd.read_csv(io.BytesIO(cached(RAW / "census_pep" / "cc-est2025-alldata-39.csv", ALLDATA)), encoding="latin-1")
+    a = pd.read_csv(io.BytesIO(cached(RAW / "census_pep" / f"cc-est2025-alldata-{STATE}.csv", ALLDATA)), encoding="latin-1")
     a = a[(a.SUMLEV == 50) & (a.YEAR >= 2) & (a.AGEGRP == 0)].copy()   # YEAR 2..7 = July 1, 2020..2025; AGEGRP 0 = all ages
     a["year"] = (a.YEAR + 2018).astype(str)
     a["fips"] = STATE + a.COUNTY.astype(int).map("{:03d}".format)
-    assert a.fips.nunique() == 88 and not a.duplicated(["fips", "year"]).any()
+    assert sorted(a.fips.unique()) == COUNTIES and not a.duplicated(["fips", "year"]).any()
     for g, (_, cols) in GROUPS.items():
         a[g] = sum(a[c + "_MALE"] + a[c + "_FEMALE"] for c in cols)
     keep = ["TOT_POP", "TOT_FEMALE"] + list(GROUPS)
     oh = a.groupby("year", as_index=False)[keep].sum()
-    oh["fips"] = "ohio"
+    oh["fips"] = SK
     a = pd.concat([a[["fips", "year"] + keep], oh[["fips", "year"] + keep]])
     # the six groups must add to the total population in every county and year
     gap = (a[list(GROUPS)].sum(axis=1) - a.TOT_POP).abs().max()
@@ -61,7 +61,7 @@ def acs_foreign_born(year):
         rows = census(f"{year}/acs/acs5", dict(params, get="B05012_001E,B05012_001M,B05012_003E,B05012_003M"),
                       f"{year}_B05012_{geo}.json")
         for r in rows:
-            f = "ohio" if geo == "state" else STATE + r["county"]
+            f = SK if geo == "state" else STATE + r["county"]
             n, d = float(r["B05012_003E"]), float(r["B05012_001E"])
             mn, md = max(float(r["B05012_003M"]), 0), max(float(r["B05012_001M"]), 0)   # negative = Census annotation code
             p = n / d
@@ -75,7 +75,7 @@ def acs_foreign_born(year):
 if __name__ == "__main__":
     a = pep()
     fb = {p: acs_foreign_born(y) for y, p in ACS.items()}
-    fips = sorted(f for f in a.fips.unique() if f != "ohio")
+    fips = sorted(f for f in a.fips.unique() if f != SK)
     metrics = {g: dict(label=lab, theme="people", unit="pct", decimals=1, better="none", source=SRC, vintage=VIN,
                        period_label="July 1, 2025", note=f"Share of all residents. {EST}")
                for g, (lab, _) in GROUPS.items()}
@@ -93,7 +93,7 @@ if __name__ == "__main__":
              "Puerto Rico, other U.S. territories or abroad to U.S.-citizen parents count as native-born. Survey "
              "estimate; ± is the 90% margin of error by the Census approximation for proportions.")
     counties, ohio = {}, None
-    for f in fips + ["ohio"]:
+    for f in fips + [SK]:
         g = a[a.fips == f].sort_values("year")
         row = {m: {"latest": g[m].iloc[-1], "period": "2025", "series": [[y, v] for y, v in zip(g.year, g[m])],
                    "moe": None, "flag": None} for m in list(GROUPS) + ["female_share"]}
@@ -102,14 +102,14 @@ if __name__ == "__main__":
                                      "moe": fb["2020-2024"][f][1],
                                      # same rule as the ACS layer: coefficient of variation above 30%
                                      "flag": "high_moe" if fb["2020-2024"][f][0] and 100 * fb["2020-2024"][f][1] / 1.645 / fb["2020-2024"][f][0] > 30 else None}
-        if f == "ohio":
+        if f == SK:
             ohio = row
         else:
             counties[f] = row
     big = [(f, round(r["foreign_born_share"]["moe"], 1)) for f, r in counties.items() if r["foreign_born_share"]["moe"] > 10]
     assert not big, f"implausible margins: {big}"
-    write_json("demographics.json", {"metrics": metrics, "counties": counties, "ohio": ohio,
+    write_json("demographics.json", {"metrics": metrics, "counties": counties, SK: ohio,
                                      "extras": {"race_groups": list(GROUPS)}})
-    for f in ("39049", "39035", "39163", "ohio"):
+    for f in (*COUNTIES[:3], SK):
         r = counties.get(f, ohio)
         print(f, {k: round(v["latest"], 1) for k, v in r.items()}, "fb moe", round(r["foreign_born_share"]["moe"], 1))

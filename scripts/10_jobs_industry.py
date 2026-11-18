@@ -1,7 +1,7 @@
-"""Jobs and industry layer for the Ohio county dashboard.
+"""Jobs and industry layer for the county dashboard (Ohio, or the state set in D4TP_STATE).
 
 - LAUS (BLS Local Area Unemployment Statistics): unemployment rate, employed, labor force, annual
-  averages 2000 to the latest full year, plus the latest month, for all 88 counties and Ohio.
+  averages 2000 to the latest full year, plus the latest month, for every county and the state.
   People are counted where they live. County figures are modeled, not surveyed directly.
 - QCEW (BLS Quarterly Census of Employment and Wages): annual averages 2014 to the latest year,
   from the open-data area files. Jobs are counted where the job is.
@@ -17,12 +17,10 @@ import sys
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor
 
-from common import RAW, STATE, cached, get, get_key, write_json
+from common import COUNTIES, RAW, SK, SNAME, STATE, cached, get, get_key, write_json
 
 TODAY = dt.date.today().isoformat()
-COUNTIES = [f"{STATE}{c:03d}" for c in range(1, 176, 2)]
-assert len(COUNTIES) == 88
-AREAS = COUNTIES + ["ohio"]
+AREAS = COUNTIES + [SK]
 LAUS_START = 2000
 LAUS_BASE_YEAR = 2019
 QCEW_START = 2014
@@ -36,7 +34,7 @@ def die(msg):
 # ---------------------------------------------------------------- LAUS
 
 def laus_id(area, measure):
-    if area == "ohio":
+    if area == SK:
         return f"LAUST{STATE}00000000000{measure:02d}"    # not seasonally adjusted, like the counties
     return f"LAUCN{area}00000000{measure:02d}"
 
@@ -104,7 +102,7 @@ def laus():
                                   for y, p, v, f in rows if p != "M13"]
     years = sorted({y for k in annual for y in annual[k]})
     latest_year = max(y for y in years if all(annual[(a, "labor_force")].get(y) is not None for a in AREAS))
-    latest_month = max(m for m, v, _ in monthly[("ohio", "unemployment_rate")] if v is not None)
+    latest_month = max(m for m, v, _ in monthly[(SK, "unemployment_rate")] if v is not None)
     print(f"LAUS: annual {years[0]}-{latest_year}, latest month {latest_month}")
 
     per = {a: {} for a in AREAS}
@@ -158,7 +156,7 @@ def laus():
 # ---------------------------------------------------------------- QCEW
 
 def qcew_file(year, area):
-    fips = "39000" if area == "ohio" else area
+    fips = STATE + "000" if area == SK else area
     url = f"https://data.bls.gov/cew/data/api/{year}/a/area/{fips}.csv"
     return cached(RAW / "bls_qcew" / str(year) / f"{fips}.csv", url, tries=3).decode("utf-8-sig")
 
@@ -167,7 +165,7 @@ def qcew_years():
     y = dt.date.today().year
     while y > QCEW_START:
         try:
-            qcew_file(y, "ohio")
+            qcew_file(y, SK)
             return list(range(QCEW_START, y + 1))
         except urllib.error.HTTPError as e:
             if e.code != 404:
@@ -189,13 +187,13 @@ def titles():
 
 def lvl(area, county_code):
     """County agglvl codes are 7x; the statewide file uses 5x. Same second digit."""
-    return str(county_code - 20) if area == "ohio" else str(county_code)
+    return str(county_code - 20) if area == SK else str(county_code)
 
 
 def parse(area, txt, year):
     """Return dict of (own_code, industry_code, agglvl) -> (jobs or None, wage or None)."""
     out = {}
-    fips = "39000" if area == "ohio" else area
+    fips = STATE + "000" if area == SK else area
     for r in csv.DictReader(io.StringIO(txt)):
         if r["area_fips"] != fips or r["qtr"] != "A" or r["size_code"] != "0" or r["year"] != str(year):
             die(f"unexpected row in {year} {fips}: {r['area_fips']} {r['qtr']} {r['size_code']} {r['year']}")
@@ -298,20 +296,20 @@ def qcew():
                                          "supersector_pct": supp_stats[(a, last, "supersector")]}
 
     # location quotients vs Ohio, latest year, disclosed sectors only
-    oh = {r["code"]: r["share"] for r in extras["ohio"]["industry_mix"]["sectors"] if r["share"] is not None}
+    oh = {r["code"]: r["share"] for r in extras[SK]["industry_mix"]["sectors"] if r["share"] is not None}
     for a in COUNTIES:
         lq = [{"code": r["code"], "title": r["title"], "jobs": r["jobs"], "share": r["share"],
                "ohio_share": oh[r["code"]], "lq": r["share"] / oh[r["code"]]}
               for r in extras[a]["industry_mix"]["sectors"] if r["share"] is not None and oh.get(r["code"])]
         lq.sort(key=lambda r: -r["lq"])
-        extras[a]["location_quotient"] = {"year": str(last), "vs": "Ohio", "sectors": lq}
-    extras["ohio"]["location_quotient"] = None
+        extras[a]["location_quotient"] = {"year": str(last), "vs": SNAME, "sectors": lq}
+    extras[SK]["location_quotient"] = None
 
     # suppression summary, used to pick and document the HHI level
     for lev in ("supersector", "sector", "3digit"):
         vals = [supp_stats[(a, last, lev)] for a in COUNTIES]
         print(f"  suppressed share of private jobs at {lev} level, {last}: "
-              f"median {sorted(vals)[44]:.1f}%, max {max(vals):.1f}%, counties >20%: {sum(v > 20 for v in vals)}")
+              f"median {sorted(vals)[len(vals) // 2]:.1f}%, max {max(vals):.1f}%, counties >20%: {sum(v > 20 for v in vals)}")
 
     src = "BLS Quarterly Census of Employment and Wages"
     vint = f"annual averages {first}-{last}; pulled {TODAY}"
@@ -342,8 +340,8 @@ def qcew():
                                        "higher means jobs depend on fewer sectors. Computed on disclosed sectors "
                                        "only, so it reads low where sectors are withheld."),
     }
-    if per["ohio"]["private_jobs"]["latest"] is None:
-        die("Ohio private jobs missing")
+    if per[SK]["private_jobs"]["latest"] is None:
+        die(f"{SNAME} private jobs missing")
     return metrics, per, extras, first, last
 
 
@@ -367,7 +365,7 @@ def main():
                 if periods != sorted(periods) or len(periods) != len(set(periods)):
                     die(f"bad series periods {a} {k}")
                 row[k] = v
-        if a == "ohio":
+        if a == SK:
             ohio = row
         else:
             counties[a] = row
@@ -379,7 +377,7 @@ def main():
                 extras[name][a] = val
     if sorted(counties) != COUNTIES:
         die("county list mismatch")
-    write_json("jobs.json", {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras})
+    write_json("jobs.json", {"metrics": metrics, "counties": counties, SK: ohio, "extras": extras})
     print(f"counties: {len(counties)}; LAUS latest {laus_year} / {laus_month}; QCEW {q_first}-{q_last}")
 
 

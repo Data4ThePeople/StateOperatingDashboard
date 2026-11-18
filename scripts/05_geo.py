@@ -1,12 +1,13 @@
-"""Ohio county outlines as SVG paths, from us-atlas counties-10m (Census cartographic boundary files, 1:10m, as TopoJSON).
+"""County outlines for the chosen state (see states.py) as SVG paths, from us-atlas counties-10m (Census cartographic boundary files, 1:10m, as TopoJSON).
 
-Projection: equirectangular scaled by cos(40.3 deg), which keeps Ohio's shape within a percent or two.
+Projection: equirectangular scaled by the cosine of the state's middle latitude (40.3 deg for Ohio), which keeps
+the state's shape within a percent or two.
 Output: data/processed/geo.json  {"viewBox": "...", "counties": {fips: {"name", "d", "cx", "cy"}}, "outline": d}
 """
 import json
 import math
 
-from common import RAW, STATE, cached, write_json
+from common import CFG, NRAW, STATE, cached, write_json
 
 URL = "https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json"
 W = 600
@@ -36,15 +37,15 @@ def ring(arcs, idx):
 
 
 if __name__ == "__main__":
-    topo = json.loads(cached(RAW / "geo" / "counties-10m.json", URL))
+    topo = json.loads(cached(NRAW / "geo" / "counties-10m.json", URL))
     arcs = decode_arcs(topo)
     geoms = [g for g in topo["objects"]["counties"]["geometries"] if g["id"].startswith(STATE)]
-    assert len(geoms) == 88, len(geoms)
+    assert sorted(g["id"] for g in geoms) == CFG["counties"], len(geoms)
     polys = {}
     for g in geoms:
         rings = g["arcs"] if g["type"] == "Polygon" else [r for p in g["arcs"] for r in p]
         polys[g["id"]] = (g["properties"]["name"], [ring(arcs, r) for r in rings])
-    k = math.cos(math.radians(40.3))
+    k = math.cos(math.radians(CFG["lat"]))
     allpts = [p for _, rs in polys.values() for r in rs for p in r]
     minx = min(p[0] for p in allpts) * k; maxx = max(p[0] for p in allpts) * k
     miny = min(p[1] for p in allpts); maxy = max(p[1] for p in allpts)

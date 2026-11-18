@@ -27,10 +27,10 @@ import math
 from collections import Counter
 
 import wellbeing_measures as WM
-from common import PROC, RAW, cached, census, write_json
+from common import ABBR, PROC, RAW, SK, SNAME, ST_ID, STATE, cached, census, write_json
 
 acs = importlib.import_module("20_acs")
-STF = "39"
+STF = STATE
 KEY = "wellbeing"
 GEO = json.loads((PROC / KEY / "geo.json").read_text())
 CV_MAX = 30.0
@@ -63,7 +63,7 @@ def pull(year, tables, geos, tag):
                 print(f"   no {t} for {year} {g}: {str(e)[:60]}")
                 continue
             for r in rows:
-                key = {"state": "ohio", "us": "us"}.get(g) or (r["state"] + r["county"] + (r.get("tract") or ""))
+                key = {"state": SK, "us": "us"}.get(g) or (r["state"] + r["county"] + (r.get("tract") or ""))
                 d = out.setdefault(key, {})
                 for k, v in r.items():
                     if k.startswith(t + "_") and k.endswith("E") and not k.endswith("EA"):
@@ -232,7 +232,41 @@ PLACES = {  # id: measureid, label, better
 PLACES_NOTE = ("CDC model estimate for adults 18 and older (crude prevalence), from the Behavioral Risk Factor Surveillance "
                "System and Census data. It is not a direct count, nearby places can look alike because the model shares "
                "information across areas, and CDC says estimates from different PLACES releases should not be compared "
-               "over time. ± is half the width of CDC's 95% interval. Ohio is the tract values weighted by adults.")
+               f"over time. ± is half the width of CDC's 95% interval. {SNAME} is the tract values weighted by adults.")
+
+
+# Child care measure text by state. Ohio: DCY program layer and Step Up To Quality. Georgia: DECAL provider export and
+# Quality Rated (1 to 3 stars); the top two tiers stand in for Ohio's Silver and Gold.
+CC = {
+    "oh": dict(
+        src_n="Ohio Department of Children and Youth, licensed program list; ACS 2020-2024 (children under 5)",
+        when="programs open on {d}",
+        note_n="Licensed centers, family child care homes and preschools open on the pull date, placed by their "
+               "address, per 1,000 children under 5. School-age-only programs are left out. A program counts once "
+               "no matter its size, so this is not a count of slots. Not shown for tracts: families often use "
+               "care outside their own tract. A tract split by a district line counts its programs by the share of "
+               "its 2020 residents in each district.",
+        label_r="Licensed programs rated Silver or Gold",
+        src_r="Ohio Department of Children and Youth, licensed program list (Step Up To Quality ratings)",
+        note_r="Share of licensed centers, family child care homes and preschools with a Silver or Gold rating in "
+               "Step Up To Quality, Ohio's rating system (Bronze, Silver, Gold). Programs with no rating count as "
+               "not rated Silver or Gold. A program counts once no matter its size. Not shown for tracts, for the same "
+               "reason as programs per 1,000 children."),
+    "ga": dict(
+        src_n="Georgia Department of Early Care and Learning, provider data export; ACS 2020-2024 (children under 5)",
+        when="programs listed on {d}",
+        note_n="Licensed child care learning centers and family child care learning homes in the state's list on the "
+               "export date, placed by their address, per 1,000 children under 5. School-age-only programs are left out. "
+               "A program counts once no matter its size, so this is not a count of slots. Not shown for tracts: families "
+               "often use care outside their own tract. A tract split by a district line counts its programs by the share "
+               "of its 2020 residents in each district.",
+        label_r="Licensed programs rated 2 or 3 stars",
+        src_r="Georgia Department of Early Care and Learning, provider data export (Quality Rated)",
+        note_r="Share of licensed child care learning centers and family child care learning homes rated 2 or 3 stars "
+               "in Quality Rated, Georgia's rating system (1 to 3 stars). Programs with no rating count as not rated 2 or "
+               "3 stars. A program counts once no matter its size. Not shown for tracts, for the same reason as programs "
+               "per 1,000 children."),
+}
 
 
 def socrata(ds, where, name):
@@ -302,6 +336,61 @@ def childcare_by_tract():
     return n, good, d["pulled"], len(young), len(miss)
 
 
+GA_LICENSED = ("Child Care Learning Center", "Family Child Care Learning Home")
+GEOCODER = "https://geocoding.geo.census.gov/geocoder/geographies/addressbatch"
+
+
+def childcare_by_tract_ga():
+    """Georgia: licensed child care learning centers and family child care learning homes from DECAL's provider data
+    export (saved by hand from families.decal.ga.gov/Provider/Data into data/raw/ga/decal/), placed in 2020 tracts by
+    the Census Bureau's batch geocoder. Rated = Quality Rated 2 or 3 stars. Returns None values when no export is saved."""
+    import csv
+    import io as _io
+    import urllib.request
+    import uuid
+    files = sorted((RAW / "decal").glob("ProviderData_*.csv"))
+    if not files:
+        print("child care: no DECAL export in data/raw/ga/decal/; child care measures left out")
+        return None, None, None, 0, 0
+    path = files[-1]
+    rows = list(csv.DictReader(_io.StringIO(path.read_text(encoding="utf-8-sig", errors="replace"))))
+    keep = [r for r in rows if (r.get("Program_Type") or "").strip() in GA_LICENSED]
+    young = [r for r in keep if any((r.get(k) or "").strip().lower() in ("yes", "y", "true", "1")
+                                    for k in ("Infant_0_To_12mos", "Toddler_13mos_To_2yrs", "Preschool_3yrs_To_4yrs", "Pre_K_Served"))]
+    print(f"child care: {len(rows)} rows in {path.name}; {len(keep)} licensed; {len(young)} serve children under 5")
+    # geocode in batches of 1,000, cached by batch contents
+    out = {}
+    for k in range(0, len(young), 1000):
+        chunk = young[k:k + 1000]
+        body = "".join(f'{n},"{r["Address"]}","{r["City"]}","{r["State"] or "GA"}","{r["Zip"]}"\n'.replace(",\"\",", ",,")
+                       for n, r in enumerate(chunk, k))
+        cache = RAW / "decal" / "geocoded" / f"{path.stem}_{k}.csv"
+        if not cache.exists():
+            bnd = uuid.uuid4().hex
+            data = (f"--{bnd}\r\nContent-Disposition: form-data; name=\"benchmark\"\r\n\r\nPublic_AR_Current\r\n"
+                    f"--{bnd}\r\nContent-Disposition: form-data; name=\"vintage\"\r\n\r\nCensus2020_Current\r\n"
+                    f"--{bnd}\r\nContent-Disposition: form-data; name=\"addressFile\"; filename=\"a.csv\"\r\n"
+                    f"Content-Type: text/csv\r\n\r\n{body}\r\n--{bnd}--\r\n").encode()
+            req = urllib.request.Request(GEOCODER, data=data, headers={"Content-Type": f"multipart/form-data; boundary={bnd}"})
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_bytes(urllib.request.urlopen(req, timeout=900).read())
+        for g in csv.reader(_io.StringIO(cache.read_text(encoding="utf-8", errors="replace"))):
+            if len(g) >= 12 and g[2] == "Match" and g[8] == STATE:
+                out[int(g[0])] = g[8] + g[9] + g[10]
+    n, good, miss = Counter(), Counter(), []
+    tset = set(GEO["tracts"])
+    for idx, r in enumerate(young):
+        t = out.get(idx)
+        if t not in tset:
+            miss.append(r.get("Location"))
+            continue
+        n[t] += 1
+        good[t] += (r.get("QR_Rating") or "").strip() in ("2", "3")
+    pulled = path.stem.split("_", 1)[1][:10] if "_" in path.stem else "unknown"
+    print(f"child care: {len(young)} programs for young children, {len(miss)} not placed in a tract ({miss[:3]})")
+    return n, good, pulled, len(young), len(miss)
+
+
 if __name__ == "__main__":
     T = GEO["tracts"]
     tids = sorted(T)
@@ -317,7 +406,7 @@ if __name__ == "__main__":
 
     tract_c = {t: compute(2024, tr_raw[t]) for t in tids}
     cnty_c = {f: compute(2024, tr_raw[f]) for f in tr_raw if len(f) == 5}
-    oh_c, us_c = compute(2024, tr_raw["ohio"]), compute(2024, tr_raw["us"])
+    oh_c, us_c = compute(2024, tr_raw[SK]), compute(2024, tr_raw["us"])
     hist_c = {y: {g: compute(y, d, full=False) for g, d in hist[y].items()} for y in hist}
 
     # --- districts: weighted sums of tract table lines
@@ -345,13 +434,13 @@ if __name__ == "__main__":
         o = json.loads(oh10.read_text())["district"]
         diffs = {k: round(dist_c["10"][k][0] - o[k]["v"], 6) for k in o if k in dist_c["10"] and o[k]["v"] is not None and dist_c["10"][k][0] is not None}
         print("district 10 vs OH-10 page (should be ~0):", {k: v for k, v in diffs.items() if abs(v) > 1e-6} or "all match")
-    pub = median_from_brackets(tr_raw["ohio"])
-    print(f"bracket median for Ohio {pub:,.0f} vs published {tr_raw['ohio']['B19013_001'][0]:,.0f}")
+    pub = median_from_brackets(tr_raw[SK])
+    print(f"bracket median for {SNAME} {pub:,.0f} vs published {tr_raw[SK]['B19013_001'][0]:,.0f}")
 
     # --- PLACES
     want = ",".join(f"'{v[0]}'" for v in PLACES.values())
-    pt = socrata("cwsq-ngmh", f"stateabbr='OH' and datavaluetypeid='CrdPrv' and measureid in ({want})", "places_tract_oh")
-    pc = socrata("swc5-untb", f"stateabbr='OH' and datavaluetypeid='CrdPrv' and measureid in ({want})", "places_county_oh_crude")
+    pt = socrata("cwsq-ngmh", f"stateabbr='{ABBR}' and datavaluetypeid='CrdPrv' and measureid in ({want})", f"places_tract_{ABBR.lower()}")
+    pc = socrata("swc5-untb", f"stateabbr='{ABBR}' and datavaluetypeid='CrdPrv' and measureid in ({want})", f"places_county_{ABBR.lower()}_crude")
     ptr = {(r["measureid"], r["locationname"]): r for r in pt}
     pco = {(r["measureid"], r["locationid"]): r for r in pc}
     adults = {r["locationname"]: float(r["totalpop18plus"]) for r in pt if r.get("totalpop18plus")}
@@ -362,7 +451,7 @@ if __name__ == "__main__":
         pyear[code] = ys.pop()
 
     # --- child care
-    ccn, ccg, cc_pulled, cc_total, cc_miss = childcare_by_tract()
+    ccn, ccg, cc_pulled, cc_total, cc_miss = childcare_by_tract() if ST_ID == "oh" else childcare_by_tract_ga()
 
     # --- assemble
     measures, county, series, district, tract, tract_moe, tract_weak = {}, {}, {}, {}, {}, {}, {}
@@ -390,7 +479,7 @@ if __name__ == "__main__":
                                 "high_moe" if dist_c[cd][i][0] is not None and weak(dist_c[cd][i]) else None] for cd in cds}
             ohio[i], ohio_moe[i], us[i] = oh_c[i][0], oh_c[i][1], us_c[i][0]
             j = lay.get(i)
-            same = j is not None and abs(j["ohio"][i]["latest"] - ohio[i]) < 1e-6 * max(1, abs(ohio[i]))
+            same = j is not None and abs(j[SK][i]["latest"] - ohio[i]) < 1e-6 * max(1, abs(ohio[i]))
             if j is not None and not same:
                 print(f"   {i}: county layer uses another source ({j['metrics'][i]['source'][:50]}); using ACS for counties")
             if same:      # county values and history from the county layer (same method, checked in the tie-out)
@@ -399,14 +488,14 @@ if __name__ == "__main__":
                                                                      and weak((j["counties"][f][i].get("latest"), j["counties"][f][i].get("moe"))) else None)]
                              for f in fips}
                 series[i] = {f: j["counties"][f][i].get("series") for f in fips}
-                series[i]["ohio"] = j["ohio"][i].get("series")
+                series[i][SK] = j[SK][i].get("series")
             else:
                 county[i] = {f: [cnty_c[f][i][0], cnty_c[f][i][1], "high_moe" if cnty_c[f][i][0] is not None and weak(cnty_c[f][i]) else None]
                              for f in fips}
                 series[i] = {}
-                for f in fips + ["ohio"]:
+                for f in fips + [SK]:
                     s = [[p, hist_c[y][f][i][0]] for y, p in VINT[:2] if f in hist_c[y] and i in hist_c[y][f] and hist_c[y][f][i][0] is not None]
-                    s.append([VINT[2][1], (oh_c if f == "ohio" else cnty_c[f])[i][0]])
+                    s.append([VINT[2][1], (oh_c if f == SK else cnty_c[f])[i][0]])
                     series[i][f] = s
         elif i in PLACES:
             code, lab, better = PLACES[i]
@@ -432,7 +521,7 @@ if __name__ == "__main__":
             nov = [t for t in tids if tv[t][0] is None and T[t]["pop2020"] > 0]
             if nov:
                 print(f"PLACES {code}: {len(nov)} populated tracts without a value")
-        elif i in ("childcare_programs_per1k", "childcare_rated_share"):
+        elif i in ("childcare_programs_per1k", "childcare_rated_share") and ccn is not None:
             kids_t = {t: tract_c[t]["kids_under5"][0] for t in tids}
             def rate(ts, w=None):
                 w = w or {t: 1.0 for t in ts}
@@ -440,24 +529,14 @@ if __name__ == "__main__":
                 k_ = sum((kids_t[t] or 0) * x for t, x in w.items())
                 g_ = sum(ccg[t] * x for t, x in w.items())
                 return (n_ / k_ * 1000 if k_ else None) if i == "childcare_programs_per1k" else (g_ / n_ * 100 if n_ else None)
+            c = CC[ST_ID]
             if i == "childcare_programs_per1k":
                 meta = dict(label="Licensed child care programs per 1,000 children under 5", unit="rate", decimals=1, better="higher",
-                            source="Ohio Department of Children and Youth, licensed program list; ACS 2020-2024 (children under 5)",
-                            period_label=f"programs open on {cc_pulled}",
-                            note="Licensed centers, family child care homes and preschools open on the pull date, placed by their "
-                                 "address, per 1,000 children under 5. School-age-only programs are left out. A program counts once "
-                                 "no matter its size, so this is not a count of slots. Not shown for tracts: families often use "
-                                 "care outside their own tract. A tract split by a district line counts its programs by the share of "
-                                 "its 2020 residents in each district."
+                            source=c["src_n"], period_label=c["when"].format(d=cc_pulled), note=c["note_n"]
                                  + (f" {cc_miss} of {cc_total} programs could not be placed and are left out." if cc_miss else ""))
             else:
-                meta = dict(label="Licensed programs rated Silver or Gold", unit="pct", decimals=1, better="higher",
-                            source="Ohio Department of Children and Youth, licensed program list (Step Up To Quality ratings)",
-                            period_label=f"programs open on {cc_pulled}",
-                            note="Share of licensed centers, family child care homes and preschools with a Silver or Gold rating in "
-                                 "Step Up To Quality, Ohio's rating system (Bronze, Silver, Gold). Programs with no rating count as "
-                                 "not rated Silver or Gold. A program counts once no matter its size. Not shown for tracts, for the same "
-                                 "reason as programs per 1,000 children.")
+                meta = dict(label=c["label_r"], unit="pct", decimals=1, better="higher",
+                            source=c["src_r"], period_label=c["when"].format(d=cc_pulled), note=c["note_r"])
             county[i] = {f: [rate([t for t in tids if t[:5] == f]), None, None] for f in fips}
             district[i] = {cd: [rnd(rate(None, dist_w[cd]), 1), None] for cd in cds}
             ohio[i] = rate(tids)
@@ -468,8 +547,8 @@ if __name__ == "__main__":
             county[i] = {f: [j["counties"].get(f, {}).get(i, {}).get("latest"), j["counties"].get(f, {}).get(i, {}).get("moe"),
                              j["counties"].get(f, {}).get(i, {}).get("flag")] for f in fips}
             series[i] = {f: j["counties"].get(f, {}).get(i, {}).get("series") for f in fips}
-            series[i]["ohio"] = (j["ohio"].get(i) or {}).get("series")
-            ohio[i] = (j["ohio"].get(i) or {}).get("latest")
+            series[i][SK] = (j[SK].get(i) or {}).get("series")
+            ohio[i] = (j[SK].get(i) or {}).get("latest")
             if any(i in v for v in j.get("tracts", {}).values()):     # a layer that also publishes tract values
                 tc = {t: j["tracts"].get(t, {}).get(i) or {} for t in tids}
                 tract[i] = [rnd(tc[t].get("latest"), m["decimals"]) for t in tids]
@@ -490,11 +569,16 @@ if __name__ == "__main__":
     series = {i: {g: s for g, s in v.items() if s and len(s) > 1} for i, v in series.items()}
     data = {"dims": WM.DIMENSIONS, "measures": measures, "tract_ids": tids, "county": county, "series": series,
             "district": district, "tract": tract, "tract_moe": tract_moe, "tract_weak": tract_weak,
-            "ohio": ohio, "ohio_moe": ohio_moe, "us": us, "cv_max": CV_MAX,
+            SK: ohio, SK + "_moe": ohio_moe, "us": us, "cv_max": CV_MAX,
             "district_note": {cd: {"tracts": len(dist_w[cd]), "split": sum(1 for x in dist_w[cd].values() if x < 1)} for cd in cds}}
     write_json(f"{KEY}/data.json", data)
+    # facts the page footer quotes for states other than Ohio (Ohio's footer was written by hand and checked)
+    skipped_t = sorted({t for v in commute_skipped.values() for t in v})
+    write_json(f"{KEY}/notes.json", {
+        "commute_skipped": {t: tr_raw[t].get("B08303_001", (None,))[0] for t in skipped_t},
+        "bracket_median": pub, "published_median": tr_raw[SK]["B19013_001"][0]})
     print({k: len(json.dumps(v, separators=(",", ":"))) // 1024 for k, v in data.items()}, "KB")
     for i in ("below_200_share", "uninsured_u65", "broadband_share", "places_loneliness", "childcare_programs_per1k", "childcare_rated_share"):
         if i in measures:
             cv = [v[0] for v in county[i].values() if v[0] is not None]
-            print(f"{i:28} Ohio {ohio.get(i)}  US {us.get(i)}  counties {min(cv):.1f}-{max(cv):.1f}  district 10 {district.get(i, {}).get('10')}")
+            print(f"{i:28} {SNAME} {ohio.get(i)}  US {us.get(i)}  counties {min(cv):.1f}-{max(cv):.1f}  district 10 {district.get(i, {}).get('10')}")

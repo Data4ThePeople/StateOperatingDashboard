@@ -1,5 +1,5 @@
 """Access and community layer: health care providers, suicide, traffic deaths, libraries, membership
-associations and voter turnout for the 88 Ohio counties and Ohio.
+associations and voter turnout for every county in the state and the state.
 
 Sources
   1. County Health Rankings & Roadmaps (CHR&R), Supplemental Data Release of March 25, 2026
@@ -26,11 +26,9 @@ import json
 import re
 import zipfile
 
-from common import PROC, RAW, STATE, cached, census, write_json
+from common import ABBR, CFG, COUNTIES, NRAW, PROC, RAW, SK, SNAME, ST_ID, STATE, cached, census, write_json
 
 TODAY = dt.date.today().isoformat()
-COUNTIES = [f"39{n:03d}" for n in range(1, 176, 2)]
-assert len(COUNTIES) == 88
 
 CHR = "https://www.countyhealthrankings.org/sites/default/files/media/document/"
 CHR_SUPP = ("analytic_supplement_20260325.csv", CHR + "analytic_supplement_20260325%5B1%5D.csv")
@@ -51,10 +49,10 @@ ASSOC_NAICS = {"813410": "civic and social organizations", "713950": "bowling ce
                "711211": "sports teams and clubs", "813110": "religious organizations",
                "813940": "political organizations", "813930": "labor unions",
                "813910": "business associations", "813920": "professional organizations"}
-MEDSL_PREC = "https://github.com/MEDSL/2024-elections-official/raw/main/individual_states/oh24.zip"
+MEDSL_PREC = f"https://github.com/MEDSL/2024-elections-official/raw/main/individual_states/{ABBR.lower()}24.zip"
 MEDSL_STATE = "https://raw.githubusercontent.com/MEDSL/2024-elections-official/main/2024-president-state.csv"
 INTERCENSAL = ("https://www2.census.gov/programs-surveys/popest/datasets/2010-2020/intercensal/county/asrh/"
-               "cc-est2020int-agesex-39.csv")
+               f"cc-est2020int-agesex-{STATE}.csv")
 
 
 def num(x):
@@ -83,14 +81,14 @@ def entry(series, flag=None, moe=None):
 def population():
     """July 1 resident population by county and year, 2010-2025. 2020 on: Vintage 2025 (popest.json).
     2010-2019: 2010-2020 intercensal estimates (YEAR code 2 = July 2010 ... 11 = July 2019)."""
-    pop = {f: {} for f in COUNTIES + ["ohio"]}
+    pop = {f: {} for f in COUNTIES + [SK]}
     pe = json.loads((PROC / "popest.json").read_text())
     for f in COUNTIES:
         for y, v in pe["counties"][f]["population_estimate"]["series"]:
             pop[f][int(y)] = v
-    for y, v in pe["ohio"]["population_estimate"]["series"]:
-        pop["ohio"][int(y)] = v
-    raw = cached(RAW / "popest_intercensal" / "cc-est2020int-agesex-39.csv", INTERCENSAL).decode("latin-1")
+    for y, v in pe[SK]["population_estimate"]["series"]:
+        pop[SK][int(y)] = v
+    raw = cached(RAW / "popest_intercensal" / f"cc-est2020int-agesex-{STATE}.csv", INTERCENSAL).decode("latin-1")
     oh = {}
     for r in csv.DictReader(io.StringIO(raw)):
         yc = int(r["YEAR"])
@@ -100,13 +98,13 @@ def population():
             pop[f][y] = float(r["POPESTIMATE"])
             oh[y] = oh.get(y, 0.0) + float(r["POPESTIMATE"])
     for y, v in oh.items():
-        pop["ohio"][y] = v       # the state total is the sum of its counties in the intercensal series
+        pop[SK][y] = v       # the state total is the sum of its counties in the intercensal series
     return pop, pe["metrics"]["population_estimate"]["vintage"]
 
 
 # ---------------------------------------------------------------- CHR&R
 def chr_rows(spec, skip_second_header=False):
-    raw = cached(RAW / "chr" / spec[0], spec[1], timeout=600).decode("utf-8-sig", errors="replace")
+    raw = cached(NRAW / "chr" / spec[0], spec[1], timeout=600).decode("utf-8-sig", errors="replace")
     lines = raw.splitlines()
     if skip_second_header:
         lines = lines[1:]     # the annual file has a row of long names above the variable names
@@ -114,12 +112,12 @@ def chr_rows(spec, skip_second_header=False):
 
 
 def chr_trends():
-    raw = cached(RAW / "chr" / CHR_TRENDS[0], CHR_TRENDS[1], timeout=600).decode("utf-8-sig", errors="replace")
+    raw = cached(NRAW / "chr" / CHR_TRENDS[0], CHR_TRENDS[1], timeout=600).decode("utf-8-sig", errors="replace")
     out = {}
     for r in csv.DictReader(io.StringIO(raw)):
         if r["statecode"] != STATE or r["measureid"] not in ("4", "88"):
             continue
-        f = "ohio" if r["countycode"] == "000" else STATE + r["countycode"]
+        f = SK if r["countycode"] == "000" else STATE + r["countycode"]
         n, d = num(r["numerator"]), num(r["denominator"])
         out.setdefault(r["measureid"], {}).setdefault(f, []).append((r["yearspan"], n, d))
     return out
@@ -127,7 +125,7 @@ def chr_trends():
 
 # ---------------------------------------------------------------- FARS
 def fars_year(y):
-    raw = cached(RAW / "fars" / f"FARS{y}NationalCSV.zip", FARS_URL.format(y=y), timeout=600)
+    raw = cached(NRAW / "fars" / f"FARS{y}NationalCSV.zip", FARS_URL.format(y=y), timeout=600)
     z = zipfile.ZipFile(io.BytesIO(raw))
     name = [n for n in z.namelist() if n.lower().rsplit("/", 1)[-1] == "accident.csv"][0]
     text = z.read(name).decode("latin-1")
@@ -149,12 +147,12 @@ def fars_year(y):
 
 # ---------------------------------------------------------------- IMLS PLS
 def pls_year(fy):
-    raw = cached(RAW / "imls_pls" / PLS[fy].rsplit("/", 1)[1], PLS_URL + PLS[fy], timeout=600)
+    raw = cached(NRAW / "imls_pls" / PLS[fy].rsplit("/", 1)[1], PLS_URL + PLS[fy], timeout=600)
     z = zipfile.ZipFile(io.BytesIO(raw))
     ae_name = [n for n in z.namelist() if re.search(r"_AE_pud\d\di\.csv$", n, re.I)][0]
     out_name = [n for n in z.namelist() if re.search(r"outlet_pud\d\di\.csv$", n, re.I)][0]
-    ae = [r for r in csv.DictReader(io.StringIO(z.read(ae_name).decode("latin-1"))) if r["STABR"] == "OH"]
-    outlets = [r for r in csv.DictReader(io.StringIO(z.read(out_name).decode("latin-1"))) if r["STABR"] == "OH"]
+    ae = [r for r in csv.DictReader(io.StringIO(z.read(ae_name).decode("latin-1"))) if r["STABR"] == ABBR]
+    outlets = [r for r in csv.DictReader(io.StringIO(z.read(out_name).decode("latin-1"))) if r["STABR"] == ABBR]
     return ae, outlets
 
 
@@ -163,19 +161,19 @@ def pls_year(fy):
 def main():
     pop, pop_vintage = population()
     names = {}
-    pe_raw = (RAW / "popest" / "co-est2025-alldata.csv").read_text(encoding="latin-1")
+    pe_raw = (NRAW / "popest" / "co-est2025-alldata.csv").read_text(encoding="latin-1")
     for r in csv.DictReader(io.StringIO(pe_raw)):
         if r["STATE"] == STATE and r["SUMLEV"] == "050":
             names[r["CTYNAME"].upper().replace(" COUNTY", "").strip()] = STATE + r["COUNTY"]
-    assert len(names) == 88
+    assert sorted(names.values()) == COUNTIES
 
     metrics, ohio = {}, {}
     counties = {f: {} for f in COUNTIES}
     extras = {}
 
     # ---- 1-3: providers (CHR&R supplement + trends)
-    supp = {("ohio" if r["countycode"] == "000" else r["fipscode"]): r for r in chr_rows(CHR_SUPP)}
-    assert set(COUNTIES) <= set(supp), "CHR supplement is missing Ohio counties"
+    supp = {(SK if r["countycode"] == "000" else r["fipscode"]): r for r in chr_rows(CHR_SUPP)}
+    assert set(COUNTIES) <= set(supp), f"CHR supplement is missing {SNAME} counties"
     trends = chr_trends()
     prov = [("pcp_per100k", "004", "4", "2022", "Primary care doctors per 100,000 people",
              "HRSA Area Health Resources Files (American Medical Association Physician Masterfile), via County Health Rankings & Roadmaps",
@@ -198,7 +196,7 @@ def main():
                         "period_label": f"{yr} (CHR&R March 2026 update)", "note": note}
         if tid:
             metrics[mid]["vintage"] += "; earlier years from the CHR&R 2025 trends file"
-        for f in COUNTIES + ["ohio"]:
+        for f in COUNTIES + [SK]:
             r = supp[f]
             n, d = num(r[f"v{v}_numerator"]), num(r[f"v{v}_denominator"])
             ser = []
@@ -215,7 +213,7 @@ def main():
                     flag = "none counted in the county"
             ser.append((yr, val))
             e = entry(ser, flag)
-            if f == "ohio":
+            if f == SK:
                 ohio[mid] = e
             else:
                 counties[f][mid] = e
@@ -230,23 +228,23 @@ def main():
         "note": ("Suicide deaths per 100,000 people, age-adjusted, five years combined, by the county where "
                  "the person lived. Left blank when there were fewer than 20 deaths in the five years.")}
     extras["suicide_deaths"] = {}
-    for f in COUNTIES + ["ohio"]:
+    for f in COUNTIES + [SK]:
         r = supp[f]
         rate, n = num(r["v161_rawvalue"]), num(r["v161_numerator"])
         flag = None
         if rate is None:
             flag = "suppressed (fewer than 10 deaths)"
-        elif f != "ohio" and n is not None and n < MIN_DEATHS:
+        elif f != SK and n is not None and n < MIN_DEATHS:
             rate, flag = None, "unreliable (fewer than 20 deaths)"
         e = entry([("2019-2023", rate)], flag)
-        (ohio if f == "ohio" else counties[f])["suicide_rate"] = e
+        (ohio if f == SK else counties[f])["suicide_rate"] = e
         extras["suicide_deaths"][f] = {"deaths": n, "crude_rate": num(r["v161_other_data_1"]),
                                        "chr_age_adjusted_rate": num(r["v161_rawvalue"])}
 
     # ---- 5: traffic deaths (FARS, county of crash, five final years)
     fy = {y: fars_year(y) for y in FARS_FINAL}
     for y in FARS_FINAL:
-        print(f"FARS {y}: Ohio deaths {fy[y][2]}, county unknown {fy[y][1]}")
+        print(f"FARS {y}: {SNAME} deaths {fy[y][2]}, county unknown {fy[y][1]}")
     windows = [(y - WINDOW + 1, y) for y in FARS_FINAL if y - WINDOW + 1 >= FARS_FINAL[0]]
     last = windows[-1]
     metrics["traffic_deaths_per100k"] = {
@@ -259,23 +257,23 @@ def main():
                  "happened, per 100,000 residents per year, five years combined. Not age-adjusted. Left blank "
                  "when there were fewer than 20 deaths in the five years.")}
     extras["traffic_deaths"] = {}
-    for f in COUNTIES + ["ohio"]:
+    for f in COUNTIES + [SK]:
         ser, cnt = [], []
         flag = None
         for a, b in windows:
             yrs = range(a, b + 1)
-            deaths = sum((fy[y][2] if f == "ohio" else fy[y][0].get(f, 0)) for y in yrs)
+            deaths = sum((fy[y][2] if f == SK else fy[y][0].get(f, 0)) for y in yrs)
             p = sum(pop[f][y] for y in yrs)
-            ok = f == "ohio" or deaths >= MIN_DEATHS
+            ok = f == SK or deaths >= MIN_DEATHS
             ser.append((f"{a}-{b}", 1e5 * deaths / p if ok else None))
             cnt.append({"period": f"{a}-{b}", "deaths": deaths, "person_years": p})
         if ser[-1][1] is None:
             flag = "unreliable (fewer than 20 deaths)"
-        (ohio if f == "ohio" else counties[f])["traffic_deaths_per100k"] = entry(ser, flag)
+        (ohio if f == SK else counties[f])["traffic_deaths_per100k"] = entry(ser, flag)
         extras["traffic_deaths"][f] = {"windows": cnt,
-                                       "by_year": [[str(y), fy[y][2] if f == "ohio" else fy[y][0].get(f, 0)]
+                                       "by_year": [[str(y), fy[y][2] if f == SK else fy[y][0].get(f, 0)]
                                                    for y in FARS_FINAL]}
-    extras["traffic_deaths"]["ohio"]["county_unknown_by_year"] = [[str(y), fy[y][1]] for y in FARS_FINAL]
+    extras["traffic_deaths"][SK]["county_unknown_by_year"] = [[str(y), fy[y][1]] for y in FARS_FINAL]
 
     # ---- 6: libraries (IMLS PLS)
     lib = {}
@@ -299,7 +297,7 @@ def main():
             systems[f].append({"name": r["LIBNAME"].title(), "operating_spending": e, "visits": v,
                                "legal_service_area_pop": num(r["POPU_LSA"]), "geocode": r.get("GEOCODE")})
         if bad:
-            print(f"FY{year}: {len(bad)} Ohio systems with no spending or visits value: {bad}")
+            print(f"FY{year}: {len(bad)} {SNAME} systems with no spending or visits value: {bad}")
         # Systems with a central or branch library listed in a county other than the main office's.
         # (IMLS gives each outlet a county name; in Ohio these all match the main office so far.)
         ae_cty = {r["FSCSKEY"]: names[r["CNTY"].upper().strip()] for r in ae}
@@ -309,50 +307,50 @@ def main():
                 continue
             of = names.get(o["CNTY"].upper().strip())
             if of is None:
-                print(f"FY{year}: outlet {o['LIBNAME']!r} has county {o['CNTY']!r}, not an Ohio county name; skipped")
+                print(f"FY{year}: outlet {o['LIBNAME']!r} has county {o['CNTY']!r}, not a {SNAME} county name; skipped")
             elif of != ae_cty[o["FSCSKEY"]]:
                 nm = [r["LIBNAME"].title() for r in ae if r["FSCSKEY"] == o["FSCSKEY"]][0]
                 m.setdefault(nm, {"assigned_to": ae_cty[o["FSCSKEY"]], "outlets_elsewhere": []})
                 m[nm]["outlets_elsewhere"].append({"outlet": o["LIBNAME"].title(), "county": of})
         multi[year] = m
         lib[year] = (sp, vi, systems, sum(sp.values()), sum(vi.values()), len(ae))
-        print(f"PLS FY{year}: {len(ae)} Ohio systems, spending ${sum(sp.values()):,.0f}, visits {sum(vi.values()):,.0f}, "
+        print(f"PLS FY{year}: {len(ae)} {SNAME} systems, spending ${sum(sp.values()):,.0f}, visits {sum(vi.values()):,.0f}, "
               f"systems with a building in another county: {len(m)}")
     latest_fy = max(PLS)
     lib_note = ("Each library system is counted in the county of its main office and divided by the "
                 "county's whole population. Some systems serve school districts that reach into a neighboring "
-                "county. The Ohio figure adds up all Ohio systems.")
+                f"county. The {SNAME} figure adds up all {SNAME} systems.")
     metrics["library_spend_per_capita"] = {
         "label": "Public library spending per person", "theme": "people", "unit": "usd", "decimals": 2,
         "better": "higher", "source": "Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates",
         "vintage": f"FY {min(PLS)}-FY {latest_fy} public-use files (imputed); FY {latest_fy} file released 2026; pulled {TODAY}",
-        "period_label": f"FY {latest_fy} (calendar year {latest_fy} in Ohio)",
+        "period_label": f"FY {latest_fy} ({CFG['lib_fy'].format(fy=latest_fy, fy0=latest_fy - 1)})",
         "note": "Total operating spending by public library systems (staff, materials and other costs; not "
                 "building projects), in dollars of that year, per resident. " + lib_note}
     metrics["library_visits_per_capita"] = {
         "label": "Public library visits per person", "theme": "people", "unit": "per_capita", "decimals": 1,
         "better": "higher", "source": "Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates",
         "vintage": metrics["library_spend_per_capita"]["vintage"],
-        "period_label": f"FY {latest_fy} (calendar year {latest_fy} in Ohio)",
+        "period_label": f"FY {latest_fy} ({CFG['lib_fy'].format(fy=latest_fy, fy0=latest_fy - 1)})",
         "note": "In-person visits to public libraries in a year, per resident. Some libraries count every visit; "
                 "others estimate from a typical week. " + lib_note}
     extras["library_systems"] = {}
-    for f in COUNTIES + ["ohio"]:
+    for f in COUNTIES + [SK]:
         s_sp, s_vi = [], []
         for year in sorted(lib):
             sp, vi, systems, tsp, tvi, _ = lib[year]
             p = pop[f][year]
-            a, b = (tsp, tvi) if f == "ohio" else (sp[f], vi[f])
-            has = f == "ohio" or bool(systems[f])
+            a, b = (tsp, tvi) if f == SK else (sp[f], vi[f])
+            has = f == SK or bool(systems[f])
             s_sp.append((str(year), a / p if has else None))
             s_vi.append((str(year), b / p if has else None))
         flag = None if s_sp[-1][1] is not None else "no library system based in this county"
-        tgt = ohio if f == "ohio" else counties[f]
+        tgt = ohio if f == SK else counties[f]
         tgt["library_spend_per_capita"] = entry(s_sp, flag)
         tgt["library_visits_per_capita"] = entry(s_vi, flag)
-        if f != "ohio":
+        if f != SK:
             extras["library_systems"][f] = lib[latest_fy][2][f]
-    extras["library_multi_county"] = {"ohio": {str(y): multi[y] for y in sorted(multi)}}
+    extras["library_multi_county"] = {SK: {str(y): multi[y] for y in sorted(multi)}}
 
     # ---- 7: membership associations (CBP)
     assoc = {}
@@ -368,9 +366,9 @@ def main():
                             f"cbp_{y}_{code}_state.json"):
                 if r["EMPSZES"] == "001" and r["LFO"] == "001":
                     st[code] = int(r["ESTAB"])
-        c["ohio"] = st
+        c[SK] = st
         assoc[y] = c
-        print(f"CBP {y}: Ohio associations {sum(st.values())}, county sum {sum(sum(c[f].values()) for f in COUNTIES)}")
+        print(f"CBP {y}: {SNAME} associations {sum(st.values())}, county sum {sum(sum(c[f].values()) for f in COUNTIES)}")
     metrics["social_associations_per10k"] = {
         "label": "Membership groups per 10,000 people", "theme": "people", "unit": "per10k", "decimals": 1,
         "better": "higher", "source": "Census Bureau County Business Patterns; Census Bureau population estimates (definition from County Health Rankings & Roadmaps)",
@@ -384,56 +382,63 @@ def main():
     # Ohio is built the same way as the counties (the sum of county counts), since the state count also includes
     # places in county cells Census withholds. The state count is kept in extras and named in the note.
     for y in CBP_YEARS:
-        assoc[y]["ohio_published"] = assoc[y]["ohio"]
-        assoc[y]["ohio"] = {code: sum(assoc[y][f].get(code, 0) for f in COUNTIES) for code in ASSOC_NAICS}
-    st_rate = 1e4 * sum(assoc[CBP_YEARS[-1]]["ohio_published"].values()) / pop["ohio"][CBP_YEARS[-1]]
+        assoc[y][f"{SK}_published"] = assoc[y][SK]
+        assoc[y][SK] = {code: sum(assoc[y][f].get(code, 0) for f in COUNTIES) for code in ASSOC_NAICS}
+    st_rate = 1e4 * sum(assoc[CBP_YEARS[-1]][f"{SK}_published"].values()) / pop[SK][CBP_YEARS[-1]]
     metrics["social_associations_per10k"]["note"] += (
-        f" Ohio's figure is the sum of the county counts, built the same way as the counties; Census's statewide count, "
+        f" {SNAME}'s figure is the sum of the county counts, built the same way as the counties; Census's statewide count, "
         f"which includes the places withheld in county cells, gives {st_rate:.1f}.")
-    extras["association_counts_ohio_published"] = {"ohio": {str(y): assoc[y]["ohio_published"] for y in CBP_YEARS}}
-    for f in COUNTIES + ["ohio"]:
+    extras[f"association_counts_{SK}_published"] = {SK: {str(y): assoc[y][f"{SK}_published"] for y in CBP_YEARS}}
+    for f in COUNTIES + [SK]:
         ser = [(str(y), 1e4 * sum(assoc[y][f].values()) / pop[f][y]) for y in CBP_YEARS]
-        (ohio if f == "ohio" else counties[f])["social_associations_per10k"] = entry(ser)
+        (ohio if f == SK else counties[f])["social_associations_per10k"] = entry(ser)
         extras["association_counts"][f] = {str(y): assoc[y][f] for y in CBP_YEARS}
 
     # ---- 8: voter turnout 2024 (MEDSL precinct returns / ACS CVAP)
-    raw = cached(RAW / "medsl" / "oh24.zip", MEDSL_PREC, timeout=600)
+    raw = cached(RAW / "medsl" / f"{ABBR.lower()}24.zip", MEDSL_PREC, timeout=600)
     z = zipfile.ZipFile(io.BytesIO(raw))
     votes = {f: 0 for f in COUNTIES}
-    with z.open("oh24.csv") as fh:
+    by_mode = {}
+    with z.open(f"{ABBR.lower()}24.csv") as fh:
         for r in csv.DictReader(io.TextIOWrapper(fh, encoding="utf-8")):
             if r["office"] == "US PRESIDENT":
-                if r["mode"] != "TOTAL":
-                    raise SystemExit("unexpected vote mode in Ohio file")
-                votes[r["county_fips"]] += int(r["votes"])
-    st_raw = cached(RAW / "medsl" / "2024-president-state.csv", MEDSL_STATE).decode("utf-8")
-    st_rows = [r for r in csv.DictReader(io.StringIO(st_raw)) if r["state_po"] == "OH"]
+                k = (r["county_fips"], r["mode"])
+                by_mode[k] = by_mode.get(k, 0) + int(r["votes"])
+    # Ohio's file has one TOTAL row per precinct and candidate. Other states split votes by mode (election day,
+    # early, absentee and so on); those add up. A county with a TOTAL line uses it alone, so nothing counts twice.
+    for f in COUNTIES:
+        modes = {m: v for (c, m), v in by_mode.items() if c == f}
+        votes[f] = modes["TOTAL"] if "TOTAL" in modes else sum(modes.values())
+    if ST_ID == "oh" and any(m != "TOTAL" for _, m in by_mode):
+        raise SystemExit("unexpected vote mode in Ohio file")
+    st_raw = cached(NRAW / "medsl" / "2024-president-state.csv", MEDSL_STATE).decode("utf-8")
+    st_rows = [r for r in csv.DictReader(io.StringIO(st_raw)) if r["state_po"] == ABBR]
     state_total = int(st_rows[0]["totalvotes"])
     assert all(int(r["totalvotes"]) == state_total for r in st_rows)
     cv = {STATE + r["county"]: (float(r["B29001_001E"]), float(r["B29001_001M"]))
           for r in census("2024/acs/acs5", {"get": "B29001_001E,B29001_001M", "for": "county:*", "in": f"state:{STATE}"},
                           "acs5_2024_B29001_county.json")}
     s = census("2024/acs/acs5", {"get": "B29001_001E,B29001_001M", "for": f"state:{STATE}"}, "acs5_2024_B29001_state.json")[0]
-    cv["ohio"] = (float(s["B29001_001E"]), float(s["B29001_001M"]))
-    votes["ohio"] = state_total
-    print(f"2024 president: Ohio total {state_total:,}; county precinct sum {sum(votes[f] for f in COUNTIES):,} "
+    cv[SK] = (float(s["B29001_001E"]), float(s["B29001_001M"]))
+    votes[SK] = state_total
+    print(f"2024 president: {SNAME} total {state_total:,}; county precinct sum {sum(votes[f] for f in COUNTIES):,} "
           f"(precinct file has no write-in votes)")
-    chr25 = {("ohio" if r["countycode"] == "000" else r["fipscode"]): r for r in chr_rows(CHR_2025, skip_second_header=True)}
+    chr25 = {(SK if r["countycode"] == "000" else r["fipscode"]): r for r in chr_rows(CHR_2025, skip_second_header=True)}
     metrics["voter_turnout"] = {
         "label": "Voter turnout, 2024 presidential election", "theme": "people", "unit": "pct", "decimals": 1,
         "better": "higher",
-        "source": "Ohio Secretary of State official results, as compiled by the MIT Election Data + Science Lab; Census Bureau American Community Survey",
-        "vintage": f"MEDSL 2024 precinct returns (Ohio file dated 2026-04-28); ACS 2020-2024 5-year table B29001; pulled {TODAY}",
+        "source": f"{SNAME} Secretary of State official results, as compiled by the MIT Election Data + Science Lab; Census Bureau American Community Survey",
+        "vintage": f"MEDSL 2024 precinct returns ({SNAME} file dated {CFG['medsl_date']}); ACS 2020-2024 5-year table B29001; pulled {TODAY}",
         "period_label": "November 2024 general election",
         "note": ("Votes cast for president divided by U.S. citizens age 18 and older. Ballots left blank for "
                  "president are not counted. The citizen count is a survey estimate, and it includes some "
                  "people who cannot vote, such as people serving a felony prison term.")}
     extras["turnout_counts"] = {}
-    for f in COUNTIES + ["ohio"]:
+    for f in COUNTIES + [SK]:
         v, (c, cm) = votes[f], cv[f]
         t = 100.0 * v / c
         moe = 100.0 * v * cm / (c * c)
-        (ohio if f == "ohio" else counties[f])["voter_turnout"] = entry([("2024", t)], moe=moe)
+        (ohio if f == SK else counties[f])["voter_turnout"] = entry([("2024", t)], moe=moe)
         r = chr25.get(f, {})
         extras["turnout_counts"][f] = {"president_votes_2024": v, "citizens_18_plus": c, "citizens_18_plus_moe": cm,
                                        "chr_2020_turnout_pct": (100 * num(r.get("v177_rawvalue")) if num(r.get("v177_rawvalue")) is not None else None)}
@@ -445,9 +450,9 @@ def main():
         vals = [counties[f][mid]["latest"] for f in COUNTIES if counties[f][mid]["latest"] is not None]
         lo = min(COUNTIES, key=lambda f: counties[f][mid]["latest"] if counties[f][mid]["latest"] is not None else 1e18)
         hi = max(COUNTIES, key=lambda f: counties[f][mid]["latest"] if counties[f][mid]["latest"] is not None else -1)
-        print(f"{mid}: Ohio {ohio[mid]['latest']:.2f} ({ohio[mid]['period']}); counties with value {len(vals)}/88; "
+        print(f"{mid}: {SNAME} {ohio[mid]['latest']:.2f} ({ohio[mid]['period']}); counties with value {len(vals)}/{len(COUNTIES)}; "
               f"min {counties[lo][mid]['latest']:.2f} ({lo}); max {counties[hi][mid]['latest']:.2f} ({hi})")
-    write_json("access.json", {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras})
+    write_json("access.json", {"metrics": metrics, "counties": counties, SK: ohio, "extras": extras})
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""The measure list for the Ohio Community Well-Being page: which measures sit in which of the nine dimensions,
+"""The measure list for the Community Well-Being page (Ohio, and other states set in states.py): which measures sit in which of the nine dimensions,
 whether each describes what residents experience or the services they can reach, and where a published standard
 exists. 71_wb_data.py and 72_wb_build.py read this file; docs/MEASURES.md is written from it.
 
@@ -154,3 +154,56 @@ MONEY = {
 # who lives here: shown on every place profile, not judged
 CONTEXT = ["population", "age65_share", "prime_age_share", "nh_white_share", "nh_black_share", "hispanic_share",
            "foreign_born_share", "disability_share"]
+
+# Who runs services and the main public programs, for states other than Ohio. Same dimensions and questions; only the
+# agencies and program names change.
+STATE_TEXT = {
+    "ga": {
+        "childcare": ("Georgia Department of Early Care and Learning (licensing, Quality Rated, the Childcare and Parent "
+                      "Services subsidy program and Georgia's Pre-K Program); U.S. Department of Health and Human "
+                      "Services, Administration for Children and Families (Child Care and Development Fund, Head Start).",
+                      "Childcare and Parent Services (CAPS) subsidies, Quality Rated, Georgia's Pre-K Program, Head Start and "
+                      "Early Head Start."),
+        "education": ("Local school districts and charter schools; Georgia Department of Education; Governor's Office of "
+                      "Student Achievement; U.S. Department of Education (Title I, special education).",
+                      "Quality Basic Education state funding, Title I, IDEA special education, school meals."),
+        "economic": ("Georgia Department of Human Services, Division of Family and Children Services (SNAP, TANF cash aid); "
+                     "USDA Food and Nutrition Service (SNAP); Social Security Administration (SSI); Internal Revenue "
+                     "Service (Earned Income Tax Credit).",
+                     "SNAP, TANF, SSI, Earned Income Tax Credit, WIC, school meals, home energy assistance."),
+        "jobs": ("Georgia Department of Labor (unemployment insurance, career centers); local workforce development "
+                 "boards; Technical College System of Georgia; U.S. Department of Labor.",
+                 "Unemployment insurance, Workforce Innovation and Opportunity Act training, apprenticeships, technical "
+                 "college programs."),
+        "housing": ("Local public housing authorities (vouchers, public housing); Georgia Department of Community Affairs "
+                    "(Low-Income Housing Tax Credits, vouchers where there is no local authority, Community Development "
+                    "Block Grants and HOME for smaller communities); U.S. Department of Housing and Urban Development.",
+                    "Housing Choice Vouchers, public housing, project-based rental assistance, Low-Income Housing Tax "
+                    "Credits, HOME, CDBG."),
+        "physical": ("Georgia Department of Community Health (Medicaid, PeachCare for Kids); Georgia Department of Public "
+                     "Health and county health departments; federally funded community health centers (HRSA).",
+                     "Medicaid, PeachCare for Kids, Georgia Pathways to Coverage, Medicare, community health centers, local "
+                     "public health programs."),
+        "mental": ("Georgia Department of Behavioral Health and Developmental Disabilities and community service boards; "
+                   "Georgia Department of Community Health (Medicaid); 988 crisis line.",
+                   "Medicaid behavioral health, community service board services, federal opioid response and "
+                   "settlement funds, crisis services."),
+        "safety": ("City police, county sheriffs and the courts; Georgia Department of Public Safety (Georgia State "
+                   "Patrol); Governor's Office of Highway Safety; Criminal Justice Coordinating Council; Georgia "
+                   "Attorney General.",
+                   "Local police and fire budgets, victim services, highway safety grants, violence prevention grants."),
+        "social": ("Local and regional library systems (with state support through Georgia Public Library Service); "
+                   "transit agencies; the state broadband office; county boards of elections and registration.",
+                   "State library funding, transit funding, broadband expansion grants, park and recreation programs."),
+    },
+}
+
+
+def _apply_state_text():
+    from common import ST_ID
+    for d in DIMENSIONS:
+        if ST_ID in STATE_TEXT:
+            d["agencies"], d["programs"] = STATE_TEXT[ST_ID][d["id"]]
+
+
+_apply_state_text()

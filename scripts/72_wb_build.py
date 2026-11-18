@@ -1,5 +1,5 @@
-"""Build dist/wellbeing/index.html from scripts/wellbeing_template.html and data/processed/wellbeing/{data,geo}.json,
-and write docs/MEASURES.md (the measure list, for review) from the same data.
+"""Build dist/<page>/index.html (dist/wellbeing for Ohio, dist/georgia for Georgia; see states.py) from
+scripts/wellbeing_template.html and <PROC>/wellbeing/{data,geo}.json, and write docs/MEASURES.md (MEASURES_GA.md for Georgia) (the measure list, for review) from the same data.
 
 The page is split in two to load faster. index.html holds the counties, districts, Ohio and U.S. figures and the trend
 series. tracts.json holds the 3,161 tract values, margins of error and shapes; the page requests it right after the
@@ -17,7 +17,7 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
 import wellbeing_measures as WM
-from common import DIST, PROC, ROOT
+from common import ABBR, CFG, DIST, PROC, ROOT, SK, SNAME, ST_ID
 
 data = json.loads((PROC / "wellbeing" / "data.json").read_text())
 geo = json.loads((PROC / "wellbeing" / "geo.json").read_text())
@@ -25,7 +25,44 @@ M = data["measures"]
 # split combined source strings so each publisher is listed once; drop fragments that only name a table or period
 srcs = sorted({part.strip() for m in M.values() if m.get("source") for part in m["source"].split(";")
                if part.strip() and not part.strip().startswith(("ACS ", "ACS,"))})
-foot = ("<p><b>How the three levels are built.</b> Counties: each source's published county figures. Census tracts: "
+
+
+def state_footer():
+    """Footer for states other than Ohio, with the facts that depend on the data read from notes.json (71_wb_data.py)."""
+    nt = json.loads((PROC / "wellbeing" / "notes.json").read_text())
+    cs = nt["commute_skipped"]
+    zero = sum(1 for v in cs.values() if not v)
+    few = sorted(int(v) for v in cs.values() if v)
+    commute = ""
+    if cs:
+        commute = (f"Average commute leaves out the {len(cs)} tract{'s' if len(cs) != 1 else ''} with residents that have no "
+                   f"travel time figure ({zero} ha{'ve' if zero != 1 else 's'} no commuters at all"
+                   + (f", {len(few)} ha{'ve' if len(few) != 1 else 's'} {few[0]} to {few[-1]}" if few else "") + "). ")
+    return ("<p><b>How the three levels are built.</b> Counties: each source's published county figures. Census tracts: "
+            "2020 tracts, with American Community Survey 2020-2024 estimates and CDC PLACES model estimates; a survey "
+            "estimate whose margin of error is large next to its value is hatched. Congressional districts: "
+            + CFG["district_foot"] + " Each district adds up the tracts with district residents; a tract split by a "
+            "district line counts by the share of its 2020 residents inside the line. " + commute +
+            "Measures that sources publish only for whole counties are not shown for districts or tracts. HUD subsidized "
+            "housing is shown for counties and tracts but not districts, because HUD withholds or leaves out many tract "
+            "values, so a district total would be incomplete. An estimate is hatched when its margin of error is more than "
+            "about half its value (coefficient of variation above 30%); an estimate of zero cannot be judged this way and "
+            "is not hatched, so check its margin.</p>"
+            f"<p><b>Comparisons.</b> {SNAME} and U.S. figures come from the same source and method as the local figures, "
+            f"with one exception: district median household income is estimated from income brackets, while {SNAME}'s is "
+            f"the published median (the bracket method gives ${nt['bracket_median']:,.0f} for {SNAME}, against "
+            f"${nt['published_median']:,.0f} published). For CDC PLACES, {SNAME} is the tract values weighted by adults, "
+            f"since CDC publishes no state value in this form. \"Near {SNAME}\" means within 3% of {SNAME}'s value, or "
+            "0.3 points for percentages. U.S. targets are Healthy People 2030 national targets where one exists for a close "
+            "match; most are age-adjusted and the local figures are not. Public money is shown beside conditions. It does "
+            "not show what the money caused.</p>"
+            "<p><b>Sources.</b> " + "; ".join(srcs) + ". Map: Census Bureau TIGERweb (2020 tracts and counties; 120th "
+            "Congressional Districts), " + CFG["district_src"] + ", 2020 census block population.</p>"
+            "<p>Built by Data 4 The People. Method notes for every source are in DATASETS.md in the project repository.</p>")
+
+
+if ST_ID == "oh":
+    foot = ("<p><b>How the three levels are built.</b> Counties: each source's published county figures. Census tracts: "
         "2020 tracts, with American Community Survey 2020-2024 estimates and CDC PLACES model estimates; a survey "
         "estimate whose margin of error is large next to its value is hatched. Congressional districts: the map the "
         "Ohio Redistricting Commission adopted on October 31, 2025, first used in the 2026 election. No published "
@@ -46,7 +83,9 @@ foot = ("<p><b>How the three levels are built.</b> Counties: each source's publi
         "<p><b>Sources.</b> " + "; ".join(srcs) + ". Map: Census Bureau TIGERweb (2020 tracts and counties; 120th "
         "Congressional Districts), Ohio Redistricting Commission block assignment file, 2020 census block population.</p>"
         "<p>Built by Data 4 The People. Method notes for every source are in DATASETS.md in the project repository.</p>")
-desc = ("Ohio's counties, congressional districts and census tracts across nine areas of daily life, from public "
+else:
+    foot = state_footer()
+desc = (f"{SNAME}'s counties, congressional districts and census tracts across nine areas of daily life, from public "
         "federal and state data. Prototype.")
 html = (ROOT / "scripts/wellbeing_template.html").read_text()
 for k in ("__DATA__", "__GEO__", "__FOOT__", "__DESC__", "__DATE__"):
@@ -78,14 +117,16 @@ def num(x, sig=None):
 page = {k: v for k, v in data.items() if not k.startswith("tract")}
 for k in ("county", "district"):
     page[k] = {i: {p: num(v, 8) for p, v in byp.items()} for i, byp in data[k].items()}
-for k in ("ohio", "ohio_moe", "us"):
+for k in (SK, SK + "_moe", "us"):
     page[k] = {i: num(v, 8) for i, v in data[k].items()}
+# the page calls the state figure "st" whatever the state
+page["st"], page["st_moe"] = page.pop(SK), page.pop(SK + "_moe")
 # trend series: every place has the same periods in the same order, so write the periods once per measure
 page["series"] = {}
 for i, s in data["series"].items():
     per = [p for p, _ in next(iter(s.values()))] if s else []
     assert all([p for p, _ in v] == per for v in s.values()), i
-    page["series"][i] = {"p": per, "d": {k: [num(v, 8) for _, v in pts] for k, pts in s.items()}}
+    page["series"][i] = {"p": per, "d": {("st" if k == SK else k): [num(v, 8) for _, v in pts] for k, pts in s.items()}}
 tracts = {"ids": data["tract_ids"], "tract": {i: num(a) for i, a in data["tract"].items()},
           "tract_moe": {i: num(a) for i, a in data["tract_moe"].items()}, "tract_weak": data["tract_weak"],
           "shapes": geo["tracts"]}
@@ -94,7 +135,7 @@ tname = f"tracts.json?v={hashlib.sha256(tjson.encode()).hexdigest()[:10]}"   # a
 
 
 def land_outline(shapes):
-    """Ohio's land as one path: the land tracts merged. Census county and district shapes reach into Lake Erie, and the
+    """The state's land as one path: the land tracts merged. Census county and district shapes reach into lakes and the sea, and the
     page clips them to this outline. Each tract was simplified on its own, so neighbors leave hairline gaps; a 1-unit
     closing (about 55 meters) fills them, and any hole left under 1,000 square units is such a gap, not water."""
     def rings(d):
@@ -130,29 +171,30 @@ def land_outline(shapes):
 geo_page = {k: v for k, v in geo.items() if k not in ("tracts", "lake")}
 geo_page["land"] = land_outline(geo["tracts"])
 today = dt.date.today()
-html = (html.replace("__DESC__", desc).replace("__DATE__", f"{today:%B} {today.day}, {today.year}").replace("__FOOT__", dump(foot))
+html = (html.replace("__SN__", SNAME).replace("__DMAP__", CFG["district_map"]).replace("__DYEAR__", CFG["district_year"])
+        .replace("__DESC__", desc).replace("__DATE__", f"{today:%B} {today.day}, {today.year}").replace("__FOOT__", dump(foot))
         .replace("__TRACTS__", tname).replace("__DATA__", dump(page)).replace("__GEO__", dump(geo_page)))
-out = DIST / "wellbeing" / "index.html"
+out = DIST / CFG["page"] / "index.html"
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(html)
-(DIST / "wellbeing" / "tracts.json").write_text(tjson)
-print(f"wrote dist/wellbeing/index.html ({len(html) // 1024} KB) and tracts.json ({len(tjson) // 1024} KB), {len(M)} measures")
+(DIST / CFG["page"] / "tracts.json").write_text(tjson)
+print(f"wrote dist/{CFG['page']}/index.html ({len(html) // 1024} KB) and tracts.json ({len(tjson) // 1024} KB), {len(M)} measures")
 
 # docs/MEASURES.md: one table per dimension
 ROLE = {"lives": "Experience", "access": "Access", "money": "Public money", "context": "Context"}
 LV = {"county": "C", "district": "D", "tract": "T"}
-lines = ["# Measures on the Ohio Community Well-Being page", "",
+lines = [f"# Measures on the {SNAME} Community Well-Being page", "",
          "Written by `scripts/72_wb_build.py` from `scripts/wellbeing_measures.py` and the built data. Edit the measure "
          "list in `wellbeing_measures.py`, not here.", "",
-         "Levels: C = counties, D = congressional districts (2025 map), T = census tracts. Role: Experience = what "
+         f"Levels: C = counties, D = congressional districts ({CFG['district_year']} map), T = census tracts. Role: Experience = what "
          "residents experience; Access = services and access; Public money = spending shown beside conditions.", ""]
 for d in WM.DIMENSIONS + [{"id": "context", "label": "Who lives here (context, not judged)", "question": ""}]:
     ids = [i for i, m in M.items() if m["dim"] == d["id"]]
     lines += [f"## {d['label']}", ""] + ([f"_{d['question']}_", ""] if d["question"] else [])
-    lines += ["| Measure | Role | Levels | Ohio | Better | Standard | Source | Period |", "|---|---|---|---|---|---|---|---|"]
+    lines += [f"| Measure | Role | Levels | {SNAME} | Better | Standard | Source | Period |", "|---|---|---|---|---|---|---|---|"]
     for i in ids:
         m = M[i]
-        o = data["ohio"].get(i)
+        o = data[SK].get(i)
         ov = "" if o is None else (f"{o:,.{m['decimals']}f}" + ("%" if m["unit"] == "pct" else ""))
         std = f"{m['standard']['v']} ({m['standard']['src']})" if m.get("standard") else ""
         lines.append(f"| {m['label']}{' (headline)' if m.get('headline') else ''} | {ROLE[m['role']]} | "
@@ -160,5 +202,6 @@ for d in WM.DIMENSIONS + [{"id": "context", "label": "Who lives here (context, n
     if d.get("agencies"):
         lines += ["", f"Who runs services: {d['agencies']}", "", f"Main public programs: {d['programs']}"]
     lines.append("")
-(ROOT / "docs" / "MEASURES.md").write_text("\n".join(lines))
-print("wrote docs/MEASURES.md")
+mfile = "MEASURES.md" if ST_ID == "oh" else f"MEASURES_{ABBR}.md"
+(ROOT / "docs" / mfile).write_text("\n".join(lines))
+print(f"wrote docs/{mfile}")

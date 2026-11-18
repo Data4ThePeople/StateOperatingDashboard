@@ -20,12 +20,26 @@ except ImportError:  # outside Data 4 The People's machines, keys come from the 
             sys.exit(f"Set {name} in the environment.")
         return os.environ[name]
 
+from states import STATES  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
+NRAW = ROOT / "data" / "raw"          # national files, shared by every state
 RAW = ROOT / "data" / "raw"
 PROC = ROOT / "data" / "processed"
 DIST = ROOT / "dist"
 
-STATE = "39"          # Ohio
+ST_ID = os.environ.get("D4TP_STATE", "oh").lower()
+if ST_ID not in STATES:
+    sys.exit(f"D4TP_STATE must be one of {sorted(STATES)}")
+CFG = STATES[ST_ID]
+STATE = CFG["fips"]        # state FIPS code, "39" for Ohio
+ABBR = CFG["abbr"]         # "OH"
+SNAME = CFG["name"]        # "Ohio"
+SK = CFG["key"]            # key for the state figure in every layer file: "ohio"
+COUNTIES = CFG["counties"]
+if ST_ID != "oh":          # Ohio keeps the original folders
+    RAW = RAW / ST_ID
+    PROC = PROC / ST_ID
 
 load_env()
 

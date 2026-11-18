@@ -1,17 +1,18 @@
-"""Statewide map shapes for the Ohio Community Well-Being page: every 2020 census tract, the 88 counties and the 15
-congressional districts, in one projection. Writes data/processed/wellbeing/geo.json.
+"""Statewide map shapes for a state's Community Well-Being page (Ohio unless D4TP_STATE says otherwise): every 2020
+census tract, every county and every congressional district, in one projection. Writes <PROC>/wellbeing/geo.json.
 Run: .venv/bin/python scripts/70_wb_geo.py
 
 - Tracts, counties: Census TIGERweb (2020 census layers), simplified by the server (about 40 meters).
-- Congressional districts: the Ohio Redistricting Commission's block assignment file for the map adopted October 31,
-  2025, joined to 2020 census block population (P.L. 94-171, P1_001N). Each tract records how many of its 2020
+- Congressional districts: for Ohio, the Ohio Redistricting Commission's block assignment file for the map adopted
+  October 31, 2025; for other states, the Census Bureau's 119th Congress block file. Joined to 2020 census block population (P.L. 94-171, P1_001N). Each tract records how many of its 2020
   residents live in each district. District outlines are TIGERweb Current layer 54 (120th Congressional Districts);
   the script checks that every tract wholly inside a district by block population falls inside that outline.
 - Lake Erie: TIGER counties and districts reach into the lake. The Well-Being page clips the map to the land tracts
   merged into one outline (built in 72_wb_build.py), so county and district shapes stop at the shore.
 - Tract names: the city, village or Census-designated place holding at least half of the tract's 2020 residents
-  (Census 2020 block assignment file for places), or else the township holding the tract's internal point.
-- Coordinates: an equirectangular projection scaled by the cosine of Ohio's middle latitude, in whole units of a
+  (Census 2020 block assignment file for places), or else the township holding the tract's internal point (states
+  with township governments, such as Ohio) or the county.
+- Coordinates: an equirectangular projection scaled by the cosine of the state's middle latitude, in whole units of a
   6,000-wide box, written as relative SVG path commands to keep the page small.
 """
 import io
@@ -22,16 +23,17 @@ from urllib.parse import urlencode
 
 import pandas as pd
 
-from common import RAW, census, cached, write_json
+from common import ABBR, CFG, COUNTIES, NRAW, RAW, ST_ID, STATE, census, cached, write_json
 
-STF, ST = "39", "OH"
+STF, ST = STATE, ABBR
 KEY = "wellbeing"
 ORC = "https://redistricting.ohio.gov/api/public/districtmaps/430/download"
 BAF_PLACE = f"https://www2.census.gov/geo/docs/maps-data/data/baf2020/BlockAssign_ST{STF}_{ST}.zip"
 TIGER = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/{}/query?"
 CD_LINE = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/54/query?"
 W = 6000
-OH_POP_2020 = 11799448          # official 2020 census count for Ohio
+OH_POP_2020 = CFG["pop2020"]    # official 2020 census count for the state
+CD119 = "https://www2.census.gov/programs-surveys/decennial/rdo/mapping-files/2025/119-congressional-district-befs/cd119.zip"
 
 
 def tidy(name):
@@ -66,12 +68,18 @@ if __name__ == "__main__":
     cname = {r["county"]: r["NAME"].split(" County,")[0]
              for r in census("2020/dec/pl", {"get": "NAME", "for": "county:*", "in": f"state:{STF}"}, f"{KEY}/pl2020_counties.json")}
     cos = sorted(cname)
-    assert len(cos) == 88
+    assert [STF + c for c in cos] == COUNTIES
 
     # blocks: district and 2020 population
-    z = zipfile.ZipFile(io.BytesIO(cached(RAW / "oh10" / "orc_430.zip", ORC)))
-    b = pd.read_excel(io.BytesIO(z.read("October 31 2025 CD BAF.xlsx")), dtype=str).rename(columns={"DistrictID:1": "cd"})
-    assert len(b) == 276428 and b.Block.str.len().eq(15).all()
+    if ST_ID == "oh":
+        z = zipfile.ZipFile(io.BytesIO(cached(RAW / "oh10" / "orc_430.zip", ORC)))
+        b = pd.read_excel(io.BytesIO(z.read("October 31 2025 CD BAF.xlsx")), dtype=str).rename(columns={"DistrictID:1": "cd"})
+        assert len(b) == 276428 and b.Block.str.len().eq(15).all()
+    else:
+        z = zipfile.ZipFile(io.BytesIO(cached(NRAW / "census_cd119" / "cd119.zip", CD119)))
+        b = pd.read_csv(z.open("NationalCD119.txt"), dtype=str).rename(columns={"GEOID": "Block", "CDFP": "cd"})
+        b = b[b.Block.str[:2] == STF][["Block", "cd"]]
+        assert b.Block.str.len().eq(15).all()
     rows = []
     for c in cos:
         for r in census("2020/dec/pl", {"get": "P1_001N", "for": "block:*", "in": f"state:{STF} county:{c} tract:*"},
@@ -83,7 +91,7 @@ if __name__ == "__main__":
     m["tract"] = m.Block.str[:11]
     cdpop = m.groupby("cd")["pop"].sum()
     print("district 2020 populations:", dict(cdpop))
-    assert len(cdpop) == 15 and cdpop.max() - cdpop.min() <= 1, "districts should be within one person of each other"
+    assert len(cdpop) == CFG["districts"] and cdpop.max() - cdpop.min() <= 1, "districts should be within one person of each other"
 
     # place names
     zp = zipfile.ZipFile(io.BytesIO(cached(RAW / KEY / BAF_PLACE.rsplit("/", 1)[1], BAF_PLACE)))
@@ -104,6 +112,8 @@ if __name__ == "__main__":
 
     def township(t):
         x, y, _ = tpts[t]
+        if not CFG["townships"]:
+            return None
         hits = [n for n, polys in mcds[t[2:5]] if any(inside(x, y, [tuple(p) for p in poly[0]]) for poly in polys)]
         return hits[0] if hits else None
 
@@ -169,10 +179,10 @@ if __name__ == "__main__":
         near = min(lp, key=lambda p: (p[0] - mx) ** 2 + (p[1] - my) ** 2)
         counties[STF + c] = {"name": cname[c], "d": path(f["geometry"]), "p": list(xy(near[:2])),
                              "pop2020": sum(v["pop2020"] for t, v in tracts.items() if t[2:5] == c)}
-    assert len(counties) == 88
+    assert sorted(counties) == COUNTIES
 
-    dfeat = tiger(54, f"STATE='{STF}'", "tiger_cd120_oh.geojson", fields="GEOID,CDSESSN,NAME", url=CD_LINE, offset="0.0004")["features"]
-    assert len(dfeat) == 15, len(dfeat)
+    dfeat = tiger(54, f"STATE='{STF}'", f"tiger_cd120_{ST.lower()}.geojson", fields="GEOID,CDSESSN,NAME", url=CD_LINE, offset="0.0004")["features"]
+    assert len(dfeat) == CFG["districts"], len(dfeat)
     dists = {}
     for f in dfeat:
         cd = f["properties"]["GEOID"][2:]
@@ -192,8 +202,8 @@ if __name__ == "__main__":
 
     geo = {"viewBox": f"0 0 {W} {H}", "tracts": tout, "counties": counties, "districts": dists, "lake": lake,
            "proj": {"lon0": lon0, "lat1": lat1, "k": k, "sc": sc},
-           "source": "Census TIGERweb 2020 tracts and counties; TIGERweb Current 120th Congressional Districts; Ohio "
-                     "Redistricting Commission block assignment file (map adopted Oct. 31, 2025); Census 2020 P.L. 94-171 "
+           "source": "Census TIGERweb 2020 tracts and counties; TIGERweb Current 120th Congressional Districts; "
+                     + CFG["district_src"] + "; Census 2020 P.L. 94-171 "
                      "block population; Census 2020 place block assignment file"}
     write_json(f"{KEY}/geo.json", geo)
     size = {k_: len(json.dumps(v, separators=(",", ":"))) // 1024 for k_, v in geo.items() if isinstance(v, (dict, str))}

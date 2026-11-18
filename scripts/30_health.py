@@ -3,7 +3,7 @@
 Sources
   1. Census SAHIE (uninsured rates, under 65), 2008-latest
   2. CDC NCHS VSRR provisional county drug overdose deaths (12-month-ending), plus the
-     VSRR state file for the Ohio figure; Census county population estimates for rates
+     VSRR state file for the state figure; Census county population estimates for rates
   3. CDC PLACES county data, latest release (model-based BRFSS prevalence)
   4. Census SAIPE (poverty rates and median household income), 2000-latest
 
@@ -15,11 +15,9 @@ import io
 import json
 import urllib.parse
 
-from common import RAW, STATE, cached, census, write_json
+from common import ABBR, COUNTIES, NRAW, RAW, SK, SNAME, STATE, cached, census, write_json
 
 TODAY = dt.date.today().isoformat()
-COUNTIES = [f"39{n:03d}" for n in range(1, 176, 2)]
-assert len(COUNTIES) == 88
 
 metrics = {}
 counties = {f: {} for f in COUNTIES}
@@ -45,7 +43,7 @@ def check_series(series, where):
 
 
 def entry(series, moe=None, flag=None):
-    """Build one county/ohio metric entry from a chronological series of (period, value)."""
+    """Build one county/state metric entry from a chronological series of (period, value)."""
     series = sorted(series)
     if not series:
         return {"latest": None, "period": None, "series": [], "moe": None, "flag": flag or "no data"}
@@ -55,7 +53,7 @@ def entry(series, moe=None, flag=None):
 
 
 def put(metric_id, geo, e):
-    if geo == "ohio":
+    if geo == SK:
         ohio[metric_id] = e
     else:
         counties[geo][metric_id] = e
@@ -73,7 +71,7 @@ def sahie(iprcat, metric_id, label, note):
     st = census("timeseries/healthins/sahie", dict(base, **{"for": f"state:{STATE}"}),
                 f"sahie_state_ipr{iprcat}.json")
     years = set()
-    for geo, rows in [("ohio", st)] + [(f, [r for r in cty if STATE + r["county"] == f]) for f in COUNTIES]:
+    for geo, rows in [(SK, st)] + [(f, [r for r in cty if STATE + r["county"] == f]) for f in COUNTIES]:
         rows = [r for r in rows if int(r["YEAR"]) >= SAHIE_FIRST]
         ser = sorted((r["YEAR"], num(r["PCTUI_PT"])) for r in rows)
         check_series(ser, f"{metric_id} {geo}")
@@ -105,19 +103,19 @@ def socrata(ds, params, name):
     return json.loads(cached(RAW / "cdc" / name, url))
 
 
-od = socrata("gb4e-yj24", {"$where": "st_abbrev='OH'", "$limit": "50000", "$order": "fips,monthendingdate"},
-             "vsrr_county_overdose_oh.json")
-od_state = socrata("xkb8-kh2a", {"$where": "state='OH' and indicator='Number of Drug Overdose Deaths'",
-                                 "$limit": "50000"}, "vsrr_state_overdose_oh.json")
+od = socrata("gb4e-yj24", {"$where": f"st_abbrev='{ABBR}'", "$limit": "50000", "$order": "fips,monthendingdate"},
+             f"vsrr_county_overdose_{ABBR.lower()}.json")
+od_state = socrata("xkb8-kh2a", {"$where": f"state='{ABBR}' and indicator='Number of Drug Overdose Deaths'",
+                                 "$limit": "50000"}, f"vsrr_state_overdose_{ABBR.lower()}.json")
 
 # Census county population estimates (July 1), vintage 2025
-pop_raw = cached(RAW / "census_pep" / "co-est2025-alldata.csv",
+pop_raw = cached(NRAW / "census_pep" / "co-est2025-alldata.csv",
                  "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/counties/totals/co-est2025-alldata.csv")
 pop = {}
 for r in csv.DictReader(io.StringIO(pop_raw.decode("latin-1"))):
     if r["STATE"] != STATE:
         continue
-    geo = "ohio" if r["SUMLEV"] == "040" else STATE + r["COUNTY"]
+    geo = SK if r["SUMLEV"] == "040" else STATE + r["COUNTY"]
     pop[geo] = {y: int(r[f"POPESTIMATE{y}"]) for y in range(2020, 2026)}
 POP_LAST = 2025
 assert all(f in pop for f in COUNTIES), "population file missing a county"
@@ -170,14 +168,14 @@ for r in od_state:
         continue
     p = f"{r['year']}-{MONTHS[r['month']]:02d}"
     if p in st_ser:
-        raise SystemExit(f"duplicate Ohio overdose period {p}")
+        raise SystemExit(f"duplicate {SNAME} overdose period {p}")
     st_ser[p] = num(r.get("data_value"))
     st_note[p] = r.get("footnote")
 oh_kept = [(p, st_ser.get(p)) for p in keep]
-put("overdose_deaths_12mo", "ohio", entry(oh_kept))
-put("overdose_rate_per100k", "ohio",
-    entry([(p, v / popfor("ohio", p[:4]) * 1e5 if v is not None else None) for p, v in oh_kept]))
-od_monthly_extra["ohio"] = [[p, st_ser[p]] for p in sorted(st_ser) if p >= all_months[0]]
+put("overdose_deaths_12mo", SK, entry(oh_kept))
+put("overdose_rate_per100k", SK,
+    entry([(p, v / popfor(SK, p[:4]) * 1e5 if v is not None else None) for p, v in oh_kept]))
+od_monthly_extra[SK] = [[p, st_ser[p]] for p in sorted(st_ser) if p >= all_months[0]]
 extras["overdose_12mo_monthly"] = od_monthly_extra
 
 od_label = f"12 months ending {dt.date(int(od_latest[:4]), int(od_latest[5:]), 1).strftime('%B %Y')}"
@@ -189,7 +187,7 @@ metrics["overdose_deaths_12mo"] = {
     "vintage": od_vintage, "period_label": od_label,
     "note": "Deaths of county residents from drug overdose in the 12 months ending in the month shown. "
             "Counts are provisional and tend to rise as records come in; CDC hides counts of 1 to 9. "
-            "The Ohio figure comes from CDC's state file, which counts deaths that occurred in Ohio.",
+            f"The {SNAME} figure comes from CDC's state file, which counts deaths that occurred in {SNAME}.",
 }
 metrics["overdose_rate_per100k"] = {
     "label": "Drug overdose deaths per 100,000 people, past 12 months", "theme": "health", "unit": "per100k",
@@ -205,8 +203,8 @@ metrics["overdose_rate_per100k"] = {
 # --------------------------------------------------------------------------- 3. CDC PLACES
 PLACES_DS = "swc5-untb"
 pl_meta = json.loads(cached(RAW / "cdc" / "places_county_meta.json", f"https://data.cdc.gov/api/views/{PLACES_DS}.json"))
-places = socrata(PLACES_DS, {"$where": "stateabbr='OH' and datavaluetypeid='AgeAdjPrv'", "$limit": "50000"},
-                 "places_county_oh_ageadj.json")
+places = socrata(PLACES_DS, {"$where": f"stateabbr='{ABBR}' and datavaluetypeid='AgeAdjPrv'", "$limit": "50000"},
+                 f"places_county_{ABBR.lower()}_ageadj.json")
 PLACES = [  # metric id, PLACES measureid, label, better
     ("places_depression", "DEPRESSION", "Adults ever told they have depression", "lower"),
     ("places_mental_distress", "MHLTH", "Adults with frequent mental distress", "lower"),
@@ -245,7 +243,7 @@ for mid, code, label, better in PLACES:
         put(mid, f, {"latest": v, "period": year, "series": [[year, v]], "moe": None, "flag": flag})
         if r:
             pl_ci.setdefault(f, {})[mid] = [num(r.get("low_confidence_limit")), num(r.get("high_confidence_limit"))]
-    put(mid, "ohio", {"latest": None, "period": year, "series": [], "moe": None,
+    put(mid, SK, {"latest": None, "period": year, "series": [], "moe": None,
                       "flag": "no state figure in PLACES county file"})
     metrics[mid] = {
         "label": label, "theme": "health", "unit": "pct", "decimals": 1, "better": better,
@@ -253,7 +251,7 @@ for mid, code, label, better in PLACES:
         "vintage": f"{pl_meta['name'].split(',')[-1].strip()} (BRFSS {year}); pulled {TODAY}",
         "period_label": f"{year} estimate, age-adjusted",
         "note": f"PLACES measure: {measure_text}. A model-based estimate built from the CDC BRFSS survey and "
-                "Census population data, not a count; age-adjusted. The PLACES county file has no Ohio figure.",
+                f"Census population data, not a count; age-adjusted. The PLACES county file has no {SNAME} figure.",
     }
 extras["places_ci95"] = pl_ci
 
@@ -274,7 +272,7 @@ SAIPE = [
 ]
 sp_years = set()
 for mid, var, label, unit, dec, better, what in SAIPE:
-    for geo, rows in [("ohio", sp_s)] + [(f, [r for r in sp_c if STATE + r["county"] == f]) for f in COUNTIES]:
+    for geo, rows in [(SK, sp_s)] + [(f, [r for r in sp_c if STATE + r["county"] == f]) for f in COUNTIES]:
         rows = [r for r in rows if int(r["YEAR"]) >= SAIPE_FIRST]
         ser = sorted((r["YEAR"], num(r[var + "_PT"])) for r in rows)
         check_series(ser, f"{mid} {geo}")
@@ -295,11 +293,11 @@ for f in COUNTIES:
     missing = set(metrics) - set(counties[f])
     if missing:
         raise SystemExit(f"{f} missing {missing}")
-write_json("health.json", {"metrics": metrics, "counties": counties, "ohio": ohio, "extras": extras})
+write_json("health.json", {"metrics": metrics, "counties": counties, SK: ohio, "extras": extras})
 
 print(f"counties: {len(counties)}; metrics: {len(metrics)}")
 print(f"overdose latest {od_latest}; suppressed at latest: {supp_counts['latest']}; "
       f"suppressed in at least one kept period: {supp_counts['any_kept_period']}; PLACES nulls: {pl_supp}")
-for f in ("39049", "39163", "ohio"):
-    src = ohio if f == "ohio" else counties[f]
+for f in (*COUNTIES[:2], SK):
+    src = ohio if f == SK else counties[f]
     print(f, {k: (v["period"], v["latest"], v["moe"], v["flag"]) for k, v in src.items()})
