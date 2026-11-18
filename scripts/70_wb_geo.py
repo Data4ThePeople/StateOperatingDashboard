@@ -79,6 +79,11 @@ if __name__ == "__main__":
         z = zipfile.ZipFile(io.BytesIO(cached(NRAW / "census_cd119" / "cd119.zip", CD119)))
         b = pd.read_csv(z.open("NationalCD119.txt"), dtype=str).rename(columns={"GEOID": "Block", "CDFP": "cd"})
         b = b[b.Block.str[:2] == STF][["Block", "cd"]]
+        # Illinois has water-only blocks in Lake Michigan assigned to no district (ZZ); they have no residents
+        zz = b.cd == "ZZ"
+        print(f"blocks with no district (ZZ): {int(zz.sum())}")
+        zzb = set(b.Block[zz])
+        b = b[~zz]
         assert b.Block.str.len().eq(15).all()
     rows = []
     for c in cos:
@@ -87,6 +92,8 @@ if __name__ == "__main__":
             rows.append((r["state"] + r["county"] + r["tract"] + r["block"], int(r["P1_001N"])))
     m = b.merge(pd.DataFrame(rows, columns=["Block", "pop"]), on="Block", how="left")
     assert m["pop"].notna().all() and int(m["pop"].sum()) == OH_POP_2020, int(m["pop"].sum())
+    if ST_ID != "oh":
+        assert sum(n for blk, n in rows if blk in zzb) == 0, "a block with no district has residents"
     m["cd"] = m.cd.str.zfill(2)
     m["tract"] = m.Block.str[:11]
     cdpop = m.groupby("cd")["pop"].sum()

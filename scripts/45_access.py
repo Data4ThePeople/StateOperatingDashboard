@@ -157,6 +157,12 @@ def pls_year(fy):
 
 
 
+def cname(n):
+    """County name key that ignores spaces, periods and Saint/St. (Illinois: LA SALLE = LaSalle, DE KALB = DeKalb)."""
+    n = n.upper().strip().replace("SAINT ", "ST ")
+    return "".join(c for c in n if c.isalnum())
+
+
 # ---------------------------------------------------------------- main
 def main():
     pop, pop_vintage = population()
@@ -164,7 +170,7 @@ def main():
     pe_raw = (NRAW / "popest" / "co-est2025-alldata.csv").read_text(encoding="latin-1")
     for r in csv.DictReader(io.StringIO(pe_raw)):
         if r["STATE"] == STATE and r["SUMLEV"] == "050":
-            names[r["CTYNAME"].upper().replace(" COUNTY", "").strip()] = STATE + r["COUNTY"]
+            names[cname(r["CTYNAME"].upper().replace(" COUNTY", ""))] = STATE + r["COUNTY"]
     assert sorted(names.values()) == COUNTIES
 
     metrics, ohio = {}, {}
@@ -285,7 +291,7 @@ def main():
         systems = {f: [] for f in COUNTIES}
         bad = []
         for r in ae:
-            f = names.get(r["CNTY"].upper().strip())
+            f = names.get(cname(r["CNTY"]))
             if f is None:
                 raise SystemExit(f"FY{year}: unknown county {r['CNTY']!r} for {r['LIBNAME']}")
             e, v = num(r["TOTOPEXP"]), num(r["VISITS"])
@@ -300,12 +306,12 @@ def main():
             print(f"FY{year}: {len(bad)} {SNAME} systems with no spending or visits value: {bad}")
         # Systems with a central or branch library listed in a county other than the main office's.
         # (IMLS gives each outlet a county name; in Ohio these all match the main office so far.)
-        ae_cty = {r["FSCSKEY"]: names[r["CNTY"].upper().strip()] for r in ae}
+        ae_cty = {r["FSCSKEY"]: names[cname(r["CNTY"])] for r in ae}
         m = {}
         for o in outlets:
             if o.get("C_OUT_TY") not in ("CE", "BR") or o["FSCSKEY"] not in ae_cty:
                 continue
-            of = names.get(o["CNTY"].upper().strip())
+            of = names.get(cname(o["CNTY"]))
             if of is None:
                 print(f"FY{year}: outlet {o['LIBNAME']!r} has county {o['CNTY']!r}, not a {SNAME} county name; skipped")
             elif of != ae_cty[o["FSCSKEY"]]:
@@ -320,7 +326,7 @@ def main():
             for r in ae:
                 area[r["FSCSKEY"]] = {ae_cty[r["FSCSKEY"]]}
             for o in outlets:
-                of = names.get(o["CNTY"].upper().strip())
+                of = names.get(cname(o["CNTY"]))
                 if o.get("C_OUT_TY") in ("CE", "BR") and o["FSCSKEY"] in area and of:
                     area[o["FSCSKEY"]].add(of)
             sp = {f: 0.0 for f in COUNTIES}
@@ -430,7 +436,9 @@ def main():
     by_mode = {}
     with z.open(f"{ABBR.lower()}24.csv") as fh:
         for r in csv.DictReader(io.TextIOWrapper(fh, encoding="utf-8")):
-            if r["office"] == "US PRESIDENT":
+            # Illinois's file also has rows for ballots with no vote for president, and one lump of write-ins that
+            # includes names the state does not count (its official total counts declared write-in candidates only)
+            if r["office"] == "US PRESIDENT" and r["candidate"] not in ("UNDERVOTES", "OVERVOTES", "BLANK BALLOTS", "WRITE-IN"):
                 k = (r["county_fips"], r["mode"])
                 by_mode[k] = by_mode.get(k, 0) + int(r["votes"])
     # Ohio's file has one TOTAL row per precinct and candidate. Other states split votes by mode (election day,
@@ -451,7 +459,7 @@ def main():
     cv[SK] = (float(s["B29001_001E"]), float(s["B29001_001M"]))
     votes[SK] = state_total
     print(f"2024 president: {SNAME} total {state_total:,}; county precinct sum {sum(votes[f] for f in COUNTIES):,} "
-          f"(precinct file has no write-in votes)")
+          f"(differences are write-in votes the precinct file leaves out)")
     chr25 = {(SK if r["countycode"] == "000" else r["fipscode"]): r for r in chr_rows(CHR_2025, skip_second_header=True)}
     metrics["voter_turnout"] = {
         "label": "Voter turnout, 2024 presidential election", "theme": "people", "unit": "pct", "decimals": 1,

@@ -28,7 +28,7 @@ from common import PROC, RAW, cached, write_json
 from common import ST_ID
 
 if ST_ID != "oh":
-    raise SystemExit("This layer reads Ohio report card files. For Georgia, run scripts/47_schools_ga.py.")
+    raise SystemExit("This layer reads Ohio report card files. For Georgia run scripts/47_schools_ga.py; for Illinois, scripts/48_schools_il.py.")
 
 TODAY = dt.date.today().isoformat()
 COUNTIES = [f"39{n:03d}" for n in range(1, 176, 2)]

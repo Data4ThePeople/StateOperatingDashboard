@@ -28,6 +28,7 @@ Writes data/processed/crime.json. Run: .venv/bin/python scripts/43_crime.py
 import datetime as dt
 import io
 import json
+import re
 import zipfile
 
 from common import CFG, COUNTIES, NRAW, SK, SNAME, cached, get, write_json
@@ -80,7 +81,7 @@ def parse_year(year):
         if r[1:3] != OH_UCR_STATE:
             continue
         a = {k: r[i:j] for k, (i, j) in HDR.items()}
-        months, off = [], {"violent": 0, "property": 0}
+        months, mprop, off = [], [], {"violent": 0, "property": 0}
         for m in range(12):
             b = MONTH0 + m * MONTH_LEN
             upd = r[b + 2:b + 8].strip("0 ") != ""
@@ -88,11 +89,20 @@ def parse_year(year):
             c = {k: val(r[b + ACTUAL0 + 5 * i:b + ACTUAL0 + 5 * i + 5]) for k, i in FIELDS.items()}
             off["violent"] += c["murder"] + c["rape"] + c["robbery"] + c["assault_total"] - c["assault_simple"]
             off["property"] += c["burglary"] + c["larceny"] + c["mvt"]
+            mprop.append(c["burglary"] + c["larceny"] + c["mvt"])
         pops = []
         for p, cc in (("pop1", "cty1"), ("pop2", "cty2"), ("pop3", "cty3")):
             n, code = int(a[p] or 0), a[cc].strip()
             if code.isdigit() and 1 <= int(code) <= len(COUNTIES):
                 pops.append((COUNTIES[int(code) - 1], n))   # UCR county code n = nth county A-Z
+        # A month marked as reported but with no burglary, theft or vehicle theft at all is treated as not reported
+        # when the agency averages 10 or more of those crimes in its other reported months (a true zero is then very
+        # unlikely): Savannah's 2025 file is marked complete but has no thefts in 8 months. Such an agency then does
+        # not count as reporting all 12 months. Georgia and Illinois only for now; Ohio's published figures predate it.
+        if CFG.get("zero_month_check"):
+            other = [p for ok, p in zip(months, mprop) if ok and p > 0]
+            if other and sum(other) / len(other) >= 10:
+                months = [ok and p != 0 for ok, p in zip(months, mprop)]
         rec = {"ori": a["ori"], "group": a["group"], "covered_by": a["covered_by"].strip(),
                "name": a["name"].strip(), "months": months, "off": off, "pops": pops}
         if rec["ori"] in out:   # a few duplicate rows: keep the one with more reported months
@@ -106,7 +116,7 @@ def excluded(a):
     """State police, statewide state agencies and federal agencies stay out of county figures."""
     if a.get("covered"):
         return "covered by another agency"
-    if a["group"] in STATE_POLICE_GROUPS or a["ori"].startswith(CFG["state_police_ori"]):
+    if a["group"] in STATE_POLICE_GROUPS or re.match(CFG["state_police_ori"], a["ori"]):
         return "state police"
     if not a["ori"][2:5].isdigit():
         if sum(n for _, n in a["pops"]) > 0:

@@ -138,8 +138,8 @@ _Are residents safe from crime and crashes?_
 
 | Measure | Role | Levels | Georgia | Better | Standard | Source | Period |
 |---|---|---|---|---|---|---|---|
-| Violent crime rate (headline) | Experience | C | 293 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
-| Property crime rate | Experience | C | 1,370 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
+| Violent crime rate (headline) | Experience | C | 299 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
+| Property crime rate | Experience | C | 1,404 | lower |  | FBI Uniform Crime Reporting Program, Return A master files | 2025 calendar year |
 | Traffic deaths per 100,000 people | Experience | C | 15.4 | lower | 10.1 (Healthy People 2030 national target (IVP-06)) | NHTSA Fatality Analysis Reporting System (FARS); Census Bureau population estimates | 2019-2023 (five years combined) |
 
 Who runs services: City police, county sheriffs and the courts; Georgia Department of Public Safety (Georgia State Patrol); Governor's Office of Highway Safety; Criminal Justice Coordinating Council; Georgia Attorney General.

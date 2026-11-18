@@ -19,7 +19,7 @@ import zipfile
 
 import openpyxl
 
-from common import ABBR, COUNTIES, NRAW, PROC, SK, SNAME, ST_ID, STATE, cached, write_json
+from common import ABBR, CFG, COUNTIES, NRAW, PROC, SK, SNAME, ST_ID, STATE, cached, write_json
 
 TODAY = dt.date.today().isoformat()
 
@@ -59,7 +59,11 @@ BYNAME = {v["name"].upper(): k for k, v in json.loads((PROC / "geo.json").read_t
 cz = zipfile.ZipFile(io.BytesIO(cached(NRAW / "fns" / COUNTY_ZIP, FNS + COUNTY_ZIP)))
 by_upper = {n.upper(): n for n in cz.namelist()}
 county_persons = {}   # year -> {fips: persons}
+BY_COUNTY = CFG.get("snap_county", True)   # False where FNS's lines are state offices, not counties (Illinois)
 for y in YEARS:
+    if not BY_COUNTY:
+        county_persons[y] = None
+        continue
     name = by_upper.get(f"JUL {y}.XLSX")
     if not name:
         raise SystemExit(f"county file for July {y} not in {COUNTY_ZIP}")
@@ -134,7 +138,7 @@ for y in YEARS:
 # Outside Ohio, a year whose county lines do not add up to FNS's own state total (within 2%) is left blank: Georgia's
 # July 2025 county lines add to about 28% more than the state total, with every county higher by a similar share.
 UNBALANCED, BLANK = [], []
-if ST_ID != "oh":
+if ST_ID != "oh" and BY_COUNTY:
     for y in YEARS:
         if county_persons[y] is not None and abs(county_sum_gap[f"{y}-07"]) > 0.02 * state_monthly[f"{y}-07"]:
             print(f"July {y}: county lines sum to {sum(county_persons[y].values()):,.0f}, state total "
@@ -179,6 +183,12 @@ extras = {"snap_persons_count": {}, "snap_south_central_combined": {}}
 
 for f in COUNTIES:
     cnt = [(f"{y}-07", county_persons[y][f] if county_persons[y] else None) for y in YEARS]
+    if not BY_COUNTY:
+        counties[f]["snap_persons_share"] = {
+            "latest": None, "period": cnt[-1][0], "series": [[p, None] for p, _ in cnt],
+            "moe": None, "flag": "not reported by county"}
+        extras["snap_persons_count"][f] = None
+        continue
     if f in SOUTH_CENTRAL:
         others = " and ".join(NAMES[o] for o in SOUTH_CENTRAL if o != f)
         flag = f"reported with {others} (South Central Ohio JFS)"
@@ -227,7 +237,9 @@ metrics = {
         "vintage": vintage,
         "period_label": f"July {last}",
         "note": "People in households that got SNAP benefits in July, from program records, divided by the "
-                "Census July 1 population of the same year." + GAP_NOTE + (" Ross, Hocking and Vinton are reported together "
+                "Census July 1 population of the same year." + GAP_NOTE + ("" if BY_COUNTY else
+                f" FNS's {SNAME} lines are state service offices, not counties, and about half of {SNAME}'s counties "
+                "have no office of their own, so only the state figure is shown.") + (" Ross, Hocking and Vinton are reported together "
                 "by one county agency, so they show no single-county value." if SOUTH_CENTRAL else ""),
     }
 }

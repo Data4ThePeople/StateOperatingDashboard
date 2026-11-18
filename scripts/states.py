@@ -12,7 +12,7 @@ STATES = {
         "counties": [f"39{n:03d}" for n in range(1, 176, 2)],
         "lat": 40.3,              # middle latitude, for the map projection
         "ucr": "34",              # FBI UCR numeric state code
-        "state_police_ori": "OHOHP",
+        "state_police_ori": "OHOHP",     # regular expression matched at the start of the ORI
         "page": "wellbeing",      # dist/<page>/ for the Community Well-Being page
         "district_map": "2025 map, first used in 2026",
         "district_year": "2025",
@@ -38,6 +38,7 @@ STATES = {
         "lat": 32.7,
         "ucr": "10",
         "state_police_ori": "GAGSP",
+        "zero_month_check": True,  # see 43_crime.py
         "page": "georgia",
         "district_map": "2023 map, first used in 2024",
         "district_year": "2023",
@@ -58,5 +59,37 @@ STATES = {
         "sf_other_short": "regional educational service agencies",
         "sf_charter": "State charter schools are not in this Census survey.",
         "sf_local": "local sources (mostly property taxes)",
+    },
+    "il": {
+        "fips": "17", "abbr": "IL", "name": "Illinois", "key": "illinois",
+        "counties": [f"17{n:03d}" for n in range(1, 204, 2)],
+        "lat": 39.8,
+        "ucr": "12",
+        # Illinois State Police appear as one unit per county (IL001SP ... ADAMS STATE POLICE) and group 9E units
+        "state_police_ori": r"IL\d{3}SP$",
+        "zero_month_check": True,
+        "page": "illinois",
+        "district_map": "2021 map, first used in 2022",
+        "district_year": "2021",
+        "district_foot": ("the map Illinois enacted in 2021, first used in the 2022 election, from the Census Bureau's 119th "
+                          "Congress block file."),
+        "districts": 17,
+        "pop2020": 12812508,
+        "pop_spread": 1,
+        "townships": True,
+        "district_src": "Census Bureau 119th Congress block assignment file (the map Illinois enacted in 2021)",
+        "medicaid_note": " The 2010-2014 period mostly predates Illinois's 2014 Medicaid expansion.",
+        "medsl_date": "2026-04-28",
+        "lib_fy": "each library's own 12-month fiscal year ending in {fy} in Illinois",
+        "sf_rows": (850, 1050),
+        # 01 elementary-only, 02 high school-only, 03 unit districts; Illinois students attend one district each, so
+        # elementary and high school districts that cover the same land do not double count. 06 (nonoperating) and
+        # 07 (special education and vocational cooperatives) are left out.
+        "sf_levels": ("01", "02", "03"),
+        "sf_other": "Special education and vocational cooperatives",
+        "sf_other_short": "special education and vocational cooperatives",
+        "sf_charter": "Charter schools that are their own districts are not in this Census survey.",
+        "sf_local": "local sources (mostly property taxes)",
+        "snap_county": False,     # FNS-388A Illinois lines are state service offices, not counties
     },
 }

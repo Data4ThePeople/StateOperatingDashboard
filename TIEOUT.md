@@ -220,7 +220,31 @@ Ohio page renders the same values, maps, rankings, profiles and trend charts in 
 - **Rendering.** The page renders without errors for every measure at every level, and for every county and
   district profile on every tab.
 
-**Not checked yet.**
-- No independent tie-out of the Georgia page.
+**Independent tie-out, November 18, 2026.** A fresh agent that had not seen the build pulled every source again
+and recomputed 23 measures from the method in `DATASETS.md`. It covered ACS, LAUS, PLACES, GOSA, FBI, FNS, IMLS,
+HUD, Census school finance and MEDSL, for Quitman, Taliaferro, Echols, Fulton, DeKalb, Chatham, Cobb, Ware and
+Georgia, plus districts and tracts. It also confirmed that the page's embedded data matches `data.json` exactly.
+
+Findings and fixes:
+- **Third grade results (fixed).** Two in-person state charter schools, Dubois Integrity (Clayton) and Pataula
+  (Calhoun), were left out as virtual because CCD flagged them virtual in 2019-2020 only. Each year now uses its own
+  flag. Calhoun English is 32.3 (was 20.0), Calhoun math 36.8 (was 16.0) and Clayton math 22.5 (was 22.8), matching
+  the agent.
+- **Chatham County crime (fixed).** Savannah's 2025 file is marked complete but lists no thefts in 8 months, which
+  gave Chatham an implausibly low rate. The new zero-month rule (DATASETS.md) treats those months as unreported, so
+  Chatham shows as low reporting.
+- **Method wording (fixed in DATASETS.md).** How suppressed GOSA counts are rebuilt, FIPS order in FBI county codes,
+  HUD's missing Echols rows in every year, where the Georgia SNAP figure comes from, library building counties and
+  population, and the school finance county.
+- **Rounding at display edges (not changed).** Tract values are stored to two extra decimals, so a value like
+  13.8504 is stored as 13.85 and can round the other way at one decimal. The same applies to the Ohio page.
+
+All other values matched.
+
+**Not checked.**
+- BEA transfers, QCEW wages, County Health Rankings measures, FARS, County Business Patterns, SAIPE, overdose deaths
+  and HUD spending.
+- Trend lines.
+- The SNAP 28% gap against FNS's state table.
+- Map shapes.
 - Child care: the DECAL file has not been saved yet, so the page has no child care measures.
-- The library split by population across regional systems has not been compared with any published county figure.

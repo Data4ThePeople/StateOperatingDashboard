@@ -540,7 +540,8 @@ if __name__ == "__main__":
             county[i] = {f: [rate([t for t in tids if t[:5] == f]), None, None] for f in fips}
             district[i] = {cd: [rnd(rate(None, dist_w[cd]), 1), None] for cd in cds}
             ohio[i] = rate(tids)
-        elif i in lay:
+        elif i in lay and any((j_c.get(i) or {}).get("latest") is not None for j_c in lay[i]["counties"].values()):
+            # (a measure with no county values at all, such as Illinois SNAP county shares, is left out)
             j = lay[i]
             m = j["metrics"][i]
             meta = {k: m.get(k) for k in ("label", "unit", "decimals", "better", "source", "period_label", "note")}

@@ -283,13 +283,14 @@ def qcew():
         first_sectors = {i: j for i, j, _ in cells(a, first, 74)}
         mix = []
         for i, j, wg in cells(a, last, 74):
-            mix.append({"code": i, "title": T.get(i, i), "jobs": j, "share": j / pt * 100 if j is not None else None,
+            mix.append({"code": i, "title": T.get(i, i), "jobs": j, "share": j / pt * 100 if j is not None and pt else None,
                         "wage": wg, "jobs_first": first_sectors[i] if i in first_sectors else 0.0,
                         "suppressed": j is None})
         mix.sort(key=lambda r: (r["jobs"] is None, -(r["jobs"] or 0), r["code"]))
         extras[a]["industry_mix"] = {"year": str(last), "first_year": str(first), "private_jobs": pt, "sectors": mix}
         three = sorted([(i, j) for i, j, _ in cells(a, last, 75) if j is not None], key=lambda x: (-x[1], x[0]))
-        extras[a]["top3"] = [{"code": i, "title": T.get(i, i), "jobs": j, "share": j / pt * 100} for i, j in three[:3]]
+        extras[a]["top3"] = [{"code": i, "title": T.get(i, i), "jobs": j, "share": j / pt * 100 if pt else None}
+                            for i, j in three[:3]]
         extras[a]["suppressed_share"] = {"year": str(last),
                                          "naics_3digit_pct": supp_stats[(a, last, "3digit")],
                                          "naics_sector_pct": supp_stats[(a, last, "sector")],
@@ -307,7 +308,7 @@ def qcew():
 
     # suppression summary, used to pick and document the HHI level
     for lev in ("supersector", "sector", "3digit"):
-        vals = [supp_stats[(a, last, lev)] for a in COUNTIES]
+        vals = [supp_stats[(a, last, lev)] for a in COUNTIES if supp_stats[(a, last, lev)] is not None]
         print(f"  suppressed share of private jobs at {lev} level, {last}: "
               f"median {sorted(vals)[len(vals) // 2]:.1f}%, max {max(vals):.1f}%, counties >20%: {sum(v > 20 for v in vals)}")
 

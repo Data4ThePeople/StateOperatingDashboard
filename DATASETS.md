@@ -1432,9 +1432,14 @@ Each system's county comes from the NCES Common Core of Data district directory 
 Portal). The county systems are codes 601 to 759, numbered almost in alphabetical order (Georgia lists McDuffie and
 McIntosh after Marion), so the county comes from the directory, not the code. Atlanta Public Schools is placed in
 Fulton County, where the directory puts it. Some systems are left out:
-- virtual state charter schools (CCD virtual flag),
+- virtual state charter schools (the CCD virtual flag for the same school year, or the nearest year CCD has; two
+  in-person schools were flagged virtual only in 2019-2020),
 - the state schools (code 799), and
-- systems whose counts GOSA suppresses ("TFS").
+- systems with no count of students tested.
+
+When GOSA suppresses the proficient counts ("TFS") but gives the number tested and the percentages, the proficient
+count is the number tested times the Proficient and Distinguished percentages. That is how the smallest counties
+(Quitman, Taliaferro, Echols) get values.
 
 Chronic absence is the share of students absent more than 10% of the days they were enrolled. It uses county and
 city systems only, weighted by GOSA's student count. This matches Ohio, where only traditional districts are used.
@@ -1447,24 +1452,33 @@ figure in every year, and GOSA's figures are kept in the layer's extras. In 2024
 **SNAP (FNS-388A county file).** FNS codes Echols County as 13100 instead of 13101, so that row is placed by county
 name. The July 2024 file has no Georgia rows. The July 2025 Georgia county lines add up to 28% more than FNS's
 Georgia total for that month. Georgia's county series therefore stops at July 2023, for counties and the state alike.
+The Georgia figure comes from FNS's state table, as Ohio's does; in July 2023 the county lines add up to the same
+total.
 
 **Libraries (IMLS Public Libraries Survey).** Most Georgia library systems are regional and serve several counties
 from one main office. Each system's spending and visits are split among the counties where it has a central or
-branch library, by population, so every county in a regional system shows that system's per-person figure. Georgia's
-library fiscal year runs July to June.
+branch library, by population, so every county in a regional system shows that system's per-person figure. A
+building's county is the county name IMLS lists for it; three branches sit just across a county line from it (East
+Atlanta and Kirkwood of the Fulton system are in DeKalb, and Maysville of the Jackson system is in Banks). Population
+is the Census July 1 estimate for the same year. Georgia's library fiscal year runs July to June.
 
 **HUD Picture of Subsidized Households.** Tract values come from HUD's `TRACT_AK_MN` file (Ohio uses `TRACT_MO_WY`).
-The 2015 county file has no row for Echols County, so that year is blank there.
+HUD's county files have no row for Echols County in any year from 2015 to 2025, for Webster County in 2021 or for
+Glascock County in 2022, so those values are blank.
 
 **School finance (Census Annual Survey of School System Finances).** Local school systems are the rows with school
-level codes 01, 02, 03 or 06. Clay and Webster are coded 01 and Taliaferro is coded 06. The regional educational
+level codes 01, 02, 03 or 06, placed in the county the Census file gives (it agrees with CCD for every system). Clay and Webster are coded 01 and Taliaferro is coded 06. The regional educational
 service agencies (07) are left out. State charter schools are not in this survey.
 
 **Crime (FBI Return A).** Georgia's UCR state code is 10. Georgia State Patrol posts (ORI prefix GAGSP) are left out
-of county totals, as the Ohio State Highway Patrol is for Ohio. County codes in the files follow alphabetical order
-and were checked against known agencies (Atlanta in Fulton and DeKalb, Savannah in Chatham, Augusta in Richmond).
-Reporting coverage fell in 2019 as Georgia moved to the FBI's newer reporting system, and many counties are below
-80% coverage in later years. The same coverage rules as Ohio apply.
+of county totals, as the Ohio State Highway Patrol is for Ohio. The files number counties in FIPS order (McDuffie and
+McIntosh before Macon), which was checked against known agencies (Atlanta in Fulton and DeKalb, Savannah in
+Chatham, Augusta in Richmond, Thomson in McDuffie). Reporting coverage fell in 2019 as Georgia moved to the FBI's
+newer reporting system, and many counties are below 80% coverage in later years. The same coverage rules as Ohio
+apply, with one addition for Georgia and Illinois. A month marked as reported but with no burglary, theft or vehicle
+theft at all counts as not reported when the agency averages 10 or more of those crimes in its other reported months.
+Savannah's 2025 file is marked complete but has no thefts in 8 months, so Chatham County is shown as low reporting
+for 2025.
 
 **Age (ACS table B23001).** The sanity check on county margins of error allows up to 20 points, against 10 for Ohio.
 Georgia's smallest counties have about 1,500 to 3,000 residents.

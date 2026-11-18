@@ -101,7 +101,14 @@ for y in range(2017, 2025):
     for r in urban(f"schools/ccd/directory/{y}/?fips=13", f"sch_dir_{y}"):
         code = (r.get("state_leaid") or "").replace("GA-", "")
         if code[:3] in ("782", "783") and r.get("virtual") is not None and r["virtual"] >= 0:
-            virtual[code] = max(virtual.get(code, 0), r["virtual"])   # CCD codes 1+ mean full or mostly virtual
+            # CCD codes 1+ mean full or mostly virtual; kept by year, since some in-person schools were flagged in 2020
+            virtual[(code, y)] = max(virtual.get((code, y), 0), r["virtual"])
+
+
+def is_virtual(code, year):
+    """CCD virtual flag for the school year ending in `year` (CCD year = year - 1), else the nearest year CCD has."""
+    have = sorted((abs(yy - (year - 1)), yy) for (c, yy) in virtual if c == code)
+    return bool(have) and virtual[(code, have[0][1])] >= 1
 
 
 def system_type(code):
@@ -114,7 +121,7 @@ def system_type(code):
     return "other"      # 799 state schools, and anything else
 
 
-def place(code, charters):
+def place(code, charters, year):
     """County FIPS for a system, or None with the reason."""
     t = system_type(code)
     if t == "other":
@@ -122,7 +129,7 @@ def place(code, charters):
     if t == "charter":
         if not charters:
             return None, "state charter school"
-        if virtual.get(code, 0) >= 1:
+        if is_virtual(code, year):
             return None, "virtual state charter school"
     f = county_of.get(code)
     if f is None:
@@ -135,13 +142,13 @@ def place(code, charters):
 
 
 # --------------------------------------------------------------------------- tests
-def rollup(rows, value, weight, charters):
+def rollup(rows, value, weight, charters, year):
     """{county: (numerator, denominator, systems)} plus a list of systems left out and why."""
     agg = {f: [0.0, 0.0, []] for f in COUNTIES}
     left = []
     for r in rows:
         code = r["code"]
-        f, why = place(code, charters)
+        f, why = place(code, charters, year)
         w, v = weight(r), value(r)
         if f is None:
             left.append((code, r["name"], why, w))
@@ -181,7 +188,7 @@ for y, rel in EOG.items():
             sys_rows.append({"code": r["SCHOOL_DISTRCT_CD"].strip(), "name": r["SCHOOL_DSTRCT_NM"], "n": n, "prof": prof})
         codes = [r["code"] for r in sys_rows]
         assert len(codes) == len(set(codes)), f"{rel} {subj}: duplicate system rows"
-        agg, left = rollup(sys_rows, lambda r: r["prof"], lambda r: r["n"], charters=True)
+        agg, left = rollup(sys_rows, lambda r: r["prof"], lambda r: r["n"], charters=True, year=y)
         tests[mid][y] = agg
         test_left[(mid, y)] = left
         assert y in gosa_state[mid], f"{rel} {subj}: no state row"
@@ -201,7 +208,7 @@ for y, rel in ATT.items():
                          "abs": n * p / 100 if n is not None and p is not None else None})
     codes = [r["code"] for r in sys_rows]
     assert len(codes) == len(set(codes)), f"{rel}: duplicate system rows"
-    agg, left = rollup(sys_rows, lambda r: r["abs"], lambda r: r["n"], charters=False)
+    agg, left = rollup(sys_rows, lambda r: r["abs"], lambda r: r["n"], charters=False, year=y)
     absent[y] = agg
     absent_left[y] = left
     assert y in gosa_absent, f"{rel}: no state row"
