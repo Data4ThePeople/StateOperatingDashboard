@@ -313,6 +313,6 @@ predate this rule. IL-6 does not change.
 
 Added to all three Community Well-Being pages. Checked by Claude's own scripts (not independent): every existing value
 in the three `data.json` files is unchanged (only the new `ctx` key differs), and all three pages render without errors
-for every measure at every level and every county and district profile. The Ohio county list was first computed in a
-separate script from the same Census tables and matched, apart from the age range (18-64 in both, ACS denominator
-there, census denominator on the page). The flags have not had an independent tie-out.
+for every measure at every level and every county and district profile. An earlier exploratory script flagged the
+same 8 Ohio counties, but it divided by the ACS 2020-2024 count of residents 18 to 64 instead of the 2020 census
+count, so its shares differ (Noble 32.9% there, 26.7% on the page). The flags have not had an independent tie-out.
