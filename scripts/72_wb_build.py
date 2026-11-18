@@ -47,7 +47,7 @@ foot = ("<p><b>How the three levels are built.</b> Counties: each source's publi
         "Congressional Districts), Ohio Redistricting Commission block assignment file, 2020 census block population.</p>"
         "<p>Built by Data 4 The People. Method notes for every source are in DATASETS.md in the project repository.</p>")
 desc = ("Ohio's counties, congressional districts and census tracts across nine areas of daily life, from public "
-        "federal and state data. Draft.")
+        "federal and state data. Prototype.")
 html = (ROOT / "scripts/wellbeing_template.html").read_text()
 for k in ("__DATA__", "__GEO__", "__FOOT__", "__DESC__", "__DATE__"):
     assert html.count(k) == 1, k
