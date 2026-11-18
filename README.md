@@ -104,6 +104,10 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
   published estimates for its 2025 lines yet, so its totals add up every tract with district residents, weighted
   by the share of each tract's 2020 residents who live inside the line.
 - **County tables on district pages** cover each whole county, including parts outside the district.
+- **Prison and college towns.** On the Community Well-Being pages, places where adults in prisons and jails were 5%
+  or more of residents 18 to 64 at the 2020 census are outlined on prime-age employment and adult education. Places
+  where leaving out college and graduate students lowers the poverty rate by 3 points or more are outlined on the
+  two poverty measures. Each has a note in the place's profile. No value is changed.
 - **Comparing two measures.** The Community Well-Being page can plot any two measures for every place at one level.
   The pattern is described with a rank (Spearman) correlation, which compares the order of places on each measure.
   Each place counts the same, whatever its population. No pattern is given for fewer than 30 places (districts). A
@@ -111,5 +115,5 @@ Downloads are cached in `data/raw/`, so a second run does not pull them again.
 - **Checks.** Two independent checks of the Ohio County Dashboard recomputed every measure from the publishers
   and matched every value. Ohio's crime rate is built the same way as the county rates, not taken from the FBI's
   statewide estimate. The Ohio Community Well-Being page had its own independent check on November 17, 2026. The
-  Georgia page had one on November 18, 2026. The Illinois page and the district pages have not had one yet. `TIEOUT.md` lists
+  Georgia and Illinois pages had theirs on November 18, 2026. The district pages have not had one yet. `TIEOUT.md` lists
   what has been checked and what has not.

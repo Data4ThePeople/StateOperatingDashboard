@@ -1404,6 +1404,55 @@ in the measure's units. Measures without a direction, and public money, use fift
 lines changed in 2020 and the district lines are new, so a tract shows its county's trend and a district shows
 Ohio's.
 
+## Prison and college towns (all three Community Well-Being pages)
+
+Some places have a large group of residents who move a measure for reasons that are not about the people who live
+there otherwise. The pages outline these places with a dashed line on the map, mark them with † in the ranked list,
+and add a note in the place's profile. They do not change any value. Built in `scripts/71_wb_data.py`, stored under
+`ctx` in each page's `data.json`.
+
+**Prison and jail towns.**
+- **Source.** 2020 census Demographic and Housing Characteristics file, table P18 (group quarters population by sex by
+  age by type): people 18 to 64 in correctional facilities for adults. The denominator is everyone 18 to 64 in
+  table P12. Both tables are published for tracts, counties and the state.
+- **Rule.** A place is flagged when adults in prisons and jails are 5% or more of its residents 18 to 64.
+- **Measures noted.** Prime-age workers with a job (people in prison count as not employed), and adults with a high
+  school diploma or more and with a bachelor's degree or more (they count among adults 25 and older). Poverty and
+  health insurance figures already leave out people in institutions. Where the prison note applies, it replaces the
+  general group quarters flag on prime-age workers.
+- **Districts** add up their tracts, weighted by the share of each tract's 2020 residents inside the line. No
+  district reaches 5% in any of the three states.
+- **Limits.** The counts are from April 2020. A prison that opened, closed or changed size since then is not reflected.
+- **Places flagged.**
+
+| State | Counties | Tracts |
+|---|---|---|
+| Ohio | 8 (Noble is highest at 26.7%) | 63 |
+| Georgia | 29 (Wheeler is highest at 45.2%) | 120 |
+| Illinois | 19 (Brown is highest at 37.3%) | 60 |
+
+**College towns.**
+- **Source.** American Community Survey 2020-2024 table B14006, poverty status by school enrollment, for people 3 and
+  older whose poverty status is known.
+- **What it measures.** Students in dorms are already left out of poverty figures. The flag measures how much
+  students living off campus raise the rate: the poverty rate, minus the rate after leaving out people enrolled in
+  college undergraduate years or graduate or professional school (both those below and those above the poverty line).
+- **Rule.** A place is flagged when leaving students out lowers the poverty rate by 3 points or more and at least
+  100 college and graduate students live there. The student floor keeps a handful of survey responses from flagging
+  a tract; it removes 3 Ohio tracts.
+- **Measures noted.** People in poverty and people below 200% of the poverty line. The note gives the drop in points.
+  No published figure leaves students out of the 200% measure, so its note gives the drop in the 100% poverty rate.
+- **Why points and not a second rate.** B14006 counts people 3 and older, so its poverty rate can differ from the
+  page's poverty rate for the same tract, by as much as 5.5 points in Ohio. The size of the drop is the useful part.
+- **Districts** add up their tracts' table lines with the same weights. No district reaches 3 points.
+- **Places flagged.**
+
+| State | Counties | Tracts |
+|---|---|---|
+| Ohio | 1 (Athens, 7.8 points) | 132 |
+| Georgia | 4 (Clarke, Bulloch, Baldwin and Lumpkin) | 145 |
+| Illinois | 4 (Champaign, Jackson, McDonough and McLean) | 150 |
+
 ## Georgia Community Well-Being page (same build, Georgia sources and differences)
 
 **What it is.** `dist/georgia/index.html`, built by the same scripts as the Ohio page with `D4TP_STATE=ga`

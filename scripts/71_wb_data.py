@@ -172,6 +172,46 @@ def aggregate(dicts, weights):
     return out
 
 
+# --- prison and college towns: places where one group moves a measure, flagged on the page (not changed)
+PRISON_MIN = 5.0     # adults 18 to 64 in prisons and jails (2020 census), % of all residents 18 to 64
+COLLEGE_MIN = 3.0    # percentage points the poverty rate falls when college and graduate students are left out
+COLLEGE_STUDENTS = 100   # and at least this many college and graduate students, so a handful of survey responses cannot flag a tract
+PRISON_MEASURES = {"prime_age_epop": "They count as not employed.",
+                   "hs_or_higher": "They count among adults 25 and older here.",
+                   "bachelors_or_higher": "They count among adults 25 and older here."}
+COLLEGE_MEASURES = ["poverty_rate", "below_200_share"]
+AGES_18_64 = ("18 and 19 years", "20 years", "21 years", "22 to 24 years", "25 to 29 years", "30 to 34 years",
+              "35 to 39 years", "40 to 44 years", "45 to 49 years", "50 to 54 years", "55 to 59 years",
+              "60 and 61 years", "62 to 64 years")
+
+
+def prison_counts():
+    """{tract, county FIPS or SK: (adults 18-64 in correctional facilities for adults, all residents 18-64)}, 2020 census DHC."""
+    def group(g):
+        return json.loads(cached(RAW / "census" / KEY / f"dhc_2020_{g}_vars.json",
+                                 f"https://api.census.gov/data/2020/dec/dhc/groups/{g}.json"))["variables"]
+    adults = [k for k, v in group("P12").items() if k.endswith("N") and v["label"].split("!!")[-1] in AGES_18_64]
+    pris = [k for k, v in group("P18").items() if k.endswith("N") and "18 to 64 years" in v["label"]
+            and v["label"].endswith("Correctional facilities for adults (101-106)")]
+    assert len(adults) == 26 and len(pris) == 2, (adults, pris)
+    out = {}
+    for g, q in (("tract", {"for": "tract:*", "in": f"state:{STF}"}), ("county", {"for": "county:*", "in": f"state:{STF}"}),
+                 ("state", {"for": f"state:{STF}"})):
+        for row in census("2020/dec/dhc", dict(get=",".join(pris + adults), **q), f"{KEY}/dhc_2020_prison_{g}.json"):
+            key = SK if g == "state" else row["state"] + row["county"] + (row.get("tract") or "")
+            out[key] = (sum(int(row[c]) for c in pris), sum(int(row[c]) for c in adults))
+    return out
+
+
+def college_poverty(d):
+    """(poverty rate, poverty rate leaving out college and graduate students, students) from B14006 lines, people 3 and older."""
+    g = lambda n: (d.get(f"B14006_{n:03d}") or (None,))[0]
+    t, bp, u, gr, ua, ga = g(1), g(2), g(9), g(10), g(19), g(20)
+    if None in (t, bp, u, gr, ua, ga) or t <= 0 or t - u - gr - ua - ga <= 0:
+        return None, None, 0
+    return bp / t * 100, (bp - u - gr) / (t - u - gr - ua - ga) * 100, u + gr + ua + ga
+
+
 def weak(v):
     est, moe = v
     if est is None:
@@ -664,11 +704,39 @@ if __name__ == "__main__":
             us[i] = nat[i]["us"]
     print("skipped (no data yet):", skipped)
 
+    # --- prison and college towns
+    pc = prison_counts()
+    cp = pull(2024, ["B14006"], [("tract", {"for": "tract:*", "in": f"state:{STF}"}), ("county", {"for": "county:*", "in": f"state:{STF}"}),
+                                 ("state", {"for": f"state:{STF}"})], "c")
+    for cd in cds:
+        w = dist_w[cd]
+        pc[cd] = (sum(pc[t][0] * x for t, x in w.items()), sum(pc[t][1] * x for t, x in w.items()))
+        cp[cd] = aggregate([cp[t] for t in w], list(w.values()))
+    def pshare(k):
+        n, a = pc.get(k, (0, 0))
+        return n / a * 100 if a else None
+    def cflag(k, test=False):
+        p, px, n = college_poverty(cp.get(k, {}))
+        if p is None or (test and (round(p - px, 1) < COLLEGE_MIN or n < COLLEGE_STUDENTS)):
+            return None
+        return [round(px, 1), round(p - px, 1)]
+    ctx = {"prison": {"min": PRISON_MIN, "measures": PRISON_MEASURES, "st": round(pshare(SK), 1)},
+           "college": {"min": COLLEGE_MIN, "students": COLLEGE_STUDENTS, "measures": COLLEGE_MEASURES, "st": cflag(SK)}}
+    for lv, keys in (("county", fips), ("district", cds), ("tract", tids)):
+        ctx["prison"][lv] = {k: round(pshare(k), 1) for k in keys if (pshare(k) or 0) >= PRISON_MIN}
+        ctx["college"][lv] = {k: cflag(k) for k in keys if cflag(k, test=True)}
+    split = [t for t in ctx["prison"]["tract"] if len(T[t]["cd"]) > 1]
+    print("prison towns:", {lv: len(ctx["prison"][lv]) for lv in ("county", "district", "tract")},
+          f"({len(split)} flagged tracts split by a district line)",
+          "| college towns:", {lv: len(ctx["college"][lv]) for lv in ("county", "district", "tract")})
+    print("   prison counties:", {GEO["counties"][f]["name"]: v for f, v in ctx["prison"]["county"].items()})
+    print("   college counties:", {GEO["counties"][f]["name"]: v for f, v in ctx["college"]["county"].items()})
+
     # trims: drop empty series
     series = {i: {g: s for g, s in v.items() if s and len(s) > 1} for i, v in series.items()}
     data = {"dims": WM.DIMENSIONS, "measures": measures, "tract_ids": tids, "county": county, "series": series,
             "district": district, "tract": tract, "tract_moe": tract_moe, "tract_weak": tract_weak,
-            SK: ohio, SK + "_moe": ohio_moe, "us": us, "cv_max": CV_MAX,
+            SK: ohio, SK + "_moe": ohio_moe, "us": us, "cv_max": CV_MAX, "ctx": ctx,
             "district_note": {cd: {"tracts": len(dist_w[cd]), "split": sum(1 for x in dist_w[cd].values() if x < 1)} for cd in cds}}
     write_json(f"{KEY}/data.json", data)
     # facts the page footer quotes for states other than Ohio (Ohio's footer was written by hand and checked)

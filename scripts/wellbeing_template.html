@@ -54,6 +54,11 @@ button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px so
    of 3,000+ tract shapes separately made every click at the tract level take about a quarter second to paint. */
 #map svg.hasSel > g.land{opacity:.3}
 #map path.co{fill:none;stroke:#55534e;stroke-width:.9;pointer-events:none}
+#map path.cxh{fill:none;stroke:#ffffff;stroke-width:3.2;pointer-events:none}
+#map path.cx{fill:none;stroke:#121212;stroke-width:1.6;stroke-dasharray:4 3;pointer-events:none}
+.legend i.cxk{background:transparent;border:1.6px dashed #121212;height:8px}
+.ctxn{margin-top:3px;color:var(--ink)}
+.ctxn::before{content:"Note: ";font-weight:700}
 #map svg.lv-county path.co{display:none}
 #map svg.lv-district path.u{stroke:#55534e;stroke-width:1.5}
 #map svg.lv-district path.co{stroke:#ffffff;stroke-width:.7}
@@ -152,6 +157,20 @@ for (const [id, s] of Object.entries(DATA.series)) DATA.series[id] = Object.from
 // tract values and shapes come from tracts.json (see loadTracts); until then the tract level shows a loading note
 let TID = [], TIX = {}, WEAK = {}, TREADY = false, TFAIL = false;
 GEO.tracts = {}; DATA.tract = {}; DATA.tract_moe = {};
+// Prison and college towns: places where one group moves a measure. They are outlined and noted, not changed.
+const CTX = DATA.ctx || {};
+const ctxOn = id => CTX.prison && CTX.prison.measures[id] ? "prison" : CTX.college && CTX.college.measures.includes(id) ? "college" : null;
+function ctxOf(id, lv, key){
+  const p = CTX.prison, c = CTX.college, out = [];
+  if (p && p.measures[id] && p[lv] && p[lv][key] != null)
+    out.push(`Prison or jail: about ${Math.round(p[lv][key])}% of residents 18 to 64 lived in one at the 2020 census. ${p.measures[id]}`);
+  if (c && c.measures.includes(id) && c[lv] && c[lv][key]){
+    const gap = c[lv][key][1];
+    out.push(`College town: college and graduate students living off campus count here. Leaving them out lowers the poverty rate by about ${gap.toFixed(1)} points.${id === "poverty_rate" ? "" : " (No figure leaves them out of this measure.)"}`);
+  }
+  return out;
+}
+const ctxCount = k => ["county", "district", "tract"].map(lv => { const n = Object.keys(CTX[k][lv] || {}).length; return `${n.toLocaleString("en-US")} ${n === 1 ? LVNAME[lv] : PL[lv]}`; }).join(", ");
 const DIMS = DATA.dims, DIM = Object.fromEntries(DIMS.map(d => [d.id, d]));
 const LEVELS = [["county","Counties"],["district","Congressional districts"],["tract","Census tracts"]];
 const LVNAME = {county:"county", district:"district", tract:"tract"};
@@ -293,6 +312,8 @@ function drawMap(){
     if (c.weak && c.v !== null) weak.push(`<path class="wk" d="${shape(lv, key).d}" fill="url(#weak)" pointer-events="none"/>`);
   });
   svg += parts.join("") + weak.join("");
+  const ck = ok ? ctxOn(id) : null, cxk = ck ? places(lv).filter(key => ctxOf(id, lv, key).length) : [];
+  if (cxk.length){ const d = cxk.map(key => shape(lv, key).d).join(""); svg += `<path class="cxh" d="${d}"/><path class="cx" d="${d}"/>`; }
   if (lv !== "county") svg += `<path class="co" d="${Object.values(GEO.counties).map(c => c.d).join("")}"/>`;
   svg += `</g>`;
   if (hl){   // the selected shape at full strength, above the faded map
@@ -322,11 +343,12 @@ function drawMap(){
   $("mapcard").innerHTML = `<h2>${esc(M[id].label)}</h2>
     <p class="sub">${esc(M[id].period_label || "")}, by ${LVNAME[lv]}. __SN__: <b>${fmt(ohio, id)}</b>${DATA.us[id] !== undefined && DATA.us[id] !== null ? ` · U.S.: ${fmt(DATA.us[id], id)}` : ""}${M[id].standard ? ` · ${esc(M[id].standard.src.replace(" national target", ""))}: ${fmt(M[id].standard.v, id)}` : ""}</p>
     <div id="map">${svg}<div class="zoomctl" role="group" aria-label="Map zoom"><button id="zin" aria-label="Zoom in" title="Zoom in">+</button><button id="zout" aria-label="Zoom out" title="Zoom out">&minus;</button><button id="zreset" class="rs" title="Show all of __SN__">Reset</button></div>${note}</div>
-    ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} ${{county:"counties", district:"districts", tract:"tracts"}[lv]})</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span></div>
+    ${ok ? `<div class="legend">${sc.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}${weakN ? `<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px)"></i>Hatched: uncertain estimate (${weakN.toLocaleString("en-US")} ${{county:"counties", district:"districts", tract:"tracts"}[lv]})</span>` : ""}<span><i style="background-image:repeating-linear-gradient(45deg,#8a8780 0 1px,#ffffff 1px 4px);border:1px solid var(--rule)"></i>No data</span>${cxk.length ? `<span><i class="cxk"></i>Dashed outline: ${ck === "prison" ? "prison or jail town" : "college town"} (${cxk.length.toLocaleString("en-US")} ${cxk.length === 1 ? LVNAME[lv] : PL[lv]}; see below)</span>` : ""}</div>
     <p class="sub">${sc.how} Use + and &minus; or pinch to zoom, and drag a zoomed map. Click a place for its profile; click it again to turn off its highlight. <button class="linkbtn" id="gocmp">Compare with another measure</button></p>
     <h3>${M[id].better === "none" ? "Highest first" : "Worst first"}</h3>
-    <div class="rank">${keys.slice(0, nShow).map((k, n) => `<div tabindex="0" data-k="${k}"><b>${rankOf(n)}</b><span class="nm">${esc(pname(lv, k))}${val(id, lv, k).weak ? " *" : ""}</span><span class="v">${fmt(val(id, lv, k).v, id)}</span></div>`).join("")}</div>
+    <div class="rank">${keys.slice(0, nShow).map((k, n) => `<div tabindex="0" data-k="${k}"><b>${rankOf(n)}</b><span class="nm">${esc(pname(lv, k))}${val(id, lv, k).weak ? " *" : ""}${cxk.includes(k) ? " †" : ""}</span><span class="v">${fmt(val(id, lv, k).v, id)}</span></div>`).join("")}</div>
     ${lv === "tract" ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate. Tracts with a college, prison or nursing home can show extreme values.</p>` : weakN ? `<p class="sub" style="margin:4px 0 0">* uncertain estimate: the margin of error is more than about half the value.</p>` : ""}
+    ${cxk.length ? `<p class="sub" style="margin:4px 0 0">† ${ck === "prison" ? `prison or jail town: adults in a prison or jail were ${CTX.prison.min}% or more of residents 18 to 64 at the 2020 census` : `college town: leaving out college and graduate students lowers the poverty rate by ${CTX.college.min} points or more`}. Click the place for details.</p>` : ""}
     <button class="linkbtn" id="all" style="margin-top:6px">${st.all ? "Show 10" : lv === "tract" ? "Show 100" : `Show all ${keys.length}`}</button>` : ""}`;
   wireMap();
 }
@@ -425,9 +447,9 @@ function measureRows(ids, placeVals){
     const ok = has(id, st.level), m = M[id];
     let main, cmp;
     if (placeVals){
-      const c = ok ? val(id, st.level, st.place) : null;
+      const c = ok ? val(id, st.level, st.place) : null, cxn = ok ? ctxOf(id, st.level, st.place) : [];   // a prison note replaces the general group quarters flag
       main = ok ? fmt(c.v, id) + fmtMoe(c.moe, id) : `<span class="moe">not for ${PL[st.level]}</span>`;
-      cmp = ok ? `__SN__ ${fmt(DATA.st[id], id)}${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${badge(vs(c.v, DATA.st[id], id))}${stdBadge(c.v, id)}${c.weak && c.v !== null ? ` <span class="weak">uncertain estimate</span>` : ""}${c.flag ? ` <span class="weak">${esc(c.flag)}</span>` : ""}`
+      cmp = ok ? `__SN__ ${fmt(DATA.st[id], id)}${DATA.us[id] != null ? " · U.S. " + fmt(DATA.us[id], id) : ""}${badge(vs(c.v, DATA.st[id], id))}${stdBadge(c.v, id)}${c.weak && c.v !== null ? ` <span class="weak">uncertain estimate</span>` : ""}${c.flag && !(cxn.length && /group quarters/.test(c.flag)) ? ` <span class="weak">${esc(c.flag)}</span>` : ""}${cxn.map(t => `<div class="ctxn">${esc(t)}</div>`).join("")}`
                : `__SN__ ${fmt(DATA.st[id], id)}`;
     } else {
       main = fmt(DATA.st[id], id);
@@ -508,6 +530,8 @@ function drawDetail(){
     <dl class="kv"><dt>Source</dt><dd>${esc(m.source || "")}</dd><dt>Period</dt><dd>${esc(m.period_label || "")}</dd>
       <dt>Levels</dt><dd>${m.levels.map(l => PL[l]).join(", ")}</dd>
       <dt>Margin of error</dt><dd>${m.source && /Community Survey/.test(m.source) ? "Survey estimate. ± is the 90% margin of error; estimates whose margin is more than about half the value are hatched on the map at every level." : /PLACES/.test(m.source || "") ? "Model estimate. ± is half of CDC's 95% interval." : "Counts and administrative records; no sampling margin, but small places can swing from year to year."}</dd>
+      ${ctxOn(id) === "prison" ? `<dt>Prison and jail towns</dt><dd>Adults in prisons and jails count as residents where the facility is. ${esc(CTX.prison.measures[id])} Where they were ${CTX.prison.min}% or more of residents 18 to 64 at the 2020 census, the place has a dashed outline on the map and a note in its profile: ${ctxCount("prison")}. Values are not changed.</dd>` : ""}
+      ${ctxOn(id) === "college" ? `<dt>College towns</dt><dd>College and graduate students living off campus count in poverty figures; students in dorms do not. Where leaving them out lowers the poverty rate by ${CTX.college.min} points or more, and at least ${CTX.college.students} students live there, the place has a dashed outline on the map and a note in its profile: ${ctxCount("college")}. Values are not changed. The size of the drop comes from Census table B14006, which counts residents 3 and older, so it can differ a little from a rate built from this measure's own table. For all of __SN__, leaving students out lowers the poverty rate by ${CTX.college.st ? CTX.college.st[1].toFixed(1) + " points" : "an amount not available"}.</dd>` : ""}
       ${m.standard ? `<dt>Standard</dt><dd>${fmt(m.standard.v, id)}: ${esc(m.standard.src)}. ${esc(m.standard.note || "")}</dd>` : ""}
       <dt>Who runs services</dt><dd>${esc(d.agencies || "")}</dd><dt>Main public programs</dt><dd>${esc(d.programs || "")}</dd>
       ${money.length ? `<dt>Public money</dt><dd>${money.map(i => `${esc(M[i].label)}: ${fmt(k && has(i, lv) ? val(i, lv, k).v : DATA.st[i], i)}${k && has(i, lv) ? "" : " (__SN__)"}`).join("; ")}. Spending is shown beside conditions; it does not show what the money caused.</dd>` : ""}

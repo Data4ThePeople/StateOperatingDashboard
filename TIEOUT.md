@@ -308,3 +308,11 @@ Knox, which is now low reporting. Fourteen counties change in at least one year 
 from 294 to 295 and from 1,513 to 1,517, and its 2015 figures from 305 to 272 and from 2,698 to 2,659, because
 Cleveland's 2015 file has a month with no property crimes. The earlier independent checks of the Ohio crime layer
 predate this rule. IL-6 does not change.
+
+## Prison and college town flags, November 18, 2026
+
+Added to all three Community Well-Being pages. Checked by Claude's own scripts (not independent): every existing value
+in the three `data.json` files is unchanged (only the new `ctx` key differs), and all three pages render without errors
+for every measure at every level and every county and district profile. The Ohio county list was first computed in a
+separate script from the same Census tables and matched, apart from the age range (18-64 in both, ACS denominator
+there, census denominator on the page). The flags have not had an independent tie-out.
