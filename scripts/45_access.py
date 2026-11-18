@@ -352,9 +352,10 @@ def main():
     lib_note = ("Each library system is counted in the county of its main office and divided by the "
                 "county's whole population. Some systems serve school districts that reach into a neighboring "
                 f"county. The {SNAME} figure adds up all {SNAME} systems.") if ST_ID == "oh" else (
-                f"Most {SNAME} library systems serve several counties. Each system's total is split among the counties "
-                "where it has a library building, by population, so every county in a regional system shows that "
-                f"system's per-person figure. The {SNAME} figure adds up all {SNAME} systems.")
+                f"{len(multi[latest_fy])} of {lib[latest_fy][5]} {SNAME} library systems have a central or branch library in "
+                "more than one county. Each such system's total is split among those counties by population, so they "
+                f"share its per-person figure; other systems count in their own county. The {SNAME} figure adds up all "
+                f"{SNAME} systems.")
     metrics["library_spend_per_capita"] = {
         "label": "Public library spending per person", "theme": "people", "unit": "usd", "decimals": 2,
         "better": "higher", "source": "Institute of Museum and Library Services, Public Libraries Survey; Census Bureau population estimates",

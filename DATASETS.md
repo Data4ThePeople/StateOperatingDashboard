@@ -1374,7 +1374,7 @@ are not shown for districts.
 
 **CDC PLACES at all three levels.** Crude prevalence (not age-adjusted) everywhere, so levels compare. County values
 are CDC's county estimates (dataset swc5-untb, 2025 release); the county dashboard shows the age-adjusted ones, so the
-two pages differ slightly. Ohio is the tract values weighted by adults 18 and older, since CDC publishes no state
+two pages differ slightly. Ohio is the tract values weighted by adults 18 and older (PLACES' own `totalpop18plus` count), since CDC publishes no state
 value in this form. CDC says estimates from different PLACES releases should not be compared over time, so PLACES
 measures have no trend line.
 
@@ -1506,10 +1506,13 @@ township, as in Ohio.
 one Excel file per report card year
 (https://www.isbe.net/Pages/Illinois-State-Report-Card-Data.aspx). Report card year Y covers the school year
 ending in spring Y. District rows are used, and each district is placed in the county ISBE lists for it. ISBE's
-county numbers are in its own alphabetical order, not FIPS order, so counties are matched by name.
+county numbers are in its own alphabetical order, not FIPS order, so counties are matched by name, ignoring spaces
+and periods and reading "Saint" as "St." Rows with no county ("State Of Illinois": the state lab schools and the
+Illinois Mathematics and Science Academy; "Dept Of Corrections") are left out of counties and of the Illinois figure.
 
 Third grade results:
-- The measure is the IAR proficiency rate on the "IAR" sheet: Proficient or Above Proficient.
+- The measure is the IAR proficiency rate on the "IAR" sheet: Proficient or Above Proficient. Every district row with
+  third grade enrollment counts, whatever its type, including charter schools that are their own districts.
 - Illinois set new proficiency levels starting with the spring 2025 tests, and ISBE says not to compare those
   results with earlier years. The figures therefore start in 2024-2025.
 - County figures weight each district by its third grade enrollment ("General" sheet) times its IAR participation
@@ -1521,7 +1524,8 @@ Third grade results:
 Chronic absence:
 - The measure is ISBE's "Chronic Absenteeism" rate, weighted by total enrollment.
 - It covers elementary, high school and unit districts, with district type codes 02-05, 13-17 and 22-27 in the
-  RCDTS code. Charter schools that are their own districts and regional programs are left out.
+  RCDTS code. Left out: charter schools that are their own districts (district numbers 9000 and up, which share
+  type code 25 with Chicago) and administrative agents (type 80: cooperative high schools and the state lab schools).
 - Each student attends one district, so overlapping elementary and high school districts do not count anyone twice.
 - School years 2017-2018 to 2025-2026 are used, except 2019-2020.
 
@@ -1532,28 +1536,34 @@ layer's extras.
 half of Illinois's counties have no office of their own. Illinois therefore shows only the state figure, and the
 Well-Being page leaves out the county measure.
 
-**Libraries (IMLS Public Libraries Survey).** Each library is placed in the county of its main office, as in Ohio.
-County names are matched without spaces or periods (LA SALLE = LaSalle, DE KALB = DeKalb). Each Illinois library
-reports for its own 12-month fiscal year.
+**Libraries (IMLS Public Libraries Survey).** The same rule as Georgia: a system with a central or branch library in
+more than one county is split among those counties by population, and other systems count in their own county. In
+FY2024, 8 of 623 Illinois systems have buildings in more than one county. County names are matched without spaces or
+periods (LA SALLE = LaSalle, DE KALB = DeKalb). Each Illinois library reports for its own 12-month fiscal year.
 
 **School finance (Census Annual Survey of School System Finances).** Elementary-only (01), high school-only (02) and
-unit (03) districts are used. Each student attends one district, so overlapping districts do not double count. The
+unit (03) districts are used, each placed in the county the Census file gives (CONUM). Each student attends one
+district, so overlapping districts do not double count. The
 nonoperating district (06) and the special education and vocational cooperatives (07) are left out. Charter schools
 that are their own districts are not in this survey.
 
 **Election returns (MEDSL 2024 precinct file).** Illinois's file has rows for undervotes, overvotes and blank ballots,
 and one lump of write-in votes that includes names the state does not count. Those rows are left out. The county
-sum is then within 919 votes of the official state total, which counts declared write-in candidates.
+sum is then within 919 votes of the official state total, which counts declared write-in candidates. As in Ohio, the
+Illinois figure uses the official state total.
 
-**Crime (FBI Return A).** Illinois's UCR state code is 12. Illinois State Police units, one per county (ORI ending in
-SP) plus group 9E, are left out of county totals. The files number counties in FIPS order. Coverage fell to 25% of
+**Crime (FBI Return A).** Illinois's UCR state code is 12. Illinois State Police units are left out of county
+totals: one per county (ORI ending in SP) plus those in agency groups 8E and 9E, the same groups left out for Ohio. The files number counties in FIPS order. Coverage fell to 25% of
 Illinois residents in 2021, the year Chicago reported 6 months, so most counties have no 2021 figure. The zero-month
 rule described under Georgia also applies.
 
 **Jobs (QCEW).** Where BLS withholds a county's private total, its industry shares are left blank.
 
 **Child care.** Illinois Early Childhood Asset Map (IECAM, University of Illinois) public map layers for fiscal year
-2025: licensed child care centers and licensed family child care homes, each with a mapped location and an ExceleRate
-Illinois rating (Licensed, Bronze, Silver or Gold Circle of Quality). Programs are placed in tracts by location, as
-in Ohio. The rated share counts Silver and Gold, as Ohio counts Silver and Gold in Step Up To Quality. The state
+2025: licensed child care centers
+(`https://services.arcgis.com/GL0fWlNkwysZaKeV/arcgis/rest/services/Licensed_Child_Care_Center_FY2025/FeatureServer/3`)
+and licensed family child care homes (`.../Licensed_Family_Child_Care_Homes_FY2025/FeatureServer/5`), both last
+edited June 23, 2026. Each program has a mapped location and an ExceleRate Illinois rating (Licensed, Bronze, Silver
+or Gold Circle of Quality). Programs are placed in tracts by location, as in Ohio. The rated share counts Silver and
+Gold, as Ohio counts Silver and Gold in Step Up To Quality; "Licensed" and Bronze count as not rated Silver or Gold. The state
 licensing list (DCFS) has more programs, including school-age-only ones, but it has no ratings.

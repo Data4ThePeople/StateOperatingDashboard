@@ -269,4 +269,32 @@ were rerun after the Illinois changes and still match the earlier build exactly,
 - **Rendering.** The page renders without errors for every measure at every level, and for every county and
   district profile on every tab.
 
-**Not checked yet.** No independent tie-out of the Illinois page.
+**Independent tie-out, November 18, 2026.** A fresh agent that had not seen the build pulled every source again
+and recomputed 24 measures from the method in `DATASETS.md`. It covered ACS (all counties, tracts and districts),
+LAUS, PLACES, ISBE, FBI, IECAM, IMLS, Census school finance and MEDSL, for Hardin, Pope, Calhoun, Cook, DuPage, Lake,
+Champaign and Illinois. Every value it recomputed matched the page at full precision. It also confirmed that the
+page's embedded data matches `data.json` exactly.
+
+The written method disagreed with the output in two places, both now fixed:
+- **Libraries.** The page split multi-county systems by population, the Georgia rule, but the text said main office.
+  The text now describes the split. The page note no longer says most Illinois systems serve several counties: 8 of
+  623 do.
+- **Chronic absence.** Charter schools that are their own districts share type code 25 with Chicago and had been
+  included. They are now left out, as the method says. Lake goes from 19.2 to 19.3 and Kane from 23.2 to 23.3.
+  Illinois and Cook do not change at display precision.
+
+Vague wording was also fixed:
+- the IECAM layer URLs and how "Licensed" ratings count,
+- which rows the third grade and Illinois figures leave out,
+- "Saint Clair" name matching,
+- the school finance county field,
+- the PLACES adult count,
+- the official turnout total, and
+- the state police groups.
+
+**Not checked.**
+- HUD: the agent's downloads were refused by the site.
+- Point-in-tract placement of child care programs. IECAM's own county field reproduces every county.
+- District median income.
+- Trend lines.
+- QCEW, BEA, SAIPE, County Health Rankings, FARS, overdose deaths and County Business Patterns.

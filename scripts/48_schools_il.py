@@ -122,7 +122,8 @@ for y in FILES:
         if f is None:
             out_of["no county"] += 1
             continue
-        if d["rcdts"][9:11] not in TRADITIONAL:
+        # charter schools that are their own districts carry district numbers 9000 and up (type code 25, like Chicago)
+        if d["rcdts"][9:11] not in TRADITIONAL or d["rcdts"][5] == "9":
             out_of["not a traditional district"] += 1
             continue
         n, p = num(d[wcol]), num(d["Chronic Absenteeism"])
