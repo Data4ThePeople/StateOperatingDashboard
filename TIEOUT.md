@@ -315,4 +315,17 @@ Added to all three Community Well-Being pages. Checked by Claude's own scripts (
 in the three `data.json` files is unchanged (only the new `ctx` key differs), and all three pages render without errors
 for every measure at every level and every county and district profile. An earlier exploratory script flagged the
 same 8 Ohio counties, but it divided by the ACS 2020-2024 count of residents 18 to 64 instead of the 2020 census
-count, so its shares differ (Noble 32.9% there, 26.7% on the page). The flags have not had an independent tie-out.
+count, so its shares differ (Noble 32.9% there, 26.7% on the page). **Independent tie-out, November 18, 2026.** A fresh agent pulled DHC P12 and P18 and ACS B14006 again and recomputed
+the flags from the method in `DATASETS.md`.
+- Prison flags matched exactly at every level in all three states, including shares at 0.1 and state values.
+- College flags matched for counties, districts and states. At the tract level the page flagged 9 extra tracts
+  (4 Ohio, 3 Georgia, 2 Illinois), each with a true drop between 2.95 and 3.0 points: the code rounded the drop
+  before comparing it with 3. Fixed; the counts are now 128, 142 and 148.
+- The embedded page data matched `data.json`. Outlines appear only on the five listed measures, and note numbers and
+  "About this measure" counts matched on all three pages.
+- Write-up fixes: the student floor removes 2 Ohio tracts, not 3. The two poverty tables differ by up to 10.6 points
+  in one tract, not 5.5. The 18 to 64 age range is now described as a stand-in for 25 to 54.
+
+Open: many college tract flags have a margin of error as large as the drop. That is described in `DATASETS.md` but
+the rule is unchanged, pending Eric's decision. The agent did not check facility lists for the smallest prison
+tracts, and its margins of error are approximate.

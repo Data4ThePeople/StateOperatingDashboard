@@ -717,7 +717,7 @@ if __name__ == "__main__":
         return n / a * 100 if a else None
     def cflag(k, test=False):
         p, px, n = college_poverty(cp.get(k, {}))
-        if p is None or (test and (round(p - px, 1) < COLLEGE_MIN or n < COLLEGE_STUDENTS)):
+        if p is None or (test and (p - px < COLLEGE_MIN or n < COLLEGE_STUDENTS)):    # unrounded, like the prison rule
             return None
         return [round(px, 1), round(p - px, 1)]
     ctx = {"prison": {"min": PRISON_MIN, "measures": PRISON_MEASURES, "st": round(pshare(SK), 1)},

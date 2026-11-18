@@ -1415,7 +1415,13 @@ and add a note in the place's profile. They do not change any value. Built in `s
 - **Source.** 2020 census Demographic and Housing Characteristics file, table P18 (group quarters population by sex by
   age by type): people 18 to 64 in correctional facilities for adults. The denominator is everyone 18 to 64 in
   table P12. Both tables are published for tracts, counties and the state.
-- **Rule.** A place is flagged when adults in prisons and jails are 5% or more of its residents 18 to 64.
+- **Rule.** A place is flagged when adults in prisons and jails are 5% or more of its residents 18 to 64, before
+  rounding.
+- **Age range.** Prime-age workers are 25 to 54, but the census publishes prison counts by detailed age (table
+  PCO3) only for counties and up. Tracts have only 18 to 64 (P18), so every level uses 18 to 64 for one rule. It is a
+  stand-in: in counties, the 25 to 54 share runs about 15% to 25% higher (Noble 33.4% instead of 26.7%). A 25 to 54
+  rule would also flag Columbiana (Ohio), Bulloch (Georgia), and Pulaski and Vermilion (Illinois) on prime-age
+  workers.
 - **Measures noted.** Prime-age workers with a job (people in prison count as not employed), and adults with a high
   school diploma or more and with a bachelor's degree or more (they count among adults 25 and older). Poverty and
   health insurance figures already leave out people in institutions. Where the prison note applies, it replaces the
@@ -1423,6 +1429,8 @@ and add a note in the place's profile. They do not change any value. Built in `s
 - **Districts** add up their tracts, weighted by the share of each tract's 2020 residents inside the line. No
   district reaches 5% in any of the three states.
 - **Limits.** The counts are from April 2020. A prison that opened, closed or changed size since then is not reflected.
+  Census group quarters counts include the noise the Census Bureau adds to protect privacy, so a tract within a few
+  people of 5% could fall on either side.
 - **Places flagged.**
 
 | State | Counties | Tracts |
@@ -1437,21 +1445,24 @@ and add a note in the place's profile. They do not change any value. Built in `s
 - **What it measures.** Students in dorms are already left out of poverty figures. The flag measures how much
   students living off campus raise the rate: the poverty rate, minus the rate after leaving out people enrolled in
   college undergraduate years or graduate or professional school (both those below and those above the poverty line).
-- **Rule.** A place is flagged when leaving students out lowers the poverty rate by 3 points or more and at least
-  100 college and graduate students live there. The student floor keeps a handful of survey responses from flagging
-  a tract; it removes 3 Ohio tracts.
+- **Rule.** A place is flagged when leaving students out lowers the poverty rate by 3 points or more, before
+  rounding, and at least 100 college and graduate students live there. The student floor keeps a handful of survey
+  responses from flagging a tract; it removes 2 tracts in Ohio, 4 in Georgia and 4 in Illinois.
+- **Survey error.** The drop is a survey estimate. In many flagged tracts its margin of error is as large as the drop
+  itself, so a tract near 3 points could fall on either side. The flag is a caution, not a finding about the tract.
 - **Measures noted.** People in poverty and people below 200% of the poverty line. The note gives the drop in points.
   No published figure leaves students out of the 200% measure, so its note gives the drop in the 100% poverty rate.
 - **Why points and not a second rate.** B14006 counts people 3 and older, so its poverty rate can differ from the
-  page's poverty rate for the same tract, by as much as 5.5 points in Ohio. The size of the drop is the useful part.
+  page's poverty rate for the same tract. In 95% of tracts the two are within 2 points, but they differ by as much
+  as 10.6 points in one Ohio tract. The size of the drop is the useful part.
 - **Districts** add up their tracts' table lines with the same weights. No district reaches 3 points.
 - **Places flagged.**
 
 | State | Counties | Tracts |
 |---|---|---|
-| Ohio | 1 (Athens, 7.8 points) | 132 |
-| Georgia | 4 (Clarke, Bulloch, Baldwin and Lumpkin) | 145 |
-| Illinois | 4 (Champaign, Jackson, McDonough and McLean) | 150 |
+| Ohio | 1 (Athens, 7.8 points) | 128 |
+| Georgia | 4 (Clarke, Bulloch, Baldwin and Lumpkin) | 142 |
+| Illinois | 4 (Champaign, Jackson, McDonough and McLean) | 148 |
 
 ## Georgia Community Well-Being page (same build, Georgia sources and differences)
 
