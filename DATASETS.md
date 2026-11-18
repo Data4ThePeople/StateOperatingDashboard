@@ -594,13 +594,14 @@ The owner asked for "petty crime." The FBI has no category by that name; propert
 
 **Version and vintage.** The 2025 file is dated 2026-05-07. The CDE site says its crime data were refreshed 2026-10-15, so the website can show counts a little higher than the master file. Example: Columbus Police, 2025 violent crime, 3,517 in the master file and 3,590 on the CDE agency page (most of the gap is rape, 987 vs. 1,040). Vinton County Sheriff: 21 vs. 22 violent, 40 vs. 40 property.
 
-**Coverage.** 2015 through 2025. Ohio has about 950 agencies in each file. About half of them sent all 12 months in a given year. Statewide, agencies that sent all 12 months served 84.7% to 90.4% of Ohioans, depending on the year (86.3% in 2025).
+**Coverage.** 2015 through 2025. Ohio has about 950 agencies in each file. About half of them sent all 12 months in a given year. Statewide, agencies that sent all 12 months served 80.7% to 90.4% of Ohioans, depending on the year (85.6% in 2025).
 
 How we build a county figure:
 
 - **Offenses.** Violent crime is murder and nonnegligent manslaughter, rape, robbery and aggravated assault. Return A's assault total includes simple assault, so aggravated assault is the assault total minus simple assault. Property crime is burglary, larceny-theft and motor vehicle theft.
 - **Reported month.** A month counts as reported when the record shows a nonzero date of last update (including a month with card type 4, "not available", and zero counts), or an actual-offense card of type 5 (submitted). We checked this against the participation numbers on the CDE agency pages for 24 Ohio agencies in 2019, 2021 and 2025: 859 of 864 agency-months agreed. In the other 5, the CDE page showed a report that the master file did not.
 - **Full-year agencies only.** An agency counts toward a county's rate only if it reported all 12 months. We do not fill in missing months.
+- **Zero months (added November 18, 2026, for every state).** A month marked as reported but with no burglary, theft or vehicle theft at all counts as not reported when the agency averages 10 or more of those crimes in its other reported months, since a true zero is then very unlikely. In Ohio this removes 0 to 6 agencies a year. The largest is Cleveland in 2015, which has one month with no property crimes against about 1,300 in a typical month; Cuyahoga's 2015 figure is therefore marked low reporting, and Ohio's 2015 rate falls from 305 to 272 violent crimes per 100,000. Others include Butler County's sheriff in 2021 and Strongsville in 2025. The 2025 Ohio figures change from 294 to 295 (violent) and 1,513 to 1,517 (property).
 - **County assignment.** The FBI codes each agency's population to up to three counties. UCR county codes number Ohio's counties A to Z (1 = Adams, 88 = Wyandot), so FIPS = 2 x code - 1. We use the FBI's county fields, not our own geography.
 - **Agencies spanning counties.** 54 Ohio agencies had population in more than one county in 2025 (Columbus covers parts of Franklin, Delaware and Fairfield). We split the population as the FBI does. The FBI does not split offenses by county, so we split them in the same shares as the population. This assumes crime is spread evenly across an agency's area.
 - **Agencies covered by another agency.** Some small departments do not report on their own; a sheriff or nearby city reports for them. The FBI puts their offenses and their population in the covering agency's record, so we skip the covered agency to avoid counting it twice. With this rule, the FBI's county populations add up to the Census estimate for Ohio exactly in 2025 (11,900,510), and each county is within 2.3% of its Census estimate.
@@ -609,7 +610,7 @@ How we build a county figure:
 - **Rate.** Offenses of full-year agencies divided by the population those same agencies serve, times 100,000. The denominator is the covered population, not the full county.
 - **Coverage.** Population served by full-year agencies divided by the population of all agencies coded to the county, as a percent. Stored by year in `extras.coverage`. When it is below 80%, the county value is null with the flag "low reporting (<80% of people covered)".
 
-Counties below 80% coverage, by year: 2015: 22; 2016: 21; 2017: 24; 2018: 21; 2019: 24; 2020: 27; 2021: 31; 2022: 24; 2023: 25; 2024: 22; 2025: 29. The 2025 list includes some large counties (for example Lorain, Mahoning, Greene, Clark, Trumbull and Wood), where a main department sent fewer than 12 months to the FBI in time for the master file.
+Counties below 80% coverage, by year: 2015: 23; 2016: 23; 2017: 26; 2018: 22; 2019: 24; 2020: 30; 2021: 32; 2022: 24; 2023: 27; 2024: 22; 2025: 30. The 2025 list includes some large counties (for example Lorain, Mahoning, Greene, Clark, Trumbull and Wood), where a main department sent fewer than 12 months to the FBI in time for the master file.
 
 **Changes over time.** On January 1, 2021, the FBI stopped taking summary (SRS) reports and moved to NIBRS-only collection. Agencies that had not switched to NIBRS had no way to send data for 2021. From 2022 the FBI again accepted SRS reports from agencies that had not switched. Ohio has run its own incident-based system (OIBRS) for many years, so most Ohio agencies were already on NIBRS, and the effect was smaller than in many states: statewide coverage fell from 87.2% in 2020 to 85.3% in 2021, and counties below 80% rose from 27 to 31, then came back to 24 in 2022. Vinton County fell to 12.4% coverage in 2021 and is null that year. For NIBRS agencies, the FBI converts incident reports into Return A counts by applying the Hierarchy Rule (only the most serious offense in an incident counts), so NIBRS and SRS agencies are counted the same way in this file. The FBI broadened its rape definition in 2013 and stopped accepting the old definition in 2017; in 2015 and 2016 a few SRS agencies may still have used the old, narrower definition.
 
@@ -1475,8 +1476,9 @@ of county totals, as the Ohio State Highway Patrol is for Ohio. The files number
 McIntosh before Macon), which was checked against known agencies (Atlanta in Fulton and DeKalb, Savannah in
 Chatham, Augusta in Richmond, Thomson in McDuffie). Reporting coverage fell in 2019 as Georgia moved to the FBI's
 newer reporting system, and many counties are below 80% coverage in later years. The same coverage rules as Ohio
-apply, with one addition for Georgia and Illinois. A month marked as reported but with no burglary, theft or vehicle
-theft at all counts as not reported when the agency averages 10 or more of those crimes in its other reported months.
+apply, including the zero-month rule in the FBI Return A section: a month marked as reported but with no burglary,
+theft or vehicle theft at all counts as not reported when the agency averages 10 or more of those crimes in its other
+reported months.
 Savannah's 2025 file is marked complete but has no thefts in 8 months, so Chatham County is shown as low reporting
 for 2025.
 
@@ -1555,7 +1557,7 @@ Illinois figure uses the official state total.
 **Crime (FBI Return A).** Illinois's UCR state code is 12. Illinois State Police units are left out of county
 totals: one per county (ORI ending in SP) plus those in agency groups 8E and 9E, the same groups left out for Ohio. The files number counties in FIPS order. Coverage fell to 25% of
 Illinois residents in 2021, the year Chicago reported 6 months, so most counties have no 2021 figure. The zero-month
-rule described under Georgia also applies.
+rule in the FBI Return A section also applies.
 
 **Jobs (QCEW).** Where BLS withholds a county's private total, its industry shares are left blank.
 

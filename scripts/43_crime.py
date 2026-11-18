@@ -98,11 +98,10 @@ def parse_year(year):
         # A month marked as reported but with no burglary, theft or vehicle theft at all is treated as not reported
         # when the agency averages 10 or more of those crimes in its other reported months (a true zero is then very
         # unlikely): Savannah's 2025 file is marked complete but has no thefts in 8 months. Such an agency then does
-        # not count as reporting all 12 months. Georgia and Illinois only for now; Ohio's published figures predate it.
-        if CFG.get("zero_month_check"):
-            other = [p for ok, p in zip(months, mprop) if ok and p > 0]
-            if other and sum(other) / len(other) >= 10:
-                months = [ok and p != 0 for ok, p in zip(months, mprop)]
+        # not count as reporting all 12 months.
+        other = [p for ok, p in zip(months, mprop) if ok and p > 0]
+        if other and sum(other) / len(other) >= 10:
+            months = [ok and p != 0 for ok, p in zip(months, mprop)]
         rec = {"ori": a["ori"], "group": a["group"], "covered_by": a["covered_by"].strip(),
                "name": a["name"].strip(), "months": months, "off": off, "pops": pops}
         if rec["ori"] in out:   # a few duplicate rows: keep the one with more reported months

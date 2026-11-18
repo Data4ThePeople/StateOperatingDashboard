@@ -38,7 +38,6 @@ STATES = {
         "lat": 32.7,
         "ucr": "10",
         "state_police_ori": "GAGSP",
-        "zero_month_check": True,  # see 43_crime.py
         "page": "georgia",
         "district_map": "2023 map, first used in 2024",
         "district_year": "2023",
@@ -67,7 +66,6 @@ STATES = {
         "ucr": "12",
         # Illinois State Police appear as one unit per county (IL001SP ... ADAMS STATE POLICE) and group 9E units
         "state_police_ori": r"IL\d{3}SP$",
-        "zero_month_check": True,
         "page": "illinois",
         "district_map": "2021 map, first used in 2022",
         "district_year": "2021",

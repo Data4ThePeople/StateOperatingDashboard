@@ -298,3 +298,13 @@ Vague wording was also fixed:
 - District median income.
 - Trend lines.
 - QCEW, BEA, SAIPE, County Health Rankings, FARS, overdose deaths and County Business Patterns.
+
+## Zero-month crime rule applied to Ohio, November 18, 2026
+
+At Eric's request the zero-month rule (DATASETS.md, FBI Return A) now applies to Ohio as well as Georgia and
+Illinois. Ohio's county dashboard, Well-Being page and OH-10 page were rebuilt. The displayed latest values changed for
+three counties: Butler (violent 149 to 143, property 1,417 to 1,385), Cuyahoga (542 to 563, 1,908 to 1,958) and
+Knox, which is now low reporting. Fourteen counties change in at least one year of history. Ohio's 2025 figures move
+from 294 to 295 and from 1,513 to 1,517, and its 2015 figures from 305 to 272 and from 2,698 to 2,659, because
+Cleveland's 2015 file has a month with no property crimes. The earlier independent checks of the Ohio crime layer
+predate this rule. IL-6 does not change.
