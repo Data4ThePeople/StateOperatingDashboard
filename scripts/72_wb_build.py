@@ -1,5 +1,5 @@
 """Build dist/<page>/index.html (dist/wellbeing for Ohio, dist/georgia for Georgia; see states.py) from
-scripts/wellbeing_template.html and <PROC>/wellbeing/{data,geo}.json, and write docs/MEASURES.md (MEASURES_GA.md for Georgia) (the measure list, for review) from the same data.
+scripts/wellbeing_template.html and <PROC>/wellbeing/{data,geo}.json, and write docs/MEASURES.md (MEASURES_<abbr>.md for other states) (the measure list, for review) from the same data.
 
 The page is split in two to load faster. index.html holds the counties, districts, Ohio and U.S. figures and the trend
 series. tracts.json holds the 3,161 tract values, margins of error and shapes; the page requests it right after the

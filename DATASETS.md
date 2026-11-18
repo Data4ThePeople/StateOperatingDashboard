@@ -1488,3 +1488,72 @@ https://families.decal.ga.gov/Provider/Data into `data/raw/ga/decal/`. Licensed 
 family child care learning homes serving children under 5 are geocoded with the Census batch geocoder. The rated
 share counts Quality Rated programs with 2 or 3 stars. Until that file is saved, the page has no child care
 measures for Georgia.
+
+## Illinois Community Well-Being page (same build, Illinois sources and differences)
+
+**What it is.** `dist/illinois/index.html`, built by the same scripts with `D4TP_STATE=il`. It covers Illinois's 102
+counties, its 17 congressional districts and its 2020 census tracts, with the same measures, roles, standards,
+colors and comparisons as the Ohio page, except where noted here. Layer files are in `data/processed/il/` and raw
+downloads in `data/raw/il/`. `docs/MEASURES_IL.md` is written from the measure list.
+
+**Congressional districts.** The map Illinois enacted in 2021, first used in the 2022 election, from the Census
+Bureau's 119th Congress block assignment file. Illinois's lines are the same in the 120th Congress file. Water blocks
+in Lake Michigan assigned to no district ("ZZ") have no residents and are dropped. The 17 districts have 753,676 or
+753,677 residents in 2020, and the blocks sum to Illinois's 12,812,508. Tracts outside a census place are named by
+township, as in Ohio.
+
+**Schools (`scripts/48_schools_il.py`).** Illinois State Board of Education (ISBE) Report Card Public Data Set,
+one Excel file per report card year
+(https://www.isbe.net/Pages/Illinois-State-Report-Card-Data.aspx). Report card year Y covers the school year
+ending in spring Y. District rows are used, and each district is placed in the county ISBE lists for it. ISBE's
+county numbers are in its own alphabetical order, not FIPS order, so counties are matched by name.
+
+Third grade results:
+- The measure is the IAR proficiency rate on the "IAR" sheet: Proficient or Above Proficient.
+- Illinois set new proficiency levels starting with the spring 2025 tests, and ISBE says not to compare those
+  results with earlier years. The figures therefore start in 2024-2025.
+- County figures weight each district by its third grade enrollment ("General" sheet) times its IAR participation
+  rate.
+- ISBE does not report a district's rate when fewer than 10 students were tested, and in 2025-2026 also when fewer
+  than 10 were proficient. Those districts are left out. A county where they hold a quarter or more of third grade
+  enrollment shows no value.
+
+Chronic absence:
+- The measure is ISBE's "Chronic Absenteeism" rate, weighted by total enrollment.
+- It covers elementary, high school and unit districts, with district type codes 02-05, 13-17 and 22-27 in the
+  RCDTS code. Charter schools that are their own districts and regional programs are left out.
+- Each student attends one district, so overlapping elementary and high school districts do not count anyone twice.
+- School years 2017-2018 to 2025-2026 are used, except 2019-2020.
+
+The Illinois figures are built the same way from the same districts. ISBE's own statewide figures are kept in the
+layer's extras.
+
+**SNAP (FNS-388A county file).** FNS's Illinois lines are Department of Human Services offices, not counties. About
+half of Illinois's counties have no office of their own. Illinois therefore shows only the state figure, and the
+Well-Being page leaves out the county measure.
+
+**Libraries (IMLS Public Libraries Survey).** Each library is placed in the county of its main office, as in Ohio.
+County names are matched without spaces or periods (LA SALLE = LaSalle, DE KALB = DeKalb). Each Illinois library
+reports for its own 12-month fiscal year.
+
+**School finance (Census Annual Survey of School System Finances).** Elementary-only (01), high school-only (02) and
+unit (03) districts are used. Each student attends one district, so overlapping districts do not double count. The
+nonoperating district (06) and the special education and vocational cooperatives (07) are left out. Charter schools
+that are their own districts are not in this survey.
+
+**Election returns (MEDSL 2024 precinct file).** Illinois's file has rows for undervotes, overvotes and blank ballots,
+and one lump of write-in votes that includes names the state does not count. Those rows are left out. The county
+sum is then within 919 votes of the official state total, which counts declared write-in candidates.
+
+**Crime (FBI Return A).** Illinois's UCR state code is 12. Illinois State Police units, one per county (ORI ending in
+SP) plus group 9E, are left out of county totals. The files number counties in FIPS order. Coverage fell to 25% of
+Illinois residents in 2021, the year Chicago reported 6 months, so most counties have no 2021 figure. The zero-month
+rule described under Georgia also applies.
+
+**Jobs (QCEW).** Where BLS withholds a county's private total, its industry shares are left blank.
+
+**Child care.** Illinois Early Childhood Asset Map (IECAM, University of Illinois) public map layers for fiscal year
+2025: licensed child care centers and licensed family child care homes, each with a mapped location and an ExceleRate
+Illinois rating (Licensed, Bronze, Silver or Gold Circle of Quality). Programs are placed in tracts by location, as
+in Ohio. The rated share counts Silver and Gold, as Ohio counts Silver and Gold in Step Up To Quality. The state
+licensing list (DCFS) has more programs, including school-age-only ones, but it has no ratings.

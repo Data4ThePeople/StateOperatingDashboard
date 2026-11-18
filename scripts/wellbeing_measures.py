@@ -196,6 +196,49 @@ STATE_TEXT = {
                    "transit agencies; the state broadband office; county boards of elections and registration.",
                    "State library funding, transit funding, broadband expansion grants, park and recreation programs."),
     },
+    "il": {
+        "childcare": ("Illinois Department of Early Childhood (child care licensing, the Child Care Assistance Program and "
+                      "Preschool for All, since July 2026; licensing was with the Department of Children and Family "
+                      "Services before then); ExceleRate Illinois; U.S. Department of Health and Human Services, "
+                      "Administration for Children and Families (Child Care and Development Fund, Head Start).",
+                      "Child Care Assistance Program, ExceleRate Illinois, Preschool for All, Head Start and Early Head "
+                      "Start."),
+        "education": ("Local school districts and charter schools; Illinois State Board of Education and Regional Offices "
+                      "of Education; U.S. Department of Education (Title I, special education).",
+                      "Evidence-Based Funding state aid, Title I, IDEA special education, school meals."),
+        "economic": ("Illinois Department of Human Services (SNAP, TANF cash aid); USDA Food and Nutrition Service (SNAP); "
+                     "Social Security Administration (SSI); Internal Revenue Service and Illinois Department of Revenue "
+                     "(federal and state Earned Income Tax Credits).",
+                     "SNAP, TANF, SSI, federal and Illinois Earned Income Tax Credits, WIC, school meals, home energy "
+                     "assistance."),
+        "jobs": ("Illinois Department of Employment Security (unemployment insurance); Illinois Department of Commerce "
+                 "and Economic Opportunity and local workforce boards; Illinois Community College Board; U.S. "
+                 "Department of Labor.",
+                 "Unemployment insurance, Workforce Innovation and Opportunity Act training, apprenticeships, community "
+                 "college career programs."),
+        "housing": ("Local public housing authorities (vouchers, public housing); Illinois Housing Development Authority "
+                    "(Low-Income Housing Tax Credits, rental help); Illinois Department of Commerce and Economic "
+                    "Opportunity (Community Development Block Grants for smaller communities); U.S. Department of "
+                    "Housing and Urban Development.",
+                    "Housing Choice Vouchers, public housing, project-based rental assistance, Low-Income Housing Tax "
+                    "Credits, HOME, CDBG."),
+        "physical": ("Illinois Department of Healthcare and Family Services (Medicaid, All Kids); Illinois Department of "
+                     "Public Health and local health departments; federally funded community health centers (HRSA).",
+                     "Medicaid, All Kids, Medicare, community health centers, local public health programs."),
+        "mental": ("Illinois Department of Human Services (mental health and substance use programs); Illinois "
+                   "Department of Healthcare and Family Services (Medicaid); county and township mental health boards; "
+                   "988 crisis line.",
+                   "Medicaid behavioral health, community mental health services, federal opioid response and "
+                   "settlement funds, crisis services."),
+        "safety": ("City police, county sheriffs and the courts; Illinois State Police; Illinois Criminal Justice "
+                   "Information Authority; Illinois Department of Transportation (highway safety); Illinois Attorney "
+                   "General.",
+                   "Local police and fire budgets, victim services, highway safety grants, violence prevention grants."),
+        "social": ("Local public libraries and library districts (with state grants through the Illinois State Library); "
+                   "transit agencies; the state broadband office; county clerks and election boards.",
+                   "State library grants, transit funding, broadband expansion grants, park district and recreation "
+                   "programs."),
+    },
 }
 
 

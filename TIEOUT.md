@@ -248,3 +248,25 @@ All other values matched.
 - The SNAP 28% gap against FNS's state table.
 - Map shapes.
 - Child care: the DECAL file has not been saved yet, so the page has no child care measures.
+
+## Illinois Community Well-Being page, November 18, 2026
+
+The Illinois page (`dist/illinois/`) uses the same scripts with `D4TP_STATE=il`. Ohio's layer files and page data
+were rerun after the Illinois changes and still match the earlier build exactly, apart from pull dates.
+
+**Checked by Claude's own scripts (not independent):**
+- **National checks.** All 41 Illinois figures in `50_national.py` match their county layers at display precision.
+- **Schools.** Illinois figures built from district rows are within 0.4 points of ISBE's published statewide figures:
+  - Grade 3 English: 47.9 vs 47.7 in 2025-2026, and 47.1 vs 47.3 in 2024-2025.
+  - Grade 3 math: 49.5 vs 49.2 in 2025-2026.
+  - Chronic absence: 23.8 vs 23.5 in 2025-2026, and within 0.4 points in every year.
+- **District lines.** The 17 districts have 753,676 or 753,677 residents in 2020. Four lakeshore and Chicago tracts
+  wholly in one district have their internal point just outside TIGERweb's simplified outline (17031030706,
+  17031420100, 17031410900, 17031320600).
+- **Turnout.** The county vote sum is within 919 votes of the official state total once non-vote rows and the
+  uncounted write-in lump are left out.
+- **Child care.** All 6,124 IECAM programs were placed in a tract.
+- **Rendering.** The page renders without errors for every measure at every level, and for every county and
+  district profile on every tab.
+
+**Not checked yet.** No independent tie-out of the Illinois page.

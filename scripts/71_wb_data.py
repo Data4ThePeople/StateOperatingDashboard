@@ -21,10 +21,12 @@ Which measures and where they come from: scripts/wellbeing_measures.py. How each
   geocoded location, counted per 1,000 children under 5 (ACS). Shown for counties and districts only; a tract is
   too small an area, since families often use care outside their own tract.
 """
+import datetime as dt
 import importlib
 import json
 import math
 from collections import Counter
+from urllib.parse import urlencode
 
 import wellbeing_measures as WM
 from common import ABBR, PROC, RAW, SK, SNAME, ST_ID, STATE, cached, census, write_json
@@ -266,6 +268,19 @@ CC = {
                "in Quality Rated, Georgia's rating system (1 to 3 stars). Programs with no rating count as not rated 2 or "
                "3 stars. A program counts once no matter its size. Not shown for tracts, for the same reason as programs "
                "per 1,000 children."),
+    "il": dict(
+        src_n="Illinois Early Childhood Asset Map (IECAM, University of Illinois), licensed child care layers for fiscal "
+              "year 2025; ACS 2020-2024 (children under 5)",
+        when="IECAM fiscal year 2025 layers, last updated {d}",
+        note_n="Licensed child care centers and family child care homes in IECAM's fiscal year 2025 map layers, placed by "
+               "their mapped location, per 1,000 children under 5. A program counts once no matter its size, so this is "
+               "not a count of slots. Not shown for tracts: families often use care outside their own tract. A tract "
+               "split by a district line counts its programs by the share of its 2020 residents in each district.",
+        label_r="Licensed programs rated Silver or Gold",
+        src_r="Illinois Early Childhood Asset Map (IECAM), licensed child care layers (ExceleRate Illinois ratings)",
+        note_r="Share of licensed child care centers and family child care homes rated Silver or Gold in ExceleRate "
+               "Illinois, the state's rating system (Licensed, Bronze, Silver, Gold Circle of Quality). A program counts "
+               "once no matter its size. Not shown for tracts, for the same reason as programs per 1,000 children."),
 }
 
 
@@ -310,18 +325,7 @@ def childcare_by_tract():
     d = json.loads(snap.read_text())
     keep = [r for r in d["rows"] if r["program_type"] in cc.LICENSED and r["program_status"] in cc.ACTIVE]
     young = [r for r in keep if cc.LICENSED[r["program_type"]] != "school_age"]
-    # Full-resolution tract shapes (no server simplification), so points near a boundary or the Lake Erie shore are
-    # placed in the right tract. The map itself uses the simplified shapes.
-    geo70 = importlib.import_module("70_wb_geo")
-    polys = {}
-    for c in sorted({t[2:5] for t in GEO["tracts"]}):
-        full = geo70.tiger(6, f"STATE='{STF}' AND COUNTY='{c}'", f"tiger_tracts_full_{c}.geojson", offset="0")
-        for f in full["features"]:
-            g = f["geometry"]
-            rs = g["coordinates"] if g["type"] == "Polygon" else [r for p in g["coordinates"] for r in p]
-            xs = [p[0] for r in rs for p in r]
-            ys = [p[1] for r in rs for p in r]
-            polys[f["properties"]["GEOID"]] = (min(xs), min(ys), max(xs), max(ys), rs)
+    polys = tract_polys()
     n, good, miss = Counter(), Counter(), []
     for r in young:
         x, y = r["x"], r["y"]
@@ -334,6 +338,62 @@ def childcare_by_tract():
         good[hit[0]] += r["sutq_rating"] in ("Silver", "Gold")
     print(f"child care: {len(young)} programs for young children, {len(miss)} not placed in a tract ({miss[:3]})")
     return n, good, d["pulled"], len(young), len(miss)
+
+
+def tract_polys():
+    """Full-resolution tract shapes (no server simplification), so points near a boundary or a lake shore are
+    placed in the right tract. The map itself uses the simplified shapes."""
+    geo70 = importlib.import_module("70_wb_geo")
+    polys = {}
+    for c in sorted({t[2:5] for t in GEO["tracts"]}):
+        full = geo70.tiger(6, f"STATE='{STF}' AND COUNTY='{c}'", f"tiger_tracts_full_{c}.geojson", offset="0")
+        for f in full["features"]:
+            g = f["geometry"]
+            rs = g["coordinates"] if g["type"] == "Polygon" else [r for p in g["coordinates"] for r in p]
+            xs = [p[0] for r in rs for p in r]
+            ys = [p[1] for r in rs for p in r]
+            polys[f["properties"]["GEOID"]] = (min(xs), min(ys), max(xs), max(ys), rs)
+    return polys
+
+
+IECAM = {"centers": "Licensed_Child_Care_Center_FY2025/FeatureServer/3",
+         "homes": "Licensed_Family_Child_Care_Homes_FY2025/FeatureServer/5"}
+IECAM_BASE = "https://services.arcgis.com/GL0fWlNkwysZaKeV/arcgis/rest/services/"
+
+
+def childcare_by_tract_il():
+    """Illinois: licensed child care centers and family child care homes from the Illinois Early Childhood Asset Map
+    (IECAM, University of Illinois) fiscal year 2025 public map layers, which carry each program's location and its
+    ExceleRate Illinois rating. Rated = Silver or Gold Circle of Quality."""
+    polys = tract_polys()
+    n, good, miss, total, edited = Counter(), Counter(), [], 0, []
+    for kind, path in IECAM.items():
+        meta = json.loads(cached(RAW / "iecam" / f"{kind}_meta.json", IECAM_BASE + path + "?f=json"))
+        edited.append(dt.datetime.fromtimestamp(meta["editingInfo"]["lastEditDate"] / 1000, dt.timezone.utc).date())
+        feats, off = [], 0
+        while True:
+            q = urlencode({"where": "1=1", "outFields": "ORG_ID,EXCELERATE_RATING", "returnGeometry": "true",
+                           "outSR": "4326", "resultOffset": off, "resultRecordCount": 2000, "orderByFields": "OBJECTID", "f": "json"})
+            page = json.loads(cached(RAW / "iecam" / f"{kind}_{off}.json", IECAM_BASE + path + "/query?" + q))
+            feats += page["features"]
+            if not page.get("exceededTransferLimit"):
+                break
+            off += 2000
+        total += len(feats)
+        for ft in feats:
+            g = ft.get("geometry") or {}
+            x, y = g.get("x"), g.get("y")
+            hit = [] if x is None else [t for t, (a, b, c_, e, rs) in polys.items() if a <= x <= c_ and b <= y <= e
+                                        and sum(inside(x, y, ring) for ring in rs) % 2 == 1]
+            if not hit:
+                miss.append(ft["attributes"].get("ORG_ID"))
+                continue
+            n[hit[0]] += 1
+            good[hit[0]] += (ft["attributes"].get("EXCELERATE_RATING") or "").split(" ")[0] in ("Silver", "Gold")
+        print(f"child care: IECAM {kind}: {len(feats)} programs; ratings "
+              f"{dict(Counter(f['attributes'].get('EXCELERATE_RATING') for f in feats))}")
+    print(f"child care: {total} programs, {len(miss)} not placed in a tract ({miss[:3]})")
+    return n, good, max(edited).isoformat(), total, len(miss)
 
 
 GA_LICENSED = ("Child Care Learning Center", "Family Child Care Learning Home")
@@ -451,7 +511,8 @@ if __name__ == "__main__":
         pyear[code] = ys.pop()
 
     # --- child care
-    ccn, ccg, cc_pulled, cc_total, cc_miss = childcare_by_tract() if ST_ID == "oh" else childcare_by_tract_ga()
+    ccn, ccg, cc_pulled, cc_total, cc_miss = {"oh": childcare_by_tract, "ga": childcare_by_tract_ga,
+                                              "il": childcare_by_tract_il}[ST_ID]()
 
     # --- assemble
     measures, county, series, district, tract, tract_moe, tract_weak = {}, {}, {}, {}, {}, {}, {}

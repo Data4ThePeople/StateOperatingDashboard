@@ -79,11 +79,10 @@ if __name__ == "__main__":
         z = zipfile.ZipFile(io.BytesIO(cached(NRAW / "census_cd119" / "cd119.zip", CD119)))
         b = pd.read_csv(z.open("NationalCD119.txt"), dtype=str).rename(columns={"GEOID": "Block", "CDFP": "cd"})
         b = b[b.Block.str[:2] == STF][["Block", "cd"]]
-        # Illinois has water-only blocks in Lake Michigan assigned to no district (ZZ); they have no residents
-        zz = b.cd == "ZZ"
-        print(f"blocks with no district (ZZ): {int(zz.sum())}")
-        zzb = set(b.Block[zz])
-        b = b[~zz]
+        # Illinois has water-only blocks in Lake Michigan assigned to no district (ZZ). They stay in, so their water
+        # tracts keep their shapes, but they have no residents and count toward no district.
+        zzb = set(b.Block[b.cd == "ZZ"])
+        print(f"blocks with no district (ZZ): {len(zzb)}")
         assert b.Block.str.len().eq(15).all()
     rows = []
     for c in cos:
@@ -96,7 +95,7 @@ if __name__ == "__main__":
         assert sum(n for blk, n in rows if blk in zzb) == 0, "a block with no district has residents"
     m["cd"] = m.cd.str.zfill(2)
     m["tract"] = m.Block.str[:11]
-    cdpop = m.groupby("cd")["pop"].sum()
+    cdpop = m[m.cd != "ZZ"].groupby("cd")["pop"].sum()
     print("district 2020 populations:", dict(cdpop))
     assert len(cdpop) == CFG["districts"] and cdpop.max() - cdpop.min() <= CFG["pop_spread"], "districts should be within a person or two of each other"
 
@@ -129,7 +128,7 @@ if __name__ == "__main__":
         pop = int(g["pop"].sum())
         by = g.dropna(subset=["PLACEFP"]).groupby("PLACEFP")["pop"].sum().sort_values(ascending=False)
         place = plc_name[by.index[0]] if len(by) and pop and by.iloc[0] / pop >= 0.5 else (township(t) or f"{cname[t[2:5]]} County")
-        cd = {k: int(v) for k, v in g.groupby("cd")["pop"].sum().items() if v > 0}
+        cd = {k: int(v) for k, v in g.groupby("cd")["pop"].sum().items() if v > 0 and k != "ZZ"}
         tracts[t] = {"county": t[2:5], "pop2020": pop, "cd": cd,
                      "label": f"{place}, tract {int(t[5:9])}" + (f".{t[9:]}" if t[9:] != "00" else "")}
 
@@ -189,6 +188,7 @@ if __name__ == "__main__":
     assert sorted(counties) == COUNTIES
 
     dfeat = tiger(54, f"STATE='{STF}'", f"tiger_cd120_{ST.lower()}.geojson", fields="GEOID,CDSESSN,NAME", url=CD_LINE, offset="0.0004")["features"]
+    dfeat = [f for f in dfeat if f["properties"]["GEOID"][2:] != "ZZ"]   # Illinois: Lake Michigan water, no district
     assert len(dfeat) == CFG["districts"], len(dfeat)
     dists = {}
     for f in dfeat:
