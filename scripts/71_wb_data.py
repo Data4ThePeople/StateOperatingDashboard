@@ -25,6 +25,7 @@ import datetime as dt
 import importlib
 import json
 import math
+import re
 from collections import Counter
 from urllib.parse import urlencode
 
@@ -400,6 +401,9 @@ GA_LICENSED = ("Child Care Learning Center", "Family Child Care Learning Home")
 GEOCODER = "https://geocoding.geo.census.gov/geocoder/geographies/addressbatch"
 
 
+CC_EXTRA = {}   # county FIPS -> [programs, rated] not placed in a tract but counted in their county (Georgia)
+
+
 def childcare_by_tract_ga():
     """Georgia: licensed child care learning centers and family child care learning homes from DECAL's provider data
     export (saved by hand from families.decal.ga.gov/Provider/Data into data/raw/ga/decal/), placed in 2020 tracts by
@@ -414,7 +418,8 @@ def childcare_by_tract_ga():
         return None, None, None, 0, 0
     path = files[-1]
     rows = list(csv.DictReader(_io.StringIO(path.read_text(encoding="utf-8-sig", errors="replace"))))
-    keep = [r for r in rows if (r.get("Program_Type") or "").strip() in GA_LICENSED]
+    keep = [r for r in rows if (r.get("Program_Type") or "").strip() in GA_LICENSED
+            and (r.get("CurrentProgramStatus") or "Open").strip() == "Open"]   # not pending revocation or closed
     young = [r for r in keep if any((r.get(k) or "").strip().lower() in ("yes", "y", "true", "1")
                                     for k in ("Infant_0_To_12mos", "Toddler_13mos_To_2yrs", "Preschool_3yrs_To_4yrs", "Pre_K_Served"))]
     print(f"child care: {len(rows)} rows in {path.name}; {len(keep)} licensed; {len(young)} serve children under 5")
@@ -437,16 +442,46 @@ def childcare_by_tract_ga():
         for g in csv.reader(_io.StringIO(cache.read_text(encoding="utf-8", errors="replace"))):
             if len(g) >= 12 and g[2] == "Match" and g[8] == STATE:
                 out[int(g[0])] = g[8] + g[9] + g[10]
+    # second pass: addresses the batch did not match ("No_Match") or matched to more than one place ("Tie"), one at a
+    # time through the single-address geocoder, taking its first candidate; cached per program
+    one = "https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?"
+    retry = 0
+    for idx, r in enumerate(young):
+        if idx in out:
+            continue
+        addr = f'{r["Address"]}, {r["City"]}, {r["State"] or "GA"} {r["Zip"]}'
+        j = json.loads(cached(RAW / "decal" / "geocoded" / "single" / f"{r['Provider_Number']}.json",
+                              one + urlencode({"address": addr, "benchmark": "Public_AR_Current",
+                                               "vintage": "Census2020_Current", "format": "json"}), timeout=120))
+        ms = j.get("result", {}).get("addressMatches", [])
+        if ms:
+            tr = ms[0]["geographies"].get("Census Tracts", [{}])[0]
+            if tr.get("STATE") == STATE:
+                out[idx] = tr["GEOID"]
+                retry += 1
+    print(f"child care: single-address retry placed {retry} more programs")
     n, good, miss = Counter(), Counter(), []
     tset = set(GEO["tracts"])
+    # programs the geocoder could not place still count in the county DECAL lists for them (county and state
+    # figures); they are left out of tract and district figures
+    cnames = {re.sub(r"[^A-Z]", "", v["name"].upper()): f
+              for f, v in json.loads((PROC / "geo.json").read_text())["counties"].items()}
     for idx, r in enumerate(young):
         t = out.get(idx)
+        rated = (r.get("QR_Rating") or "").strip() in ("2", "3")
         if t not in tset:
+            f = cnames.get(re.sub(r"[^A-Z]", "", (r.get("County") or "").upper()))
+            if f is None:
+                raise SystemExit(f"child care: no county for {r.get('Location')!r} ({r.get('County')!r})")
+            CC_EXTRA.setdefault(f, [0, 0])
+            CC_EXTRA[f][0] += 1
+            CC_EXTRA[f][1] += rated
             miss.append(r.get("Location"))
             continue
         n[t] += 1
-        good[t] += (r.get("QR_Rating") or "").strip() in ("2", "3")
-    pulled = path.stem.split("_", 1)[1][:10] if "_" in path.stem else "unknown"
+        good[t] += rated
+    ts = path.stem.split("_", 1)[1] if "_" in path.stem else ""
+    pulled = f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}" if len(ts) >= 8 and ts[:8].isdigit() else "unknown"
     print(f"child care: {len(young)} programs for young children, {len(miss)} not placed in a tract ({miss[:3]})")
     return n, good, pulled, len(young), len(miss)
 
@@ -584,23 +619,25 @@ if __name__ == "__main__":
                 print(f"PLACES {code}: {len(nov)} populated tracts without a value")
         elif i in ("childcare_programs_per1k", "childcare_rated_share") and ccn is not None:
             kids_t = {t: tract_c[t]["kids_under5"][0] for t in tids}
-            def rate(ts, w=None):
+            def rate(ts, w=None, extra=(0, 0)):
                 w = w or {t: 1.0 for t in ts}
-                n_ = sum(ccn[t] * x for t, x in w.items())
+                n_ = sum(ccn[t] * x for t, x in w.items()) + extra[0]
                 k_ = sum((kids_t[t] or 0) * x for t, x in w.items())
-                g_ = sum(ccg[t] * x for t, x in w.items())
+                g_ = sum(ccg[t] * x for t, x in w.items()) + extra[1]
                 return (n_ / k_ * 1000 if k_ else None) if i == "childcare_programs_per1k" else (g_ / n_ * 100 if n_ else None)
             c = CC[ST_ID]
             if i == "childcare_programs_per1k":
                 meta = dict(label="Licensed child care programs per 1,000 children under 5", unit="rate", decimals=1, better="higher",
                             source=c["src_n"], period_label=c["when"].format(d=cc_pulled), note=c["note_n"]
-                                 + (f" {cc_miss} of {cc_total} programs could not be placed and are left out." if cc_miss else ""))
+                                 + ((f" {cc_miss} of {cc_total} programs could not be placed at their address. They count in "
+                                     "their county and state figures but not in district or tract figures.") if CC_EXTRA else
+                                    f" {cc_miss} of {cc_total} programs could not be placed and are left out." if cc_miss else ""))
             else:
                 meta = dict(label=c["label_r"], unit="pct", decimals=1, better="higher",
                             source=c["src_r"], period_label=c["when"].format(d=cc_pulled), note=c["note_r"])
-            county[i] = {f: [rate([t for t in tids if t[:5] == f]), None, None] for f in fips}
+            county[i] = {f: [rate([t for t in tids if t[:5] == f], extra=CC_EXTRA.get(f, (0, 0))), None, None] for f in fips}
             district[i] = {cd: [rnd(rate(None, dist_w[cd]), 1), None] for cd in cds}
-            ohio[i] = rate(tids)
+            ohio[i] = rate(tids, extra=(sum(v[0] for v in CC_EXTRA.values()), sum(v[1] for v in CC_EXTRA.values())))
         elif i in lay and any((j_c.get(i) or {}).get("latest") is not None for j_c in lay[i]["counties"].values()):
             # (a measure with no county values at all, such as Illinois SNAP county shares, is left out)
             j = lay[i]

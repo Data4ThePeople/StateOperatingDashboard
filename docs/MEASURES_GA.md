@@ -10,6 +10,8 @@ _Can families find licensed, rated child care near home?_
 
 | Measure | Role | Levels | Georgia | Better | Standard | Source | Period |
 |---|---|---|---|---|---|---|---|
+| Licensed child care programs per 1,000 children under 5 (headline) | Access | C D | 6.0 | higher |  | Georgia Department of Early Care and Learning, provider data export; ACS 2020-2024 (children under 5) | programs listed on 2026-11-18 |
+| Licensed programs rated 2 or 3 stars | Access | C D | 55.9% | higher |  | Georgia Department of Early Care and Learning, provider data export (Quality Rated) | programs listed on 2026-11-18 |
 | Children 3 and 4 enrolled in school or preschool | Access | C D T | 46.7% | higher |  | U.S. Census Bureau, American Community Survey 5-year estimates | 2020-2024 ACS 5-year |
 
 Who runs services: Georgia Department of Early Care and Learning (licensing, Quality Rated, the Childcare and Parent Services subsidy program and Georgia's Pre-K Program); U.S. Department of Health and Human Services, Administration for Children and Families (Child Care and Development Fund, Head Start).

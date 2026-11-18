@@ -1486,10 +1486,13 @@ for 2025.
 Georgia's smallest counties have about 1,500 to 3,000 residents.
 
 **Child care.** The Georgia Department of Early Care and Learning (DECAL) provider export, saved by hand from
-https://families.decal.ga.gov/Provider/Data into `data/raw/ga/decal/`. Licensed child care learning centers and
-family child care learning homes serving children under 5 are geocoded with the Census batch geocoder. The rated
-share counts Quality Rated programs with 2 or 3 stars. Until that file is saved, the page has no child care
-measures for Georgia.
+https://families.decal.ga.gov/Provider/Data into `data/raw/ga/decal/` (the current file was listed on November 18,
+2026: 4,102 programs). The measures count licensed child care learning centers and family child care learning homes
+whose status is Open (8 pending revocation and 5 temporarily closed are left out) and that serve infants, toddlers,
+preschoolers or Pre-K: 3,825 programs. Each address goes through the Census batch geocoder, and addresses it does not
+match, or matches to more than one place, go through the single-address geocoder. 271 programs (7%) still cannot be
+placed. They count in the county DECAL lists for them and in the Georgia figure, but not in tract or district
+figures, so district figures run a little low. The rated share counts Quality Rated programs with 2 or 3 stars.
 
 ## Illinois Community Well-Being page (same build, Illinois sources and differences)
 
